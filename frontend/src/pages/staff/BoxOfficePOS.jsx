@@ -1,0 +1,709 @@
+import { useState, useEffect, useMemo } from 'react';
+import { fetchPublicShowtimes } from '../../services/showtimeService';
+import { fetchCinemas } from '../../services/cinemaService';
+import { fetchSeatStatuses, calculatePrice } from '../../services/bookingService';
+import { fetchFnBItems } from '../../services/fnbService';
+
+// ── Seat palette ────────────────────────────────────────────────────
+const SEAT_STYLES = {
+  STANDARD: { idle: 'bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200', active: 'bg-gradient-to-br from-orange-400 to-red-500 text-white shadow-lg shadow-orange-500/30 scale-105 border-none' },
+  VIP:      { idle: 'bg-indigo-100 hover:bg-indigo-200 text-indigo-600 border border-indigo-200', active: 'bg-gradient-to-br from-orange-400 to-red-500 text-white shadow-lg shadow-orange-500/30 scale-105 border-none' },
+  COUPLE:   { idle: 'bg-rose-100 hover:bg-rose-200 text-rose-500 border border-rose-200',       active: 'bg-gradient-to-br from-orange-400 to-red-500 text-white shadow-lg shadow-orange-500/30 scale-105 border-none' },
+  SOLD:     { idle: 'bg-red-200/60 text-red-300 cursor-not-allowed border border-red-200/40 line-through', active: '' },
+  PENDING:  { idle: 'bg-yellow-100 text-yellow-500 cursor-not-allowed border border-yellow-200', active: '' },
+};
+
+const formatMoney = (v) => new Intl.NumberFormat('vi-VN').format(v || 0) + 'đ';
+
+// ══════════════════════════════════════════════════════════════════════
+//  BOX OFFICE POS — Main Ticket Selling Screen
+// ══════════════════════════════════════════════════════════════════════
+export default function BoxOfficePOS() {
+  // ── Workflow State ──────────────────────────────────────────────────
+  // Steps: 1=Chọn Rạp, 2=Chọn Phim, 3=Chọn Suất, 4=Chọn Ghế
+  const [step, setStep] = useState(1);
+  const [allShowtimes, setAllShowtimes] = useState([]);
+  const [cinemas, setCinemas] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Step 1: Cinema
+  const [selectedCinema, setSelectedCinema] = useState(null);
+  // Step 2: Movie
+  const [selectedMovie, setSelectedMovie] = useState(null);
+  // Step 3: Showtime
+  const [selectedShowtime, setSelectedShowtime] = useState(null);
+  // Step 4: Seats
+  const [seats, setSeats] = useState([]);
+  const [selectedSeats, setSelectedSeats] = useState([]);
+  const [seatsLoading, setSeatsLoading] = useState(false);
+
+  // Cart
+  const [cartFnb, setCartFnb] = useState([]);
+  const [fnbItems, setFnbItems] = useState([]);
+  const [promoCode, setPromoCode] = useState('');
+  const [priceBreakdown, setPriceBreakdown] = useState(null);
+  const [showFnbPanel, setShowFnbPanel] = useState(false);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+
+  // ── Load initial data ───────────────────────────────────────────────
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [showtimeData, cinemaData, fnbData] = await Promise.all([
+          fetchPublicShowtimes({}),
+          fetchCinemas(),
+          fetchFnBItems(),
+        ]);
+        setAllShowtimes(showtimeData);
+        setCinemas(cinemaData);
+        setFnbItems(fnbData);
+      } catch(e) {
+        console.error('Failed to load data', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  // ── Derive: movies from showtimes (today only, filtered by cinema) ──
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const movies = useMemo(() => {
+    if (!selectedCinema) return [];
+    const map = new Map();
+    allShowtimes.forEach(st => {
+      const stDate = st.startTime?.split('T')[0];
+      if (stDate !== todayStr) return;
+      if (st.cinemaId !== selectedCinema.cinemaId) return;
+      if (!map.has(st.movieId)) {
+        map.set(st.movieId, {
+          movieId: st.movieId,
+          title: st.movieTitle,
+          posterUrl: st.moviePosterUrl,
+          ageRating: st.movieAgeRating,
+          durationMinutes: st.movieDurationMinutes,
+        });
+      }
+    });
+    return Array.from(map.values());
+  }, [allShowtimes, selectedCinema, todayStr]);
+
+  // ── Derive: showtimes for selected movie + cinema ───────────────────
+  const movieShowtimes = useMemo(() => {
+    if (!selectedMovie || !selectedCinema) return [];
+    return allShowtimes
+      .filter(st =>
+        st.movieId === selectedMovie.movieId &&
+        st.cinemaId === selectedCinema.cinemaId &&
+        st.startTime?.split('T')[0] === todayStr
+      )
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  }, [allShowtimes, selectedMovie, selectedCinema, todayStr]);
+
+  // ── Load seats when showtime is selected ────────────────────────────
+  useEffect(() => {
+    if (!selectedShowtime) return;
+    const loadSeats = async () => {
+      setSeatsLoading(true);
+      try {
+        const data = await fetchSeatStatuses(selectedShowtime.showtimeId);
+        setSeats(data);
+      } catch(e) {
+        console.error('Failed to load seats', e);
+      } finally {
+        setSeatsLoading(false);
+      }
+    };
+    loadSeats();
+  }, [selectedShowtime]);
+
+  // ── Calculate price when seats change ───────────────────────────────
+  useEffect(() => {
+    if (selectedSeats.length === 0 || !selectedShowtime) {
+      setPriceBreakdown(null);
+      return;
+    }
+    const calc = async () => {
+      try {
+        const result = await calculatePrice({
+          showtimeId: selectedShowtime.showtimeId,
+          seatIds: selectedSeats.map(s => s.seatId),
+          fnbs: cartFnb.map(f => ({ itemId: f.itemId, quantity: f.quantity })),
+          promoCode: promoCode || null,
+        });
+        setPriceBreakdown(result);
+      } catch(e) {
+        console.error('Price calc error', e);
+      }
+    };
+    calc();
+  }, [selectedSeats, selectedShowtime, cartFnb, promoCode]);
+
+  // ── Handlers ────────────────────────────────────────────────────────
+  const handleSelectCinema = (cinema) => {
+    setSelectedCinema(cinema);
+    setSelectedMovie(null);
+    setSelectedShowtime(null);
+    setSelectedSeats([]);
+    setSeats([]);
+    setStep(2);
+  };
+
+  const handleSelectMovie = (movie) => {
+    setSelectedMovie(movie);
+    setSelectedShowtime(null);
+    setSelectedSeats([]);
+    setSeats([]);
+    setStep(3);
+  };
+
+  const handleSelectShowtime = (st) => {
+    setSelectedShowtime(st);
+    setSelectedSeats([]);
+    setStep(4);
+  };
+
+  const handleToggleSeat = (seat) => {
+    if (seat.status === 'SOLD' || seat.status === 'PENDING') return;
+    setSelectedSeats(prev => {
+      const exists = prev.find(s => s.seatId === seat.seatId);
+      if (exists) return prev.filter(s => s.seatId !== seat.seatId);
+      if (prev.length >= 10) return prev;
+      return [...prev, seat];
+    });
+  };
+
+  const handleAddFnb = (item) => {
+    setCartFnb(prev => {
+      const exists = prev.find(f => f.itemId === item.itemId);
+      if (exists) return prev.map(f => f.itemId === item.itemId ? { ...f, quantity: f.quantity + 1 } : f);
+      return [...prev, { ...item, quantity: 1 }];
+    });
+  };
+
+  const handleRemoveFnb = (itemId) => {
+    setCartFnb(prev => {
+      const item = prev.find(f => f.itemId === itemId);
+      if (!item) return prev;
+      if (item.quantity <= 1) return prev.filter(f => f.itemId !== itemId);
+      return prev.map(f => f.itemId === itemId ? { ...f, quantity: f.quantity - 1 } : f);
+    });
+  };
+
+  const handlePayment = async () => {
+    setPaymentProcessing(true);
+    // Mock payment for Phase 1
+    await new Promise(r => setTimeout(r, 1500));
+    setPaymentProcessing(false);
+    setPaymentSuccess(true);
+    setTimeout(() => {
+      resetAll();
+    }, 3000);
+  };
+
+  const resetAll = () => {
+    setStep(1);
+    setSelectedCinema(null);
+    setSelectedMovie(null);
+    setSelectedShowtime(null);
+    setSelectedSeats([]);
+    setSeats([]);
+    setCartFnb([]);
+    setPromoCode('');
+    setPriceBreakdown(null);
+    setShowFnbPanel(false);
+    setPaymentSuccess(false);
+  };
+
+  // ── Hotkeys ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === 'Escape') resetAll();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // ── Seat grid builder ───────────────────────────────────────────────
+  const seatGrid = useMemo(() => {
+    if (seats.length === 0) return [];
+    const rows = {};
+    seats.forEach(s => {
+      if (!rows[s.seatRow]) rows[s.seatRow] = [];
+      rows[s.seatRow].push(s);
+    });
+    return Object.entries(rows)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([row, s]) => ({ row, seats: s.sort((a, b) => a.seatNumber - b.seatNumber) }));
+  }, [seats]);
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  RENDER
+  // ══════════════════════════════════════════════════════════════════════
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[70vh]">
+        <div className="w-12 h-12 border-4 border-orange-500/20 border-t-orange-500 rounded-full animate-spin"></div>
+        <p className="mt-4 text-slate-400 font-bold text-xs uppercase tracking-widest">Đang tải dữ liệu POS...</p>
+      </div>
+    );
+  }
+
+  // ── Payment Success Overlay ─────────────────────────────────────────
+  if (paymentSuccess) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-green-500/90 backdrop-blur-lg">
+        <div className="text-center text-white">
+          <span className="material-symbols-outlined text-[120px] mb-4 block animate-bounce">check_circle</span>
+          <h1 className="text-5xl font-black uppercase tracking-wider mb-4">Thanh Toán Thành Công!</h1>
+          <p className="text-lg font-medium opacity-80">Đang chuẩn bị đơn mới...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-4 h-[calc(100vh-8rem)]">
+      {/* ════════════════════════════════════════════════════════════════
+          LEFT: WORKSPACE (70%)
+      ════════════════════════════════════════════════════════════════ */}
+      <div className="flex-[7] flex flex-col min-w-0 overflow-y-auto pr-1">
+
+        {/* Breadcrumb / Step Indicator */}
+        <div className="flex items-center gap-2 mb-4 text-xs font-bold text-slate-400 uppercase tracking-widest flex-wrap">
+          <button onClick={resetAll} className={`transition-colors ${step >= 1 ? 'text-orange-500' : ''}`}>
+            <span className="material-symbols-outlined text-sm align-middle mr-1">store</span>Chọn Rạp
+          </button>
+          {step >= 2 && (
+            <>
+              <span className="material-symbols-outlined text-sm">chevron_right</span>
+              <button onClick={() => { setStep(2); setSelectedMovie(null); setSelectedShowtime(null); setSelectedSeats([]); setSeats([]); }} className={`transition-colors ${step >= 2 ? 'text-orange-500' : ''}`}>
+                <span className="material-symbols-outlined text-sm align-middle mr-1">movie</span>Chọn Phim
+              </button>
+            </>
+          )}
+          {step >= 3 && (
+            <>
+              <span className="material-symbols-outlined text-sm">chevron_right</span>
+              <button onClick={() => { setStep(3); setSelectedShowtime(null); setSelectedSeats([]); setSeats([]); }} className={`transition-colors ${step >= 3 ? 'text-orange-500' : ''}`}>
+                <span className="material-symbols-outlined text-sm align-middle mr-1">schedule</span>Suất Chiếu
+              </button>
+            </>
+          )}
+          {step >= 4 && (
+            <>
+              <span className="material-symbols-outlined text-sm">chevron_right</span>
+              <span className="text-orange-500">
+                <span className="material-symbols-outlined text-sm align-middle mr-1">event_seat</span>Chọn Ghế
+              </span>
+            </>
+          )}
+        </div>
+
+        {/* ────────────────────────────────────────────────────────
+            STEP 1: Cinema Selection
+        ──────────────────────────────────────────────────────── */}
+        {step === 1 && (
+          <div>
+            <h2 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tight mb-4 flex items-center gap-2">
+              <span className="w-1.5 h-6 bg-orange-500 rounded-full"></span>
+              Chọn rạp chiếu phim
+              <span className="text-xs font-medium text-slate-400 normal-case tracking-normal ml-1">({cinemas.length} rạp)</span>
+            </h2>
+
+            {cinemas.length === 0 ? (
+              <div className="text-center py-20">
+                <span className="material-symbols-outlined text-5xl text-slate-300 mb-3 block">store_off</span>
+                <p className="text-slate-400 font-bold">Không tìm thấy rạp nào</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {cinemas.map(cinema => {
+                  // Count today's showtimes for this cinema
+                  const todayShowtimeCount = allShowtimes.filter(
+                    st => st.cinemaId === cinema.cinemaId && st.startTime?.split('T')[0] === todayStr
+                  ).length;
+
+                  return (
+                    <button
+                      key={cinema.cinemaId}
+                      onClick={() => handleSelectCinema(cinema)}
+                      className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:border-orange-500/50 hover:-translate-y-1 transition-all text-left p-6 group"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-md shadow-orange-500/20 shrink-0 group-hover:scale-110 transition-transform">
+                          <span className="material-symbols-outlined text-white text-xl">movie</span>
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tight leading-tight group-hover:text-orange-500 transition-colors">{cinema.name}</h3>
+                          <p className="text-[11px] text-slate-400 font-medium mt-1 flex items-start gap-1 leading-snug">
+                            <span className="material-symbols-outlined text-xs shrink-0 mt-0.5">location_on</span>
+                            <span className="line-clamp-2">{cinema.address}</span>
+                          </p>
+                          <div className="flex items-center gap-3 mt-3">
+                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-lg">
+                              {todayShowtimeCount} suất hôm nay
+                            </span>
+                            {cinema.hotline && (
+                              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[10px]">call</span>
+                                {cinema.hotline}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ────────────────────────────────────────────────────────
+            STEP 2: Movie Grid
+        ──────────────────────────────────────────────────────── */}
+        {step === 2 && selectedCinema && (
+          <div>
+            <h2 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tight mb-4 flex items-center gap-2">
+              <span className="w-1.5 h-6 bg-orange-500 rounded-full"></span>
+              Phim đang chiếu — {selectedCinema.name}
+              <span className="text-xs font-medium text-slate-400 normal-case tracking-normal ml-1">({movies.length} phim)</span>
+            </h2>
+
+            {movies.length === 0 ? (
+              <div className="text-center py-20">
+                <span className="material-symbols-outlined text-5xl text-slate-300 mb-3 block">movie_off</span>
+                <p className="text-slate-400 font-bold">Không có phim nào chiếu hôm nay tại rạp này</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                {movies.map(movie => (
+                  <button
+                    key={movie.movieId}
+                    onClick={() => handleSelectMovie(movie)}
+                    className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all text-left group overflow-hidden"
+                  >
+                    <div className="aspect-[2/3] overflow-hidden rounded-t-2xl relative">
+                      <img
+                        alt={movie.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        src={movie.posterUrl?.startsWith('http') ? movie.posterUrl : `https://lh3.googleusercontent.com/aida-public/${movie.posterUrl}`}
+                      />
+                      {movie.ageRating && (
+                        <span className="absolute top-2 left-2 px-2 py-0.5 rounded text-[9px] font-black text-white bg-red-600 uppercase">{movie.ageRating}</span>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <h3 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-tight leading-tight line-clamp-2">{movie.title}</h3>
+                      <p className="text-[10px] text-slate-400 font-medium mt-1">{movie.durationMinutes} phút</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ────────────────────────────────────────────────────────
+            STEP 3: Showtimes
+        ──────────────────────────────────────────────────────── */}
+        {step === 3 && selectedMovie && (
+          <div>
+            <div className="flex items-center gap-4 mb-5">
+              <img
+                alt={selectedMovie.title}
+                className="w-16 h-24 rounded-xl object-cover shadow-md"
+                src={selectedMovie.posterUrl?.startsWith('http') ? selectedMovie.posterUrl : `https://lh3.googleusercontent.com/aida-public/${selectedMovie.posterUrl}`}
+              />
+              <div>
+                <h2 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tight">{selectedMovie.title}</h2>
+                <p className="text-xs text-slate-400 font-medium">{selectedMovie.durationMinutes} phút • {selectedMovie.ageRating}</p>
+              </div>
+            </div>
+
+            <h3 className="text-sm font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3 flex items-center gap-2">
+              <span className="w-1.5 h-5 bg-cyan-500 rounded-full"></span>
+              Chọn suất chiếu
+            </h3>
+
+            {movieShowtimes.length === 0 ? (
+              <div className="text-center py-16 text-slate-400 font-bold">Không có suất chiếu hôm nay cho phim này</div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {movieShowtimes.map(st => {
+                  const time = st.startTime?.split('T')[1]?.substring(0, 5);
+                  return (
+                    <button
+                      key={st.showtimeId}
+                      onClick={() => handleSelectShowtime(st)}
+                      className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-lg hover:border-orange-500/50 hover:-translate-y-1 transition-all text-center group"
+                    >
+                      <p className="text-2xl font-black text-slate-800 dark:text-white tracking-tight group-hover:text-orange-500 transition-colors">{time}</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{st.roomName || `Phòng ${st.roomId}`}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{st.screenType || '2D'}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ────────────────────────────────────────────────────────
+            STEP 4: Seat Map
+        ──────────────────────────────────────────────────────── */}
+        {step === 4 && selectedShowtime && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <h2 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                  <span className="w-1.5 h-5 bg-orange-500 rounded-full"></span>
+                  Sơ đồ ghế — {selectedShowtime.roomName || `Phòng ${selectedShowtime.roomId}`}
+                </h2>
+                <span className="text-xs text-slate-400 font-medium">
+                  ({selectedSeats.length}/10 ghế đã chọn)
+                </span>
+              </div>
+              {/* Legend */}
+              <div className="hidden md:flex items-center gap-4 text-[10px] font-bold text-slate-400 uppercase">
+                <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-slate-100 border border-slate-200"></span> Trống</span>
+                <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-gradient-to-br from-orange-400 to-red-500"></span> Đang chọn</span>
+                <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-red-200/60"></span> Đã bán</span>
+                <span className="flex items-center gap-1"><span className="w-4 h-4 rounded bg-indigo-100 border border-indigo-200"></span> VIP</span>
+              </div>
+            </div>
+
+            {/* Screen indicator */}
+            <div className="w-3/4 mx-auto h-2 bg-gradient-to-r from-transparent via-orange-400 to-transparent rounded-full mb-1 opacity-60"></div>
+            <p className="text-center text-[9px] text-slate-400 font-bold uppercase tracking-[0.3em] mb-6">Màn hình</p>
+
+            {seatsLoading ? (
+              <div className="flex justify-center py-16">
+                <div className="w-10 h-10 border-4 border-orange-500/20 border-t-orange-500 rounded-full animate-spin"></div>
+              </div>
+            ) : (
+              <div className="space-y-1.5 max-w-3xl mx-auto">
+                {seatGrid.map(({ row, seats: rowSeats }) => (
+                  <div key={row} className="flex items-center gap-1.5">
+                    <span className="w-6 text-center text-xs font-black text-slate-400">{row}</span>
+                    <div className="flex-1 flex justify-center gap-1">
+                      {rowSeats.map(seat => {
+                        const isSelected = selectedSeats.some(s => s.seatId === seat.seatId);
+                        const seatType = seat.status === 'SOLD' ? 'SOLD' : seat.status === 'PENDING' ? 'PENDING' : (seat.seatType || 'STANDARD');
+                        const style = SEAT_STYLES[seatType] || SEAT_STYLES.STANDARD;
+                        const canSelect = seat.status !== 'SOLD' && seat.status !== 'PENDING';
+
+                        return (
+                          <button
+                            key={seat.seatId}
+                            onClick={() => handleToggleSeat(seat)}
+                            disabled={!canSelect}
+                            title={`${row}${seat.seatNumber} • ${seatType}${seat.totalPrice ? ' • ' + formatMoney(seat.totalPrice) : ''}`}
+                            className={`w-8 h-8 rounded-lg text-[10px] font-bold transition-all duration-150 ${
+                              isSelected ? style.active : style.idle
+                            }`}
+                          >
+                            {seat.seatNumber}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <span className="w-6 text-center text-xs font-black text-slate-400">{row}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ════════════════════════════════════════════════════════════════
+          RIGHT: CART PANEL (30%)
+      ════════════════════════════════════════════════════════════════ */}
+      <div className="flex-[3] flex flex-col min-w-[280px] max-w-[380px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-lg overflow-hidden">
+        {/* Cart Header */}
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+          <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
+            <span className="material-symbols-outlined text-orange-500 text-lg">shopping_cart</span>
+            Đơn hàng
+          </h3>
+        </div>
+
+        {/* Cart Body */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {/* Cinema info */}
+          {selectedCinema && (
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Rạp</p>
+              <p className="text-sm font-bold text-slate-800 dark:text-white leading-tight">{selectedCinema.name}</p>
+            </div>
+          )}
+
+          {/* Movie info */}
+          {selectedMovie && (
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Phim</p>
+              <p className="text-sm font-bold text-slate-800 dark:text-white leading-tight">{selectedMovie.title}</p>
+            </div>
+          )}
+
+          {/* Showtime info */}
+          {selectedShowtime && (
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Suất chiếu</p>
+              <p className="text-sm font-bold text-orange-500">
+                {selectedShowtime.startTime?.split('T')[1]?.substring(0, 5)} — {selectedShowtime.roomName || `Phòng ${selectedShowtime.roomId}`}
+              </p>
+            </div>
+          )}
+
+          {/* Selected seats */}
+          {selectedSeats.length > 0 && (
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Ghế ({selectedSeats.length})</p>
+              <div className="flex flex-wrap gap-1.5">
+                {selectedSeats.map(s => (
+                  <span key={s.seatId} className="px-2.5 py-1 rounded-lg bg-orange-100 dark:bg-orange-500/10 text-orange-600 text-xs font-bold">
+                    {s.seatRow}{s.seatNumber}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* F&B */}
+          {cartFnb.length > 0 && (
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">F&B</p>
+              {cartFnb.map(f => (
+                <div key={f.itemId} className="flex items-center justify-between py-1 text-xs">
+                  <span className="font-medium text-slate-700 dark:text-slate-300 truncate max-w-[120px]">{f.name}</span>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => handleRemoveFnb(f.itemId)} className="w-5 h-5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center text-sm font-bold hover:bg-red-100 hover:text-red-500 transition-colors">−</button>
+                    <span className="font-bold text-slate-800 dark:text-white w-4 text-center">{f.quantity}</span>
+                    <button onClick={() => handleAddFnb(f)} className="w-5 h-5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center text-sm font-bold hover:bg-green-100 hover:text-green-500 transition-colors">+</button>
+                    <span className="font-bold text-slate-500 w-16 text-right">{formatMoney(f.price * f.quantity)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add F&B button */}
+          {selectedSeats.length > 0 && (
+            <button
+              onClick={() => setShowFnbPanel(!showFnbPanel)}
+              className="w-full py-2.5 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 text-slate-400 text-xs font-bold uppercase tracking-widest hover:border-orange-500 hover:text-orange-500 transition-colors flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-base">add_circle</span>
+              {showFnbPanel ? 'Đóng F&B' : 'Thêm Bắp/Nước'}
+            </button>
+          )}
+
+          {/* F&B Quick Panel */}
+          {showFnbPanel && (
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800 space-y-2 max-h-48 overflow-y-auto">
+              {fnbItems.map(item => (
+                <button
+                  key={item.itemId}
+                  onClick={() => handleAddFnb(item)}
+                  className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-orange-500 text-base">fastfood</span>
+                    <span className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate max-w-[120px]">{item.name}</span>
+                  </div>
+                  <span className="text-xs font-bold text-orange-500">{formatMoney(item.price)}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Promo code */}
+          {selectedSeats.length > 0 && (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={promoCode}
+                onChange={e => setPromoCode(e.target.value)}
+                placeholder="Mã khuyến mãi..."
+                className="flex-1 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:border-orange-500 transition-colors"
+              />
+              <button className="px-3 py-2 rounded-lg bg-orange-50 dark:bg-orange-500/10 text-orange-500 text-xs font-bold hover:bg-orange-100 transition-colors">
+                Áp dụng
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Cart Footer: Total + Payment Buttons */}
+        <div className="border-t border-slate-100 dark:border-slate-800 p-5 space-y-3">
+          {/* Total */}
+          <div className="flex justify-between items-center">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Tổng cộng</span>
+            <span className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
+              {priceBreakdown ? formatMoney(priceBreakdown.finalTotal) : '0đ'}
+            </span>
+          </div>
+
+          {/* Breakdown */}
+          {priceBreakdown && (
+            <div className="text-[10px] text-slate-400 space-y-0.5">
+              <div className="flex justify-between"><span>Vé:</span><span>{formatMoney(priceBreakdown.ticketTotal)}</span></div>
+              {priceBreakdown.fnbTotal > 0 && <div className="flex justify-between"><span>F&B:</span><span>{formatMoney(priceBreakdown.fnbTotal)}</span></div>}
+              {priceBreakdown.discountAmount > 0 && <div className="flex justify-between text-green-500"><span>Giảm:</span><span>-{formatMoney(priceBreakdown.discountAmount)}</span></div>}
+            </div>
+          )}
+
+          {/* Payment Buttons */}
+          <div className="space-y-2">
+            <button
+              onClick={handlePayment}
+              disabled={selectedSeats.length === 0 || paymentProcessing}
+              className="w-full py-4 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-green-500/30 hover:shadow-green-500/50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+            >
+              {paymentProcessing ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-lg">payments</span>
+                  Tiền Mặt
+                </>
+              )}
+            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={handlePayment}
+                disabled={selectedSeats.length === 0 || paymentProcessing}
+                className="py-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 text-white font-bold text-xs uppercase tracking-widest shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-base">credit_card</span>
+                Thẻ
+              </button>
+              <button
+                onClick={handlePayment}
+                disabled={selectedSeats.length === 0 || paymentProcessing}
+                className="py-3 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-bold text-xs uppercase tracking-widest shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-base">qr_code_scanner</span>
+                QR
+              </button>
+            </div>
+          </div>
+
+          {/* Reset */}
+          <button
+            onClick={resetAll}
+            className="w-full py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all uppercase tracking-widest"
+          >
+            Esc — Hủy đơn
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

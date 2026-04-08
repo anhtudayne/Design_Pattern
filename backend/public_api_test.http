@@ -1,0 +1,47 @@
+@baseUrl = http://localhost:8080/api
+
+### =====================================
+### 1. PUBLIC APIS (END-USER)
+### =====================================
+
+### 1.1 Lấy danh sách Phim Đang Chiếu
+GET {{baseUrl}}/public/movies/now-showing
+
+### 1.2 Lấy danh sách Phim Sắp Chiếu
+GET {{baseUrl}}/public/movies/coming-soon
+
+### 1.3 Lấy danh sách Cụm Rạp để lọc
+GET {{baseUrl}}/public/cinemas
+
+
+### =====================================
+### 2. ADMIN APIS (SHOWTIME MANAGEMENT)
+### =====================================
+
+### 2.1 Lấy toàn bộ lịch chiếu
+GET {{baseUrl}}/admin/showtimes
+
+### 2.2 Thêm Lịch Chiếu (Ngày Thường - Không Phụ Thu)
+# Giả sử: movieId 1, roomId 1 tồn tại. 
+# Chọn một ngày trong tuần (VD: Thứ 2)
+POST {{baseUrl}}/admin/showtimes
+Content-Type: application/json
+
+{
+  "movieId": 1,
+  "roomId": 1,
+  "startTime": "2024-06-10T10:00:00",
+  "basePrice": 80000
+}
+
+### 2.3 Thêm Lịch Chiếu (Cuối Tuần - Có Phụ Thu 15k)
+# Chọn một ngày cuối tuần (VD: Thứ 7 - 2024-06-15)
+POST {{baseUrl}}/admin/showtimes
+Content-Type: application/json
+
+{
+  "movieId": 1,
+  "roomId": 1,
+  "startTime": "2024-06-15T19:00:00",
+  "basePrice": 80000
+}

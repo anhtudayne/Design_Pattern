@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 450 120" width="100%" height="100%">
+  <defs>
+    <!-- Mào Xanh đậm bí ẩn cho mặt bảng Clapper -->
+    <linearGradient id="slateGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0564D0" />
+      <stop offset="100%" stop-color="#034EA2" />
+    </linearGradient>
+
+    <!-- Màu Cam Galaxy rực rỡ cho thanh đập Clapper -->
+    <linearGradient id="stickGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF9B6A" />
+      <stop offset="100%" stop-color="#F26B38" />
+    </linearGradient>
+
+    <!-- Hiệu ứng bóng phát sáng cho Ngôi sao trung tâm -->
+    <filter id="starGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#FFFFFF" flood-opacity="0.4" />
+    </filter>
+
+    <!-- Hiệu ứng bóng đổ 3D nhẹ nhàng tạo chiều sâu -->
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#000000" flood-opacity="0.2" />
+    </filter>
+  </defs>
+
+  <!-- BIỂU TƯỢNG CLAPPERBOARD -->
+  <g transform="translate(15, 10)">
+    
+    <!-- Mặt báng (Slate Base) -->
+    <rect x="5" y="30" width="85" height="65" rx="8" fill="url(#slateGrad)" filter="url(#shadow)" />
+    
+    <!-- Ngôi sao phát sáng khắc chìm (Cutout / Engraved Star) -->
+    <!-- Tâm x = 47.5, y = 62.5 -->
+    <path d="M 47.5 44 
+             L 53 56 
+             L 66 58 
+             L 56 67 
+             L 59 80 
+             L 47.5 73 
+             L 36 80 
+             L 39 67 
+             L 29 58 
+             L 42 56 Z" 
+          fill="#FFFFFF" filter="url(#starGlow)" />
+
+    <!-- Thanh đập phía trên (Clapper Stick) - Mở hờ 18 độ -->
+    <g transform="rotate(-18 10 28)">
+      <rect x="5" y="10" width="85" height="18" rx="4" fill="url(#stickGrad)" filter="url(#shadow)" />
+      
+      <!-- Lớp mặt nạ (Clip-path) bo góc cho sọc đường viền -->
+      <clipPath id="stickClip">
+        <rect x="5" y="10" width="85" height="18" rx="4" />
+      </clipPath>
+      
+      <!-- Sọc trắng rạp phim đặc trưng (Diagonal white stripes) -->
+      <g clip-path="url(#stickClip)">
+        <polygon points="15,10 28,10 20,28 7,28" fill="#FFFFFF" opacity="0.95" />
+        <polygon points="35,10 48,10 40,28 27,28" fill="#FFFFFF" opacity="0.95" />
+        <polygon points="55,10 68,10 60,28 47,28" fill="#FFFFFF" opacity="0.95" />
+        <polygon points="75,10 88,10 80,28 67,28" fill="#FFFFFF" opacity="0.95" />
+      </g>
+    </g>
+    
+    <!-- Đinh tán (Hinge / Screw) ở vị trí mở -->
+    <circle cx="10" cy="28" r="4.5" fill="#FFFFFF" filter="url(#shadow)" />
+    <circle cx="10" cy="28" r="2.5" fill="#034EA2" />
+  </g>
+
+  <!-- TYPOGRAPHY (PHẦN CHỮ) -->
+  <g transform="translate(130, 80)">
+    <text font-family="'Outfit', 'Plus Jakarta Sans', 'Inter', 'Segoe UI', 'Montserrat', sans-serif" 
+          font-weight="900" 
+          font-size="68" 
+          letter-spacing="-1.5">
+      <tspan fill="#034EA2">STAR</tspan><tspan fill="#F26B38">CINE</tspan>
+    </text>
+  </g>
+</svg>

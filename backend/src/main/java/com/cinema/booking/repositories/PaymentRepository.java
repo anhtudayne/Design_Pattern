@@ -13,6 +13,6 @@ import java.util.List;
 public interface PaymentRepository extends JpaRepository<Payment, Integer> {
     List<Payment> findByBookingAndPaymentMethodAndStatus(Booking booking, String paymentMethod, Payment.PaymentStatus status);
 
-    @Query("SELECT p FROM Payment p JOIN FETCH p.booking b JOIN FETCH b.user u WHERE u.userId = :userId ORDER BY p.paymentId DESC")
+    @Query("SELECT p FROM Payment p JOIN FETCH p.booking b JOIN FETCH b.customer c WHERE c.userId = :userId ORDER BY p.paymentId DESC")
     List<Payment> findUserPaymentHistory(@Param("userId") Integer userId);
 }

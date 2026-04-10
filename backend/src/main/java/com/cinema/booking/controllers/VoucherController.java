@@ -23,7 +23,7 @@ public class VoucherController {
 
     @Operation(summary = "Tạo mới voucher", description = "Tạo mã giảm giá mới và lưu vào Redis với thời gian hết hạn (TTL)")
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     public ResponseEntity<Void> createVoucher(@RequestBody VoucherDTO voucher) {
         voucherService.createVoucher(voucher);
         return ResponseEntity.status(HttpStatus.CREATED).build();
@@ -31,14 +31,14 @@ public class VoucherController {
 
     @Operation(summary = "Lấy tất cả voucher", description = "Lấy danh sách các mã giảm giá đang hoạt động trên Redis")
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     public ResponseEntity<List<VoucherDTO>> getAllVouchers() {
         return ResponseEntity.ok(voucherService.getAllVouchers());
     }
 
     @Operation(summary = "Cập nhật voucher", description = "Cập nhật thông tin mã giảm giá (giữ nguyên thời gian hết hạn cũ)")
     @PutMapping("/{code}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     public ResponseEntity<Void> updateVoucher(@PathVariable String code, @RequestBody VoucherDTO voucher) {
         voucher.setCode(code);
         voucherService.updateVoucher(voucher);
@@ -47,7 +47,7 @@ public class VoucherController {
 
     @Operation(summary = "Xóa voucher", description = "Xóa mã giảm giá thủ công khỏi Redis")
     @DeleteMapping("/{code}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     public ResponseEntity<Void> deleteVoucher(@PathVariable String code) {
         voucherService.deleteVoucher(code);
         return ResponseEntity.noContent().build();

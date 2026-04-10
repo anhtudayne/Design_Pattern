@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 public class FnbItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "item_id")
+    @Column(name = "id")
     private Integer itemId;
 
     @Column(nullable = false, length = 150)
@@ -25,13 +25,10 @@ public class FnbItem {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
-    @Column(name = "image_url")
-    private String imageUrl;
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "category_id")
-    private FnbCategory category;
+    @Column(name = "stock_quantity")
+    private Integer stockQuantity;
 
     @Column(name = "is_active")
+    @Builder.Default
     private Boolean isActive = true;
 }

@@ -1,6 +1,8 @@
 package com.cinema.booking.dtos;
 
+import com.cinema.booking.entities.Customer;
 import com.cinema.booking.entities.User;
+import com.cinema.booking.entities.UserAccount;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -21,16 +23,30 @@ public class UserDTO {
     private String tierName;
 
     public static UserDTO fromEntity(User user) {
+        UserAccount acc = user.getUserAccount();
+        String email = acc != null ? acc.getEmail() : null;
+        // user_accounts no longer has created_at in strict schema mode.
+        LocalDateTime createdAt = null;
+
+        BigDecimal spending = null;
+        Integer loyalty = null;
+        String tierName = null;
+        if (user instanceof Customer c) {
+            spending = c.getTotalSpending();
+            loyalty = c.getLoyaltyPoints();
+            tierName = c.getTier() != null ? c.getTier().getName() : "Vô danh";
+        }
+
         return UserDTO.builder()
                 .userId(user.getUserId())
                 .fullname(user.getFullname())
-                .email(user.getEmail())
+                .email(email)
                 .phone(user.getPhone())
-                .role(user.getRole().name())
-                .totalSpending(user.getTotalSpending())
-                .loyaltyPoints(user.getLoyaltyPoints())
-                .createdAt(user.getCreatedAt())
-                .tierName(user.getTier() != null ? user.getTier().getName() : "Vô danh")
+                .role(user.getSpringSecurityRole())
+                .totalSpending(spending)
+                .loyaltyPoints(loyalty)
+                .createdAt(createdAt)
+                .tierName(tierName)
                 .build();
     }
 }

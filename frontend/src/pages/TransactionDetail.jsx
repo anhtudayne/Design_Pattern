@@ -161,7 +161,7 @@ const TransactionDetail = () => {
                                 {payment.amount.toLocaleString()}đ
                             </div>
                             <p className="text-[11px] font-black text-white/40 mt-4 uppercase tracking-[0.1em] border-t border-white/10 pt-4">
-                                {booking?.tickets?.length || 0} Ghế • {booking?.fnbItems?.length || 0} Bắp nước
+                                {booking?.tickets?.length || 0} Ghế • {(booking?.fnBLines?.length || booking?.fnbItems?.length || 0)} Bắp nước
                             </p>
                         </div>
                     </div>
@@ -244,7 +244,7 @@ const TransactionDetail = () => {
                             </div>
                         </div>
 
-                        {booking?.fnbItems && booking.fnbItems.length > 0 && (
+                        {((booking?.fnBLines && booking.fnBLines.length > 0) || (booking?.fnbItems && booking.fnbItems.length > 0)) && (
                             <div className="bg-[#1a2329] rounded-[48px] p-10 border border-white/5 shadow-2xl relative overflow-hidden">
                                 <div className="absolute right-0 top-0 opacity-5 -translate-y-4 translate-x-4">
                                      <Popcorn className="w-40 h-40" />
@@ -253,20 +253,28 @@ const TransactionDetail = () => {
                                     <Popcorn className="w-5 h-5 text-orange-500" /> BẮP NƯỚC ĐÃ ĐẶT
                                 </h4>
                                 <div className="grid gap-4">
-                                    {booking.fnbItems.map((fnb, idx) => (
+                                    {(booking.fnBLines || booking.fnbItems).map((fnb, idx) => {
+                                        const qty = fnb.quantity;
+                                        const name = fnb.item?.name || fnb.itemName || 'Combo Sản phẩm';
+                                        const unitPrice = Number(fnb.unitPrice ?? fnb.price ?? 0);
+                                        const lineTotal = unitPrice * qty;
+                                        return (
                                         <div key={idx} className="flex items-center justify-between p-6 bg-white/5 rounded-[32px] border border-white/5 group hover:bg-white/10 transition-all">
                                             <div className="flex items-center gap-6">
                                                 <div className="w-14 h-14 rounded-2xl bg-orange-500 flex items-center justify-center font-black text-white text-xl shadow-lg shadow-orange-500/20">
-                                                    {fnb.quantity}
+                                                    {qty}
                                                 </div>
                                                 <div>
-                                                    <p className="font-black text-lg tracking-tight uppercase italic">{fnb.item?.name || 'Combo Sản phẩm'}</p>
-                                                    <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1">Sản phẩm kèm theo</p>
+                                                    <p className="font-black text-lg tracking-tight uppercase italic">{name}</p>
+                                                    <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1">
+                                                        Đơn giá chốt: {unitPrice.toLocaleString('vi-VN')}đ
+                                                    </p>
                                                 </div>
                                             </div>
-                                            <span className="font-black text-xl italic text-orange-500">{(fnb.price * fnb.quantity).toLocaleString()}đ</span>
+                                            <span className="font-black text-xl italic text-orange-500">{lineTotal.toLocaleString('vi-VN')}đ</span>
                                         </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}

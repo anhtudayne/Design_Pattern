@@ -101,7 +101,7 @@ export default function SnackSelection() {
         return {
           itemId: item.itemId,    // Backend expects itemId
           name: item.name,
-          price: Number(item.price),
+          unitPrice: Number(item.price),
           quantity: qty,
           imageUrl: item.imageUrl,
         };

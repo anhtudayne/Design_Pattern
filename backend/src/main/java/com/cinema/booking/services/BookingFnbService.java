@@ -1,12 +1,12 @@
 package com.cinema.booking.services;
 
 import com.cinema.booking.dtos.BookingFnbCreateDTO;
-import com.cinema.booking.entities.BookingFnbItem;
+import com.cinema.booking.entities.FnBLine;
 import java.util.List;
 
 public interface BookingFnbService {
-    List<BookingFnbItem> getAllBookingFnbItems();
-    List<BookingFnbItem> getBookingFnbItemsByBookingId(Integer bookingId);
-    List<BookingFnbItem> createBookingFnbItems(BookingFnbCreateDTO createDTO);
+    List<FnBLine> getAllBookingFnbItems();
+    List<FnBLine> getBookingFnbItemsByBookingId(Integer bookingId);
+    List<FnBLine> createBookingFnbItems(BookingFnbCreateDTO createDTO);
     void deleteBookingFnbItemsByBookingId(Integer bookingId);
 }

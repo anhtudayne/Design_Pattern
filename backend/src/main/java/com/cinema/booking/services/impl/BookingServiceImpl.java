@@ -1,6 +1,7 @@
 package com.cinema.booking.services.impl;
 
 import com.cinema.booking.dtos.BookingCalculationDTO;
+import com.cinema.booking.dtos.BookingDTO;
 import com.cinema.booking.dtos.PriceBreakdownDTO;
 import com.cinema.booking.dtos.SeatStatusDTO;
 import com.cinema.booking.entities.*;
@@ -40,7 +41,10 @@ public class BookingServiceImpl implements BookingService {
     private PromotionRepository promotionRepository;
 
     @Autowired
-    private com.cinema.booking.services.VoucherService voucherService;
+    private BookingRepository bookingRepository;
+
+    @Autowired
+    private FnBLineRepository fnBLineRepository;
 
     @Value("${cinema.app.redisTtlSeconds:600}")
     private long redisTtlSeconds;
@@ -58,7 +62,7 @@ public class BookingServiceImpl implements BookingService {
         List<Seat> allSeats = seatRepository.findByRoom_RoomId(showtime.getRoom().getRoomId());
 
         // 2. Lấy danh sách vé đã bán cho suất này
-        Set<Integer> soldSeatIds = ticketRepository.findByBooking_Showtime_ShowtimeId(showtimeId).stream()
+        Set<Integer> soldSeatIds = ticketRepository.findByShowtime_ShowtimeId(showtimeId).stream()
                 .map(t -> t.getSeat().getSeatId())
                 .collect(Collectors.toSet());
 
@@ -81,14 +85,16 @@ public class BookingServiceImpl implements BookingService {
             }
 
             BigDecimal totalPrice = showtime.getBasePrice()
-                    .add(showtime.getSurcharge() != null ? showtime.getSurcharge() : BigDecimal.ZERO)
-                    .add(seat.getPriceSurcharge() != null ? seat.getPriceSurcharge() : BigDecimal.ZERO);
+                    .add(seat.getSeatType() != null && seat.getSeatType().getPriceSurcharge() != null
+                            ? seat.getSeatType().getPriceSurcharge()
+                            : BigDecimal.ZERO);
 
             return SeatStatusDTO.builder()
                     .seatId(seat.getSeatId())
-                    .seatRow(seat.getSeatRow())
-                    .seatNumber(seat.getSeatNumber())
-                    .seatType(seat.getSeatType().name())
+                    .seatCode(seat.getSeatCode())
+                    .seatRow(extractSeatRow(seat.getSeatCode()))
+                    .seatNumber(extractSeatNumber(seat.getSeatCode()))
+                    .seatType(seat.getSeatType() != null ? seat.getSeatType().getName() : "STANDARD")
                     .totalPrice(totalPrice)
                     .status(status)
                     .build();
@@ -99,7 +105,7 @@ public class BookingServiceImpl implements BookingService {
     public boolean lockSeat(Integer showtimeId, Integer seatId, Integer userId) {
         String key = getLockKey(showtimeId, seatId);
         // Kiểm tra xem ghế đã bán chưa
-        boolean isSold = ticketRepository.findByBooking_Showtime_ShowtimeId(showtimeId).stream()
+        boolean isSold = ticketRepository.findByShowtime_ShowtimeId(showtimeId).stream()
                 .anyMatch(t -> t.getSeat().getSeatId().equals(seatId));
         if (isSold) return false;
 
@@ -117,66 +123,126 @@ public class BookingServiceImpl implements BookingService {
         Showtime showtime = showtimeRepository.findById(request.getShowtimeId())
                 .orElseThrow(() -> new RuntimeException("Suất chiếu không tồn tại!"));
 
-        // Tính tiền vé
-        BigDecimal ticketTotal = BigDecimal.ZERO;
         List<Seat> seats = seatRepository.findAllById(request.getSeatIds());
+        Promotion promotion = (request.getPromoCode() != null && !request.getPromoCode().isBlank())
+                ? promotionRepository.findByCode(request.getPromoCode()).orElse(null)
+                : null;
+
+        return calculateTotalPrice(showtime, seats, request.getFnbs(), promotion);
+    }
+
+    @Override
+    public BookingDTO getBookingDetail(Integer bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy Booking ID: " + bookingId));
+
+        List<Ticket> tickets = ticketRepository.findByBooking_BookingId(bookingId);
+        List<FnBLine> fnbs = fnBLineRepository.findByBooking_BookingId(bookingId);
+
+        return BookingDTO.builder()
+                .bookingId(booking.getBookingId())
+                .customerId(booking.getCustomer() != null ? booking.getCustomer().getUserId() : null)
+                .showtimeId(tickets.isEmpty() || tickets.get(0).getShowtime() == null ? null : tickets.get(0).getShowtime().getShowtimeId())
+                .promoCode(booking.getPromotion() != null ? booking.getPromotion().getCode() : null)
+                .totalPrice(
+                        tickets.stream()
+                                .map(Ticket::getPrice)
+                                .filter(java.util.Objects::nonNull)
+                                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add)
+                                .add(
+                                        fnbs.stream()
+                                                .map(l -> l.getUnitPrice().multiply(java.math.BigDecimal.valueOf(l.getQuantity())))
+                                                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add)
+                                )
+                )
+                .status(booking.getStatus())
+                .createdAt(booking.getCreatedAt())
+                .tickets(tickets.stream().map(t -> BookingDTO.TicketLineDTO.builder()
+                        .ticketId(t.getTicketId())
+                        .seatId(t.getSeat() != null ? t.getSeat().getSeatId() : null)
+                        .seatCode(t.getSeat() != null ? t.getSeat().getSeatCode() : null)
+                        .seatRow(t.getSeat() != null ? extractSeatRow(t.getSeat().getSeatCode()) : null)
+                        .seatNumber(t.getSeat() != null ? extractSeatNumber(t.getSeat().getSeatCode()) : null)
+                        .seatType(t.getSeat() != null && t.getSeat().getSeatType() != null ? t.getSeat().getSeatType().getName() : null)
+                        .seatSurcharge(t.getSeat() != null && t.getSeat().getSeatType() != null ? t.getSeat().getSeatType().getPriceSurcharge() : null)
+                        .price(t.getPrice())
+                        .build()).toList())
+                .fnbs(fnbs.stream().map(l -> {
+                    java.math.BigDecimal lineTotal = l.getUnitPrice().multiply(java.math.BigDecimal.valueOf(l.getQuantity()));
+                    return BookingDTO.FnBLineDTO.builder()
+                            .id(l.getId())
+                            .itemId(l.getItem() != null ? l.getItem().getItemId() : null)
+                            .itemName(l.getItem() != null ? l.getItem().getName() : null)
+                            .quantity(l.getQuantity())
+                            .unitPrice(l.getUnitPrice())
+                            .lineTotal(lineTotal)
+                            .build();
+                }).toList())
+                .build();
+    }
+
+    private PriceBreakdownDTO calculateTotalPrice(
+            Showtime showtime,
+            List<Seat> seats,
+            List<BookingCalculationDTO.FnbOrderDTO> fnbs,
+            Promotion promotion
+    ) {
+        // Tiền vé: base_price + seatType.price_surcharge
+        BigDecimal ticketTotal = BigDecimal.ZERO;
         for (Seat seat : seats) {
-            BigDecimal price = showtime.getBasePrice()
-                    .add(showtime.getSurcharge() != null ? showtime.getSurcharge() : BigDecimal.ZERO)
-                    .add(seat.getPriceSurcharge() != null ? seat.getPriceSurcharge() : BigDecimal.ZERO);
-            ticketTotal = ticketTotal.add(price);
+            BigDecimal seatSurcharge = (seat.getSeatType() != null && seat.getSeatType().getPriceSurcharge() != null)
+                    ? seat.getSeatType().getPriceSurcharge()
+                    : BigDecimal.ZERO;
+            ticketTotal = ticketTotal.add(showtime.getBasePrice().add(seatSurcharge));
         }
 
-        // Tính tiền F&B
+        // Tiền F&B: sum(qty * unit_price) với unit_price là giá hiện tại của FnbItem (tại thời điểm tính)
         BigDecimal fnbTotal = BigDecimal.ZERO;
-        if (request.getFnbs() != null) {
-            for (BookingCalculationDTO.FnbOrderDTO fnbOrder : request.getFnbs()) {
+        if (fnbs != null) {
+            for (BookingCalculationDTO.FnbOrderDTO fnbOrder : fnbs) {
                 FnbItem item = fnbItemRepository.findById(fnbOrder.getItemId())
                         .orElseThrow(() -> new RuntimeException("Sản phẩm F&B không tồn tại!"));
-                fnbTotal = fnbTotal.add(item.getPrice().multiply(new BigDecimal(fnbOrder.getQuantity())));
+                BigDecimal line = item.getPrice().multiply(BigDecimal.valueOf(fnbOrder.getQuantity()));
+                fnbTotal = fnbTotal.add(line);
             }
         }
 
         BigDecimal subtotal = ticketTotal.add(fnbTotal);
-        BigDecimal discountAmount = BigDecimal.ZERO;
 
-        // Áp dụng Voucher
-        if (request.getPromoCode() != null && !request.getPromoCode().isEmpty()) {
-            Promotion promo = promotionRepository.findByCode(request.getPromoCode())
-                    .orElse(null);
-            
-            if (promo != null) {
-                if (LocalDateTime.now().isAfter(promo.getValidFrom()) 
-                        && LocalDateTime.now().isBefore(promo.getValidTo())
-                        && subtotal.compareTo(promo.getMinPurchaseAmount() != null ? promo.getMinPurchaseAmount() : BigDecimal.ZERO) >= 0) {
-                    
-                    discountAmount = subtotal.multiply(promo.getDiscountPercentage().divide(new BigDecimal("100")));
-                    if (promo.getMaxDiscountAmount() != null && discountAmount.compareTo(promo.getMaxDiscountAmount()) > 0) {
-                        discountAmount = promo.getMaxDiscountAmount();
-                    }
-                }
-            } else {
-                // Nếu không thấy trong DB, tìm trong Redis
-                com.cinema.booking.dtos.VoucherDTO redisVoucher = voucherService.getVoucher(request.getPromoCode()).orElse(null);
-                if (redisVoucher != null) {
-                    BigDecimal minAmount = redisVoucher.getMinPurchaseAmount() != null ? redisVoucher.getMinPurchaseAmount() : BigDecimal.ZERO;
-                    if (subtotal.compareTo(minAmount) >= 0) {
-                        discountAmount = subtotal.multiply(redisVoucher.getDiscountPercentage().divide(new BigDecimal("100")));
-                        
-                        BigDecimal maxDAmount = redisVoucher.getMaxDiscountAmount();
-                        if (maxDAmount != null && discountAmount.compareTo(maxDAmount) > 0) {
-                            discountAmount = maxDAmount;
-                        }
-                    }
-                }
+        BigDecimal discountAmount = BigDecimal.ZERO;
+        if (promotion != null && promotion.getValidTo() != null && LocalDateTime.now().isBefore(promotion.getValidTo())) {
+            if (promotion.getDiscountType() == Promotion.DiscountType.PERCENT) {
+                discountAmount = subtotal.multiply(promotion.getDiscountValue().divide(new BigDecimal("100")));
+            } else if (promotion.getDiscountType() == Promotion.DiscountType.FIXED) {
+                discountAmount = promotion.getDiscountValue();
             }
+        }
+
+        BigDecimal finalTotal = subtotal.subtract(discountAmount);
+        if (finalTotal.compareTo(BigDecimal.ZERO) < 0) {
+            finalTotal = BigDecimal.ZERO;
+            discountAmount = subtotal; // clamp to not negative
         }
 
         return PriceBreakdownDTO.builder()
                 .ticketTotal(ticketTotal)
                 .fnbTotal(fnbTotal)
                 .discountAmount(discountAmount)
-                .finalTotal(subtotal.subtract(discountAmount))
+                .finalTotal(finalTotal)
                 .build();
+    }
+
+    private String extractSeatRow(String seatCode) {
+        if (seatCode == null || seatCode.isBlank()) return null;
+        return seatCode.substring(0, 1);
+    }
+
+    private Integer extractSeatNumber(String seatCode) {
+        if (seatCode == null || seatCode.length() < 2) return null;
+        try {
+            return Integer.parseInt(seatCode.substring(1));
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 }

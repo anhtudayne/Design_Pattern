@@ -40,9 +40,32 @@ public class PaymentController {
                     request.getFnbs(),
                     request.getPromoCode()
             );
+            if (payUrl == null || payUrl.isBlank()) {
+                return ResponseEntity.badRequest().body("Không tạo được link thanh toán MoMo. Vui lòng kiểm tra cấu hình MoMo hoặc thử lại sau.");
+            }
             return ResponseEntity.ok(java.util.Collections.singletonMap("payUrl", payUrl));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Lỗi Checkout: " + e.getMessage());
+        }
+    }
+
+    @Operation(summary = "Demo checkout (không gọi MoMo thật)", description = "Tạo booking/payment demo và cập nhật trạng thái success/failed để test luồng frontend.")
+    @PostMapping("/checkout/demo")
+    public ResponseEntity<?> demoCheckout(
+            @RequestBody CheckoutRequestDTO request,
+            @RequestParam(defaultValue = "true") boolean success
+    ) {
+        try {
+            return ResponseEntity.ok(checkoutService.processDemoCheckout(
+                    request.getUserId(),
+                    request.getShowtimeId(),
+                    request.getSeatIds(),
+                    request.getFnbs(),
+                    request.getPromoCode(),
+                    success
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Lỗi Demo Checkout: " + e.getMessage());
         }
     }
 

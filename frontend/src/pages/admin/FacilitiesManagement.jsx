@@ -7,6 +7,8 @@ const getAuthHeaders = () => {
 };
 
 const SEAT_TYPES = ['STANDARD', 'VIP', 'COUPLE'];
+// Assumes seed ids in DB: 1=STANDARD, 2=VIP, 3=COUPLE
+const SEAT_TYPE_ID = { STANDARD: 1, VIP: 2, COUPLE: 3 };
 const SCREEN_TYPES = ['2D', '3D', 'IMAX', '4DX', 'SCREENX'];
 const SEAT_COLORS = {
   STANDARD: { bg: 'bg-sky-100 dark:bg-sky-900/30', border: 'border-sky-300 dark:border-sky-700', text: 'text-sky-700 dark:text-sky-300', label: 'Standard', icon: 'event_seat' },
@@ -114,7 +116,7 @@ function SeatMapEditor({ room, notify }) {
     for (let r = 0; r < genRows; r++) {
       const row = String.fromCharCode(65 + r);
       for (let c = 1; c <= genCols; c++) {
-        newSeats.push({ roomId: room.roomId, seatRow: row, seatNumber: c, seatType: 'STANDARD', priceSurcharge: 0, isActive: true });
+        newSeats.push({ roomId: room.roomId, seatRow: row, seatNumber: c, seatType: 'STANDARD', seatTypeId: SEAT_TYPE_ID.STANDARD, isActive: true });
       }
     }
     setSeats(newSeats);
@@ -123,7 +125,7 @@ function SeatMapEditor({ room, notify }) {
 
   const handleSeatClick = (seatRow, seatNumber) => {
     setSeats(prev => prev.map(s => {
-      if (s.seatRow === seatRow && s.seatNumber === seatNumber) return { ...s, seatType: currentBrush };
+      if (s.seatRow === seatRow && s.seatNumber === seatNumber) return { ...s, seatType: currentBrush, seatTypeId: SEAT_TYPE_ID[currentBrush] };
       return s;
     }));
     setDirty(true);
@@ -142,8 +144,7 @@ function SeatMapEditor({ room, notify }) {
         roomId: room.roomId,
         seatRow: s.seatRow,
         seatNumber: s.seatNumber,
-        seatType: s.seatType,
-        priceSurcharge: s.priceSurcharge || 0,
+        seatTypeId: s.seatTypeId || SEAT_TYPE_ID[s.seatType] || SEAT_TYPE_ID.STANDARD,
         isActive: s.isActive !== false,
       }));
       const res = await fetch(`${API}/seats/batch/${room.roomId}`, {

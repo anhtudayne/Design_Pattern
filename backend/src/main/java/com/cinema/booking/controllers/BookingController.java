@@ -1,6 +1,7 @@
 package com.cinema.booking.controllers;
 
 import com.cinema.booking.dtos.BookingCalculationDTO;
+import com.cinema.booking.dtos.BookingDTO;
 import com.cinema.booking.dtos.PriceBreakdownDTO;
 import com.cinema.booking.dtos.SeatStatusDTO;
 import com.cinema.booking.services.BookingService;
@@ -58,5 +59,11 @@ public class BookingController {
     @PostMapping("/calculate")
     public ResponseEntity<PriceBreakdownDTO> calculatePrice(@RequestBody BookingCalculationDTO request) {
         return ResponseEntity.ok(bookingService.calculatePrice(request));
+    }
+
+    @Operation(summary = "Lấy chi tiết Booking", description = "Trả về chi tiết Booking gồm Ticket và FnBLine (unit_price đã chốt)")
+    @GetMapping("/{bookingId}")
+    public ResponseEntity<BookingDTO> getBookingDetail(@PathVariable Integer bookingId) {
+        return ResponseEntity.ok(bookingService.getBookingDetail(bookingId));
     }
 }

@@ -2,50 +2,48 @@ package com.cinema.booking.entities;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users")
-@Data
+@Inheritance(strategy = InheritanceType.JOINED)
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class User {
+public abstract class User {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
     private Integer userId;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tier_id")
-    private MembershipTier tier;
 
     @Column(nullable = false, length = 100)
     private String fullname;
 
-    @Column(nullable = false, unique = true, length = 100)
-    private String email;
-
-    @Column(name = "password_hash", nullable = false)
-    private String passwordHash;
-
     @Column(unique = true, length = 20)
     private String phone;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "ENUM('USER', 'ADMIN', 'MANAGER', 'STAFF') DEFAULT 'USER'")
-    private Role role;
+    @Column(name = "created_at")
+    private java.time.LocalDateTime createdAt;
 
-    @Column(name = "total_spending", precision = 15, scale = 2)
-    private BigDecimal totalSpending = BigDecimal.ZERO;
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, optional = false, orphanRemoval = true)
+    private UserAccount userAccount;
 
-    @Column(name = "loyalty_points")
-    private Integer loyaltyPoints = 0;
-
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
-
-    public enum Role {
-        USER, ADMIN, MANAGER, STAFF
+    /**
+     * Tên vai trò Spring Security (không gồm tiền tố ROLE_).
+     * Customer dùng "USER" để tương thích hasRole('USER') hiện có.
+     */
+    public String getSpringSecurityRole() {
+        if (this instanceof Admin) {
+            return "ADMIN";
+        }
+        if (this instanceof Staff) {
+            return "STAFF";
+        }
+        if (this instanceof Customer) {
+            return "USER";
+        }
+        // Fallback for legacy/seed data that may not have a row in subtype tables yet.
+        return "USER";
     }
 }

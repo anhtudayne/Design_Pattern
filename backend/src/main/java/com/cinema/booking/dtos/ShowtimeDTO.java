@@ -23,7 +23,6 @@ public class ShowtimeDTO {
 
     @NotNull(message = "Giá vé cơ bản là bắt buộc")
     private BigDecimal basePrice;
-
     private BigDecimal surcharge;
 
     // ── Enriched fields (read-only, populated by service) ──

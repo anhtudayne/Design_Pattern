@@ -1,6 +1,6 @@
 package com.cinema.booking.controllers;
 
-import com.cinema.booking.entities.BookingFnbItem;
+import com.cinema.booking.entities.FnBLine;
 import com.cinema.booking.services.BookingFnbService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -22,19 +22,19 @@ public class BookingFnbController {
 
     @Operation(summary = "Tạo mới Booking FNB Items", description = "Tạo danh sách đồ ăn và thức uống mới cho một mã đặt vé")
     @PostMapping
-    public ResponseEntity<List<BookingFnbItem>> createBookingFnbItems(@RequestBody BookingFnbCreateDTO createDTO) {
+    public ResponseEntity<List<FnBLine>> createBookingFnbItems(@RequestBody BookingFnbCreateDTO createDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(bookingFnbService.createBookingFnbItems(createDTO));
     }
 
     @Operation(summary = "Lấy tất cả danh sách Booking FNB Items", description = "Truy xuất toàn bộ danh sách các item đồ ăn và thức uống đã đặt")
     @GetMapping
-    public ResponseEntity<List<BookingFnbItem>> getAllBookingFnbItems() {
+    public ResponseEntity<List<FnBLine>> getAllBookingFnbItems() {
         return ResponseEntity.ok(bookingFnbService.getAllBookingFnbItems());
     }
 
     @Operation(summary = "Lấy danh sách Booking FNB Items theo Booking ID", description = "Truy xuất các item đồ ăn và thức uống liên kết với một mã đặt vé cụ thể")
     @GetMapping("/booking/{bookingId}")
-    public ResponseEntity<List<BookingFnbItem>> getBookingFnbByBookingId(@PathVariable Integer bookingId) {
+    public ResponseEntity<List<FnBLine>> getBookingFnbByBookingId(@PathVariable Integer bookingId) {
         return ResponseEntity.ok(bookingFnbService.getBookingFnbItemsByBookingId(bookingId));
     }
 

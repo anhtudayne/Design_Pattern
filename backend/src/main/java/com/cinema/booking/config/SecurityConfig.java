@@ -59,6 +59,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
+                .requestMatchers("/api/locations/**", "/api/cinemas/**", "/api/rooms/**", "/api/seats/**", "/api/admin/showtimes/**").permitAll()
                 .requestMatchers("/api/movie-genres/**").permitAll()
                 .requestMatchers("/error").permitAll()
                 .requestMatchers("/api/payment/momo/callback/**", "/api/payment/momo/webhook/**", "/api/payment/payment-redirect/**").permitAll()

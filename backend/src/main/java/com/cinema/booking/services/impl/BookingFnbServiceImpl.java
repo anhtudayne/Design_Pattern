@@ -2,11 +2,11 @@ package com.cinema.booking.services.impl;
 
 import com.cinema.booking.dtos.BookingFnbCreateDTO;
 import com.cinema.booking.entities.Booking;
-import com.cinema.booking.entities.BookingFnbItem;
+import com.cinema.booking.entities.FnBLine;
 import com.cinema.booking.entities.FnbItem;
-import com.cinema.booking.repositories.BookingFnbItemRepository;
 import com.cinema.booking.repositories.BookingRepository;
 import com.cinema.booking.repositories.FnbItemRepository;
+import com.cinema.booking.repositories.FnBLineRepository;
 import com.cinema.booking.services.BookingFnbService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -25,21 +25,21 @@ public class BookingFnbServiceImpl implements BookingFnbService {
     private FnbItemRepository fnbItemRepository;
 
     @Autowired
-    private BookingFnbItemRepository bookingFnbItemRepository;
+    private FnBLineRepository fnBLineRepository;
 
     @Override
-    public List<BookingFnbItem> getAllBookingFnbItems() {
-        return bookingFnbItemRepository.findAll();
+    public List<FnBLine> getAllBookingFnbItems() {
+        return fnBLineRepository.findAll();
     }
 
     @Override
-    public List<BookingFnbItem> getBookingFnbItemsByBookingId(Integer bookingId) {
-        return bookingFnbItemRepository.findByBooking_BookingId(bookingId);
+    public List<FnBLine> getBookingFnbItemsByBookingId(Integer bookingId) {
+        return fnBLineRepository.findByBooking_BookingId(bookingId);
     }
 
     @Override
     @Transactional
-    public List<BookingFnbItem> createBookingFnbItems(BookingFnbCreateDTO createDTO) {
+    public List<FnBLine> createBookingFnbItems(BookingFnbCreateDTO createDTO) {
         Booking booking = bookingRepository.findById(createDTO.getBookingId())
                 .orElseThrow(() -> new RuntimeException("Đặt vé không tồn tại với mã: " + createDTO.getBookingId()));
 
@@ -47,20 +47,20 @@ public class BookingFnbServiceImpl implements BookingFnbService {
             FnbItem fnbItem = fnbItemRepository.findById(itemDTO.getItemId())
                     .orElseThrow(() -> new RuntimeException("Sản phẩm F&B không tồn tại: " + itemDTO.getItemId()));
 
-            BookingFnbItem item = BookingFnbItem.builder()
+            FnBLine item = FnBLine.builder()
                     .booking(booking)
                     .item(fnbItem)
                     .quantity(itemDTO.getQuantity())
-                    .price(fnbItem.getPrice())
+                    .unitPrice(fnbItem.getPrice())
                     .build();
-            return bookingFnbItemRepository.save(item);
+            return fnBLineRepository.save(item);
         }).collect(Collectors.toList());
     }
 
     @Override
     @Transactional
     public void deleteBookingFnbItemsByBookingId(Integer bookingId) {
-        List<BookingFnbItem> items = bookingFnbItemRepository.findByBooking_BookingId(bookingId);
-        bookingFnbItemRepository.deleteAll(items);
+        List<FnBLine> items = fnBLineRepository.findByBooking_BookingId(bookingId);
+        fnBLineRepository.deleteAll(items);
     }
 }

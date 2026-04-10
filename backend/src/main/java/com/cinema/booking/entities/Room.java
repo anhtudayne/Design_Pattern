@@ -12,7 +12,7 @@ import lombok.*;
 public class Room {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "room_id")
+    @Column(name = "id")
     private Integer roomId;
 
     @ManyToOne(fetch = FetchType.LAZY)

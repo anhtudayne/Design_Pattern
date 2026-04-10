@@ -135,10 +135,31 @@ export default function SeatSelection() {
     );
   }, [apiSeats]);
 
-  // Use totalPrice from backend (already includes base + surcharge)
+  const seatTypeNameOf = (seat) => {
+    if (!seat) return 'STANDARD';
+    if (typeof seat.seatType === 'string') return seat.seatType;
+    return seat.seatType?.name || 'STANDARD';
+  };
+
+  const seatSurchargeOf = (seat) => {
+    if (!seat) return 0;
+    const s = seat.seatType?.priceSurcharge;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const seatPriceOf = (seat) => {
+    const base = Number(showtime?.basePrice) || 0;
+    const typeSurcharge = seatSurchargeOf(seat);
+    // Backward-compatible: if backend still sends totalPrice, prefer it.
+    const total = Number(seat?.totalPrice);
+    if (Number.isFinite(total) && total > 0) return total;
+    return base + typeSurcharge;
+  };
+
   const totalPrice = useMemo(() => {
-    return selectedSeats.reduce((sum, seat) => sum + (Number(seat.totalPrice) || 0), 0);
-  }, [selectedSeats]);
+    return selectedSeats.reduce((sum, seat) => sum + seatPriceOf(seat), 0);
+  }, [selectedSeats, showtime?.basePrice]);
 
   const handleNext = () => {
     if (selectedSeats.length === 0) {
@@ -150,8 +171,9 @@ export default function SeatSelection() {
       seatRow: s.seatRow,       // backend field name
       rowName: s.seatRow,       // alias for SnackSelection/Payment compatibility
       seatNumber: s.seatNumber,
-      seatType: s.seatType,
-      totalPrice: s.totalPrice,
+      seatType: seatTypeNameOf(s),
+      seatTypeSurcharge: seatSurchargeOf(s),
+      totalPrice: seatPriceOf(s),
     })));
     navigate('/booking/snacks');
   };
@@ -210,12 +232,13 @@ export default function SeatSelection() {
 
                                 const isSelected = selectedSeats.some(s => s.seatId === seat.seatId);
                                 let typeKey;
-                                if (isSelected) typeKey = seat.seatType;
-                                else if (seat.status === 'VACANT') typeKey = seat.seatType;
+                                const typeName = seatTypeNameOf(seat);
+                                if (isSelected) typeKey = typeName;
+                                else if (seat.status === 'VACANT') typeKey = typeName;
                                 else typeKey = seat.status;
 
                                 const colors = isSelected
-                                  ? SEAT_TYPES[seat.seatType]?.colorActive || ''
+                                  ? SEAT_TYPES[typeName]?.colorActive || ''
                                   : (SEAT_TYPES[typeKey]?.colorIdle || 'bg-slate-200');
 
                                 return (

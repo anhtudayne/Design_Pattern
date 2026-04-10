@@ -3,7 +3,6 @@ package com.cinema.booking.entities;
 import jakarta.persistence.*;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -17,33 +16,26 @@ import java.time.LocalDateTime;
 public class Booking {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "booking_id")
+    @Column(name = "id")
     private Integer bookingId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @Column(name = "booking_code", nullable = false, unique = true, length = 50)
+    private String bookingCode;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "showtime_id", nullable = false)
-    private Showtime showtime;
+    @JoinColumn(name = "customer_id", nullable = false)
+    private Customer customer;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "promo_id")
+    @JoinColumn(name = "promotion_id")
     private Promotion promotion;
 
-    @Column(name = "total_price", nullable = false, precision = 10, scale = 2)
-    private BigDecimal totalPrice;
-
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "ENUM('PENDING', 'PAID', 'CANCELLED') DEFAULT 'PENDING'")
+    @Column(columnDefinition = "ENUM('PENDING', 'CONFIRMED', 'CANCELLED') DEFAULT 'PENDING'")
     private BookingStatus status;
 
-    @Column(name = "qr_code", length = 255)
-    private String qrCode;
-
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
-    private java.util.List<BookingFnbItem> fnbItems;
+    private java.util.List<FnBLine> fnBLines;
 
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL)
     private java.util.List<Ticket> tickets;
@@ -52,6 +44,21 @@ public class Booking {
     private LocalDateTime createdAt;
 
     public enum BookingStatus {
-        PENDING, PAID, CANCELLED
+        PENDING, CONFIRMED, CANCELLED
+    }
+
+    public void confirm() {
+        this.status = BookingStatus.CONFIRMED;
+    }
+
+    public void cancel() {
+        this.status = BookingStatus.CANCELLED;
+    }
+
+    @PrePersist
+    public void ensureBookingCode() {
+        if (this.bookingCode == null || this.bookingCode.isBlank()) {
+            this.bookingCode = "BK-" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
+        }
     }
 }

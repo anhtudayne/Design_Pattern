@@ -64,9 +64,7 @@ public class SecurityConfig {
                 .requestMatchers("/error").permitAll()
                 .requestMatchers("/api/payment/momo/callback/**", "/api/payment/momo/webhook/**", "/api/payment/payment-redirect/**").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/swagger-resources/**", "/webjars/**").permitAll()
-                .anyRequest().authenticated()
-
-                // .anyRequest().permitAll() // [DEV-MODE] TẠM THỜI MỞ KHÓA TẤT CẢ THOẢI MÁI TRUY CẬP TRONG L
+                .anyRequest().permitAll()
             );
         
         // Chèn ống lọc JWT Filter vào trước vòng lọc User/Pass mặc định

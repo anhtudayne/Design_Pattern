@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 public class Showtime {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "showtime_id")
+    @Column(name = "id")
     private Integer showtimeId;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -34,6 +34,4 @@ public class Showtime {
     @Column(name = "base_price", nullable = false, precision = 10, scale = 2)
     private BigDecimal basePrice;
 
-    @Column(name = "surcharge", precision = 10, scale = 2)
-    private BigDecimal surcharge;
 }

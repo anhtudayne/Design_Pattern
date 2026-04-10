@@ -1,17 +1,14 @@
 package com.cinema.booking.controllers;
 
-import com.cinema.booking.entities.Actor;
 import com.cinema.booking.entities.Artist;
-import com.cinema.booking.entities.Director;
+import com.cinema.booking.entities.CastMember;
 import com.cinema.booking.entities.Genre;
-import com.cinema.booking.repositories.ActorRepository;
 import com.cinema.booking.repositories.ArtistRepository;
-import com.cinema.booking.repositories.DirectorRepository;
+import com.cinema.booking.repositories.CastMemberRepository;
 import com.cinema.booking.repositories.GenreRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,17 +16,14 @@ import java.util.List;
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
 @RequestMapping("/api/admin/metadata")
-@Tag(name = "9. Quản lý Metadata (Phim)", description = "Các API CRUD cho Thể loại, Diễn viên, Đạo diễn và Nghệ sĩ")
+@Tag(name = "9. Quản lý Metadata (Phim)", description = "Các API CRUD cho Thể loại, Nhân sự điện ảnh và Nghệ sĩ")
 public class MetadataController {
 
     @Autowired
     private GenreRepository genreRepository;
 
     @Autowired
-    private ActorRepository actorRepository;
-
-    @Autowired
-    private DirectorRepository directorRepository;
+    private CastMemberRepository castMemberRepository;
 
     @Autowired
     private ArtistRepository artistRepository;
@@ -62,68 +56,33 @@ public class MetadataController {
         genreRepository.deleteById(id);
     }
 
-    // --- ACTORS ---
+    // --- CAST MEMBERS ---
 
-    @Operation(summary = "Lấy danh sách diễn viên")
-    @GetMapping("/actors")
-    public List<Actor> getAllActors() {
-        return actorRepository.findAll();
+    @Operation(summary = "Lấy danh sách nhân sự điện ảnh (CastMember)")
+    @GetMapping("/cast-members")
+    public List<CastMember> getAllCastMembers() {
+        return castMemberRepository.findAll();
     }
 
-    @Operation(summary = "Thêm diễn viên mới")
-    @PostMapping("/actors")
-    public Actor createActor(@RequestBody Actor actor) {
-        return actorRepository.save(actor);
+    @Operation(summary = "Thêm nhân sự điện ảnh mới (CastMember)")
+    @PostMapping("/cast-members")
+    public CastMember createCastMember(@RequestBody CastMember castMember) {
+        return castMemberRepository.save(castMember);
     }
 
-    @Operation(summary = "Cập nhật diễn viên")
-    @PutMapping("/actors/{id}")
-    public Actor updateActor(@PathVariable Integer id, @RequestBody Actor details) {
-        Actor actor = actorRepository.findById(id).orElseThrow();
-        actor.setFullName(details.getFullName());
-        actor.setBio(details.getBio());
-        actor.setBirthDate(details.getBirthDate());
-        actor.setNationality(details.getNationality());
-        actor.setImageUrl(details.getImageUrl());
-        return actorRepository.save(actor);
+    @Operation(summary = "Cập nhật nhân sự điện ảnh (CastMember)")
+    @PutMapping("/cast-members/{id}")
+    public CastMember updateCastMember(@PathVariable Integer id, @RequestBody CastMember details) {
+        CastMember castMember = castMemberRepository.findById(id).orElseThrow();
+        castMember.setFullName(details.getFullName());
+        castMember.setBio(details.getBio());
+        return castMemberRepository.save(castMember);
     }
 
-    @Operation(summary = "Xóa diễn viên")
-    @DeleteMapping("/actors/{id}")
-    public void deleteActor(@PathVariable Integer id) {
-        actorRepository.deleteById(id);
-    }
-
-    // --- DIRECTORS ---
-
-    @Operation(summary = "Lấy danh sách đạo diễn")
-    @GetMapping("/directors")
-    public List<Director> getAllDirectors() {
-        return directorRepository.findAll();
-    }
-
-    @Operation(summary = "Thêm đạo diễn mới")
-    @PostMapping("/directors")
-    public Director createDirector(@RequestBody Director director) {
-        return directorRepository.save(director);
-    }
-
-    @Operation(summary = "Cập nhật đạo diễn")
-    @PutMapping("/directors/{id}")
-    public Director updateDirector(@PathVariable Integer id, @RequestBody Director details) {
-        Director director = directorRepository.findById(id).orElseThrow();
-        director.setFullName(details.getFullName());
-        director.setBio(details.getBio());
-        director.setBirthDate(details.getBirthDate());
-        director.setNationality(details.getNationality());
-        director.setImageUrl(details.getImageUrl());
-        return directorRepository.save(director);
-    }
-
-    @Operation(summary = "Xóa đạo diễn")
-    @DeleteMapping("/directors/{id}")
-    public void deleteDirector(@PathVariable Integer id) {
-        directorRepository.deleteById(id);
+    @Operation(summary = "Xóa nhân sự điện ảnh (CastMember)")
+    @DeleteMapping("/cast-members/{id}")
+    public void deleteCastMember(@PathVariable Integer id) {
+        castMemberRepository.deleteById(id);
     }
 
     // --- ARTISTS ---

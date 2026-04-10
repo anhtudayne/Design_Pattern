@@ -1,6 +1,7 @@
 package com.cinema.booking.controllers;
 
 import com.cinema.booking.dtos.MovieDTO;
+import com.cinema.booking.dtos.MovieDTO.MovieCastDTO;
 import com.cinema.booking.entities.Movie.MovieStatus;
 import com.cinema.booking.services.MovieService;
 import jakarta.validation.Valid;
@@ -41,6 +42,17 @@ public class MovieController {
     @PutMapping("/{id}")
     public ResponseEntity<MovieDTO> updateMovie(@PathVariable Integer id, @Valid @RequestBody MovieDTO movieDTO) {
         return ResponseEntity.ok(movieService.updateMovie(id, movieDTO));
+    }
+
+    /**
+     * Thay thế danh sách Cast của một phim.
+     * Payload là danh sách MovieDTO.MovieCastDTO (castMemberId + roleType + roleName).
+     */
+    @PutMapping("/{id}/casts")
+    public ResponseEntity<MovieDTO> replaceMovieCasts(@PathVariable Integer id, @RequestBody java.util.List<MovieCastDTO> casts) {
+        MovieDTO dto = movieService.getMovieById(id);
+        dto.setCasts(casts);
+        return ResponseEntity.ok(movieService.updateMovie(id, dto));
     }
 
     @DeleteMapping("/{id}")

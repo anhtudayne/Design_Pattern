@@ -19,6 +19,6 @@ public class CinemaDTO {
 
     @NotBlank(message = "Địa chỉ rạp không được bỏ trống")
     private String address;
-
     private String hotline;
+
 }

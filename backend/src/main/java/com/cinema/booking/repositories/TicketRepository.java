@@ -7,8 +7,8 @@ import java.util.List;
 
 @Repository
 public interface TicketRepository extends JpaRepository<Ticket, Integer> {
-    List<Ticket> findByBooking_Showtime_ShowtimeId(Integer showtimeId);
+    List<Ticket> findByShowtime_ShowtimeId(Integer showtimeId);
     List<Ticket> findByBooking_BookingId(Integer bookingId);
-    List<Ticket> findByBooking_User_UserId(Integer userId);
-    boolean existsByBooking_Showtime_ShowtimeIdAndSeat_SeatId(Integer showtimeId, Integer seatId);
+    List<Ticket> findByBooking_Customer_UserId(Integer userId);
+    boolean existsByShowtime_ShowtimeIdAndSeat_SeatId(Integer showtimeId, Integer seatId);
 }

@@ -17,18 +17,15 @@ import java.time.LocalDateTime;
 public class Payment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "payment_id")
+    @Column(name = "id")
     private Integer paymentId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "booking_id", nullable = false)
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "booking_id", nullable = false, unique = true)
     private Booking booking;
 
-    @Column(name = "payment_method", nullable = false, length = 50)
+    @Column(name = "method", nullable = false, length = 20)
     private String paymentMethod;
-
-    @Column(name = "transaction_id", length = 100)
-    private String transactionId;
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
@@ -36,9 +33,6 @@ public class Payment {
     @Enumerated(EnumType.STRING)
     @Column(columnDefinition = "ENUM('SUCCESS', 'FAILED', 'PENDING') DEFAULT 'PENDING'")
     private PaymentStatus status;
-
-    @Column(name = "pay_url", length = 1000)
-    private String payUrl;
 
     @Column(name = "paid_at")
     private LocalDateTime paidAt;

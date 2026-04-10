@@ -1,7 +1,7 @@
 package com.cinema.booking.security;
 
-import com.cinema.booking.entities.User;
-import com.cinema.booking.repositories.UserRepository;
+import com.cinema.booking.entities.UserAccount;
+import com.cinema.booking.repositories.UserAccountRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -13,14 +13,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserDetailsServiceImpl implements UserDetailsService {
     
     @Autowired
-    private UserRepository userRepository;
+    private UserAccountRepository userAccountRepository;
 
     @Override
     @Transactional
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        User user = userRepository.findByEmail(email)
+        UserAccount account = userAccountRepository.findByEmailWithUser(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User Not Found with email: " + email));
 
-        return UserDetailsImpl.build(user);
+        return UserDetailsImpl.build(account);
     }
 }

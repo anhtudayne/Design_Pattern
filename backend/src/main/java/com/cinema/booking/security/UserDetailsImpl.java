@@ -1,6 +1,7 @@
 package com.cinema.booking.security;
 
 import com.cinema.booking.entities.User;
+import com.cinema.booking.entities.UserAccount;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -25,14 +26,15 @@ public class UserDetailsImpl implements UserDetails {
 
     private Collection<? extends GrantedAuthority> authorities;
 
-    public static UserDetailsImpl build(User user) {
-        // Gắn tiền tố ROLE_ để Spring Security nhận diện chức vụ quyền hạn
-        List<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+    public static UserDetailsImpl build(UserAccount account) {
+        User user = account.getUser();
+        List<GrantedAuthority> authorities = List.of(
+                new SimpleGrantedAuthority("ROLE_" + user.getSpringSecurityRole()));
 
         return new UserDetailsImpl(
                 user.getUserId(),
-                user.getEmail(),
-                user.getPasswordHash(),
+                account.getEmail(),
+                account.getPasswordHash(),
                 authorities);
     }
 

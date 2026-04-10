@@ -23,8 +23,8 @@ const defaultState = {
   selectedMovie: null,      // { movieId, title, posterUrl, ageRating, durationMinutes }
   selectedCinema: null,     // { cinemaId, name, address }
   selectedShowtime: null,   // { showtimeId, startTime, endTime, roomId, roomName, basePrice, surcharge, screenType }
-  selectedSeats: [],        // [{ seatId, seatRow, seatNumber, seatType, totalPrice }]
-  selectedFnbs: [],         // [{ itemId, name, price, imageUrl, quantity }]
+  selectedSeats: [],        // [{ seatId, seatRow, seatNumber, seatType, seatTypeSurcharge, totalPrice }]
+  selectedFnbs: [],         // [{ itemId, name, unitPrice, imageUrl, quantity }]
   priceBreakdown: null,     // { ticketTotal, fnbTotal, discountAmount, finalTotal }
   voucherCode: '',
 };

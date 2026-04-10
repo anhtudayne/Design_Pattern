@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getAuthHeaders, BASE_URL } from '../../utils/api';
 import { uploadToCloudinary } from '../../utils/cloudinary';
+import { fetchCastMembers, fetchMovieDetail } from '../../services/movieService';
 
 const API = `${BASE_URL}/movies`;
 
@@ -151,10 +152,12 @@ export default function MovieManagement() {
   const [toast, setToast] = useState(null);
   const [search, setSearch] = useState('');
   const [allGenres, setAllGenres] = useState([]);
+  const [castMembers, setCastMembers] = useState([]);
 
   const [form, setForm] = useState({
     title: '', description: '', durationMinutes: 120, releaseDate: '', language: 'Tiếng Việt',
-    ageRating: 'P', posterUrl: '', trailerUrl: '', status: 'COMING_SOON', genreIds: []
+    ageRating: 'P', posterUrl: '', trailerUrl: '', status: 'COMING_SOON', genreIds: [],
+    casts: [], // [{ castMemberId, roleType, roleName }]
   });
 
   const notify = (msg, type = 'info') => setToast({ msg, type });
@@ -168,6 +171,12 @@ export default function MovieManagement() {
       ]);
       if (rMovies.ok) setList(await rMovies.json());
       if (rGenres.ok) setAllGenres(await rGenres.json());
+      try {
+        const cms = await fetchCastMembers(getAuthHeaders());
+        setCastMembers(cms);
+      } catch {
+        setCastMembers([]);
+      }
     } finally { setLoading(false); }
   }, []);
 
@@ -177,7 +186,8 @@ export default function MovieManagement() {
     setForm({ 
       title: '', description: '', durationMinutes: 120, releaseDate: '', 
       language: 'Tiếng Việt', ageRating: 'P', posterUrl: '', 
-      trailerUrl: '', status: 'COMING_SOON', genreIds: [] 
+      trailerUrl: '', status: 'COMING_SOON', genreIds: [],
+      casts: []
     });
     setModal('add');
   };
@@ -186,12 +196,43 @@ export default function MovieManagement() {
     // Luôn lấy dữ liệu thể loại mới nhất từ API chuyên biệt cho phim này
     const r = await fetch(`${BASE_URL}/movie-genres/${movie.movieId}`, { headers: getAuthHeaders() });
     const genres = r.ok ? await r.json() : [];
-    
+
+    let detail = movie;
+    try {
+      detail = await fetchMovieDetail(movie.movieId, getAuthHeaders());
+    } catch { /* ignore */ }
+
     setForm({ 
-      ...movie, 
-      genreIds: genres.map(g => g.genreId) || [] 
+      ...detail,
+      genreIds: genres.map(g => g.genreId) || [],
+      casts: (detail.casts || []).map(c => ({
+        castMemberId: c.castMemberId,
+        roleType: c.roleType,
+        roleName: c.roleName || ''
+      }))
     });
     setModal({ edit: movie });
+  };
+
+  const addCastRow = () => {
+    setForm(prev => ({
+      ...prev,
+      casts: [...(prev.casts || []), { castMemberId: '', roleType: 'ACTOR', roleName: '' }]
+    }));
+  };
+
+  const updateCastRow = (idx, patch) => {
+    setForm(prev => ({
+      ...prev,
+      casts: (prev.casts || []).map((c, i) => i === idx ? { ...c, ...patch } : c)
+    }));
+  };
+
+  const removeCastRow = (idx) => {
+    setForm(prev => ({
+      ...prev,
+      casts: (prev.casts || []).filter((_, i) => i !== idx)
+    }));
   };
 
   const toggleGenre = (genreId) => {
@@ -212,7 +253,17 @@ export default function MovieManagement() {
     try {
       const r = await fetch(url, {
         method, headers: getAuthHeaders(),
-        body: JSON.stringify({ ...form, durationMinutes: Number(form.durationMinutes) })
+        body: JSON.stringify({
+          ...form,
+          durationMinutes: Number(form.durationMinutes),
+          casts: (form.casts || [])
+            .filter(c => c.castMemberId && c.roleType)
+            .map(c => ({
+              castMemberId: Number(c.castMemberId),
+              roleType: c.roleType,
+              roleName: c.roleName || null,
+            })),
+        })
       });
       if (r.ok) {
         const savedMovie = await r.json();
@@ -440,6 +491,51 @@ export default function MovieManagement() {
                      })}
                      {allGenres.length === 0 && <p className="text-[10px] text-slate-400 italic">Chưa có thể loại nào, hãy tạo thêm.</p>}
                   </div>
+              </FormField>
+
+              <FormField label="Cast & Crew" icon="groups">
+                <div className="space-y-3">
+                  {(form.casts || []).map((c, idx) => (
+                    <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-slate-50 border border-slate-100 rounded-[24px] p-4">
+                      <div className="md:col-span-6">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">CastMember</label>
+                        <select className={selectCls} value={c.castMemberId} onChange={e => updateCastRow(idx, { castMemberId: e.target.value })}>
+                          <option value="">-- Chọn --</option>
+                          {castMembers.map(cm => (
+                            <option key={cm.id} value={cm.id}>{cm.fullName}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="md:col-span-3">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Role type</label>
+                        <select className={selectCls} value={c.roleType} onChange={e => updateCastRow(idx, { roleType: e.target.value })}>
+                          <option value="ACTOR">ACTOR</option>
+                          <option value="DIRECTOR">DIRECTOR</option>
+                        </select>
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Role name</label>
+                        <input className={inputCls} value={c.roleName || ''} onChange={e => updateCastRow(idx, { roleName: e.target.value })} placeholder="VD: Paul Atreides" />
+                      </div>
+                      <div className="md:col-span-1 flex justify-end">
+                        <button type="button" onClick={() => removeCastRow(idx)} className="w-12 h-12 rounded-2xl bg-white border border-slate-200 text-red-400 hover:text-red-600 hover:bg-red-50 transition-all flex items-center justify-center shadow-sm">
+                          <span className="material-symbols-outlined">delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  <button type="button" onClick={addCastRow} className="w-full py-3 rounded-[22px] bg-slate-900 text-white text-xs font-black uppercase tracking-widest hover:bg-black transition-all flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined text-lg text-indigo-400">add</span>
+                    Thêm Cast/Crew
+                  </button>
+
+                  {castMembers.length === 0 && (
+                    <p className="text-[11px] text-slate-400 font-bold italic">
+                      Chưa có CastMember. Hãy tạo ở `Admin → Metadata → Cast members`.
+                    </p>
+                  )}
+                </div>
               </FormField>
 
               <div className="flex gap-4 pt-6 border-t border-slate-50">

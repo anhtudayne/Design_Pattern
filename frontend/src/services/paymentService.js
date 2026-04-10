@@ -18,6 +18,9 @@ export const payMoMo = async (body) => {
     throw new Error(msg || 'Lỗi thanh toán MoMo');
   }
   const data = await res.json();
+  if (!data?.payUrl || typeof data.payUrl !== 'string') {
+    throw new Error('Không nhận được link thanh toán MoMo hợp lệ từ hệ thống');
+  }
   return data.payUrl;
 };
 
@@ -26,6 +29,19 @@ export const getUserPayments = async (userId) => {
     headers: getAuthHeaders(),
   });
   if (!res.ok) throw new Error('Lỗi lấy lịch sử');
+  return res.json();
+};
+
+export const demoCheckout = async (body, success = true) => {
+  const res = await fetch(`${BASE_URL}/payment/checkout/demo?success=${success}`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const msg = await res.text();
+    throw new Error(msg || 'Demo checkout thất bại');
+  }
   return res.json();
 };
 

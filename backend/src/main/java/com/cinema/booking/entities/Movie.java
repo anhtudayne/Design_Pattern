@@ -19,6 +19,7 @@ import java.util.List;
 public class Movie {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
     private Integer movieId;
 
     @Column(nullable = false)
@@ -49,14 +50,9 @@ public class Movie {
     @Enumerated(EnumType.STRING)
     private MovieStatus status;
 
-    @ManyToMany
-    @JoinTable(
-        name = "movie_directors",
-        joinColumns = @JoinColumn(name = "movie_id"),
-        inverseJoinColumns = @JoinColumn(name = "director_id")
-    )
+    @OneToMany(mappedBy = "movie", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
-    private List<Director> directors;
+    private List<MovieCast> movieCasts;
 
     public enum AgeRating {
         P, K, C13, C16, C18

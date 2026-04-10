@@ -23,6 +23,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public UserDTO getCurrentUser() {
         Integer userId = getCurrentUserId();
         User user = userRepository.findById(userId)

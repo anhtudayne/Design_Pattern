@@ -48,3 +48,37 @@ export const calculatePrice = async (body) => {
   if (!res.ok) throw new Error('Không thể tính giá');
   return res.json();
 };
+
+export const getBookingDetail = async (bookingId) => {
+  const res = await fetch(`${BASE_URL}/booking/${bookingId}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Không thể tải chi tiết booking');
+  return res.json();
+};
+
+/**
+ * Create booking (returns MoMo payUrl).
+ * Payload: { userId, showtimeId, tickets: [{ seatId }], fnbLines: [{ itemId, quantity, unitPrice }], promoCode }
+ */
+export const createBooking = async (payload) => {
+  const body = {
+    userId: payload.userId,
+    showtimeId: payload.showtimeId,
+    seatIds: (payload.tickets || []).map(t => t.seatId),
+    fnbs: (payload.fnbLines || []).map(l => ({ itemId: l.itemId, quantity: l.quantity })),
+    promoCode: payload.promoCode || null,
+  };
+
+  const res = await fetch(`${BASE_URL}/payment/checkout`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const msg = await res.text();
+    throw new Error(msg || 'Không thể tạo booking');
+  }
+  const data = await res.json();
+  return data.payUrl;
+};

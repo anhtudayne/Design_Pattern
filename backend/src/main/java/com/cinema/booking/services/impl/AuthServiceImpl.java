@@ -5,7 +5,9 @@ import com.cinema.booking.services.AuthService;
 import com.cinema.booking.dtos.JwtResponse;
 import com.cinema.booking.dtos.LoginRequest;
 import com.cinema.booking.dtos.SignupRequest;
-import com.cinema.booking.entities.User;
+import com.cinema.booking.entities.Customer;
+import com.cinema.booking.entities.UserAccount;
+import com.cinema.booking.repositories.UserAccountRepository;
 import com.cinema.booking.repositories.UserRepository;
 import com.cinema.booking.security.JwtUtils;
 import com.cinema.booking.security.UserDetailsImpl;
@@ -18,7 +20,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -32,6 +33,9 @@ public class AuthServiceImpl implements AuthService {
     private UserRepository userRepository;
 
     @Autowired
+    private UserAccountRepository userAccountRepository;
+
+    @Autowired
     private PasswordEncoder encoder;
 
     @Autowired
@@ -39,13 +43,10 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public JwtResponse authenticateUser(LoginRequest loginRequest) {
-        // Gọi lên Spring Security Manager để check mật khẩu do Bcrypt băm
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
 
-        // Đẩy User này vào Ngữ cảnh bảo mật hiện tại của App
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        // Bảo JwtUtils đẻ ra 1 token mới
         String jwt = jwtUtils.generateJwtToken(authentication);
 
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
@@ -65,25 +66,26 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void registerUser(SignupRequest signUpRequest) {
-        if (userRepository.existsByEmail(signUpRequest.getEmail())) {
+        if (userAccountRepository.existsByEmail(signUpRequest.getEmail())) {
             throw new RuntimeException("Email đã được sử dụng trên hệ thống!");
         }
 
-        // Tạo Entity User mới để nén xuống MySQL (Chức vụ mặc định là USER)
-        User user = User.builder()
-                .fullname(signUpRequest.getFullname())
+        Customer customer = new Customer();
+        customer.setFullname(signUpRequest.getFullname());
+        customer.setPhone(signUpRequest.getPhone());
+
+        UserAccount account = UserAccount.builder()
                 .email(signUpRequest.getEmail())
                 .passwordHash(encoder.encode(signUpRequest.getPassword()))
-                .phone(signUpRequest.getPhone())
-                .role(User.Role.USER)
-                .createdAt(LocalDateTime.now())
                 .build();
 
-        userRepository.save(user);
+        account.setUser(customer);
+        customer.setUserAccount(account);
 
-        // Gửi email chào mừng (Có thể dùng RabbitMQ nếu muốn bất đồng bộ)
+        userRepository.save(customer);
+
         try {
-            emailService.sendWelcomeEmail(user.getEmail(), user.getFullname());
+            emailService.sendWelcomeEmail(account.getEmail(), customer.getFullname());
         } catch (Exception e) {
             System.err.println(">>> Lỗi khi gọi EmailService: " + e.getMessage());
         }
@@ -109,22 +111,23 @@ public class AuthServiceImpl implements AuthService {
                 String email = payload.getEmail();
                 String name = (String) payload.get("name");
 
-                User user = userRepository.findByEmail(email).orElseGet(() -> {
-                    User newUser = User.builder()
+                UserAccount account = userAccountRepository.findByEmail(email).orElseGet(() -> {
+                    Customer newUser = new Customer();
+                    newUser.setFullname(name != null ? name : email);
+                    UserAccount ua = UserAccount.builder()
                             .email(email)
-                            .fullname(name)
                             .passwordHash(encoder.encode(java.util.UUID.randomUUID().toString()))
-                            .role(User.Role.USER)
-                            .createdAt(LocalDateTime.now())
                             .build();
-                    return userRepository.save(newUser);
+                    ua.setUser(newUser);
+                    newUser.setUserAccount(ua);
+                    userRepository.save(newUser);
+                    return newUser.getUserAccount();
                 });
 
-                // Tạo JWT cho User vừa đăng nhập qua Google
-                String jwt = jwtUtils.generateTokenFromUsername(user.getEmail());
+                String jwt = jwtUtils.generateTokenFromUsername(account.getEmail());
 
-                return new JwtResponse(jwt, user.getUserId(), user.getEmail(), 
-                        java.util.Collections.singletonList(user.getRole().name()));
+                return new JwtResponse(jwt, account.getUser().getUserId(), account.getEmail(),
+                        java.util.Collections.singletonList("ROLE_" + account.getUser().getSpringSecurityRole()));
             } else {
                 throw new RuntimeException("Xác thực Google thất bại!");
             }

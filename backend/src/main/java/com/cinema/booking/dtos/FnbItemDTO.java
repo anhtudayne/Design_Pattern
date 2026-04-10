@@ -9,7 +9,9 @@ public class FnbItemDTO {
     private String name;
     private String description;
     private BigDecimal price;
+    private Integer stockQuantity;
+    private Boolean isActive;
+    // Backward-compatible fields for old frontend contracts
     private String imageUrl;
     private Integer categoryId;
-    private Boolean isActive;
 }

@@ -12,7 +12,7 @@ import lombok.*;
 public class Location {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "location_id")
+    @Column(name = "id")
     private Integer locationId;
 
     @Column(nullable = false, length = 100)

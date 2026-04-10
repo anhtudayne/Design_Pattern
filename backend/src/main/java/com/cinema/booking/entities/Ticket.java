@@ -16,7 +16,7 @@ import java.math.BigDecimal;
 public class Ticket {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ticket_id")
+    @Column(name = "id")
     private Integer ticketId;
 
     @JsonIgnore
@@ -27,6 +27,10 @@ public class Ticket {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "seat_id", nullable = false)
     private Seat seat;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "showtime_id", nullable = false)
+    private Showtime showtime;
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;

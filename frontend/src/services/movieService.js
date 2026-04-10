@@ -19,3 +19,17 @@ export const fetchMovieGenres = async (movieId) => {
   if (!res.ok) return []; // graceful fallback
   return res.json();
 };
+
+// ── ADMIN / DETAIL ──────────────────────────────────────────────────
+
+export const fetchMovieDetail = async (movieId, headers) => {
+  const res = await fetch(`${BASE_URL}/movies/${movieId}`, { headers });
+  if (!res.ok) throw new Error('Không thể tải chi tiết phim');
+  return res.json();
+};
+
+export const fetchCastMembers = async (headers) => {
+  const res = await fetch(`${BASE_URL}/admin/metadata/cast-members`, { headers });
+  if (!res.ok) throw new Error('Không thể tải CastMember');
+  return res.json();
+};

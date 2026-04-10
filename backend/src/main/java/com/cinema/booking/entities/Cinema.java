@@ -12,7 +12,7 @@ import lombok.*;
 public class Cinema {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "cinema_id")
+    @Column(name = "id")
     private Integer cinemaId;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -25,6 +25,4 @@ public class Cinema {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String address;
 
-    @Column(length = 20)
-    private String hotline;
 }

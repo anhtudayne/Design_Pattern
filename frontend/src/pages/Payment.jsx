@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { useBooking } from '../contexts/BookingContext';
-import { payMoMo } from '../services/paymentService';
 import { calculatePrice } from '../services/bookingService';
+import { demoCheckout } from '../services/paymentService';
 
 // ─── Stepper component ──────────────────────────────────────────────
 function Stepper({ active }) {
@@ -49,6 +49,7 @@ export default function Payment() {
   const [voucherCode, setVoucherCode] = useState(savedVoucher || '');
   const [voucherLoading, setVoucherLoading] = useState(false);
   const [voucherMsg, setVoucherMsg] = useState('');
+  const [demoQr, setDemoQr] = useState(null);
 
   // Local state cho thông tin người mua (khởi tạo từ user redux)
   const [buyerInfo, setBuyerInfo] = useState({
@@ -104,7 +105,7 @@ export default function Payment() {
   }, [selectedSeats]);
 
   const snackTotal = useMemo(() => {
-    return (selectedSnacks || []).reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
+    return (selectedSnacks || []).reduce((sum, item) => sum + (Number(item.unitPrice) * item.quantity), 0);
   }, [selectedSnacks]);
 
   // Display from backend if available, else fallback to frontend calculation
@@ -149,21 +150,15 @@ export default function Payment() {
     setLoading(true);
 
     try {
-      const checkoutData = {
-        userId: user.id,
-        showtimeId: showtime.showtimeId,
-        seatIds: selectedSeats.map(s => s.seatId),
-        fnbs: (selectedSnacks || []).map(s => ({ itemId: s.itemId, quantity: s.quantity })),
-        promoCode: voucherCode || null,
-        // Gửi kèm thông tin người mua nếu backend cần (hoặc dùng để validation)
-        buyerName: buyerInfo.fullName,
-        buyerPhone: buyerInfo.phoneNumber,
-        buyerEmail: buyerInfo.email
-      };
-
       if (paymentMethod === 'momo') {
-        const paymentUrl = await payMoMo(checkoutData);
-        window.location.href = paymentUrl;
+        const randomToken = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        const orderId = `DEMO_${Date.now()}`;
+        setDemoQr({
+          orderId,
+          amount: displayTotal,
+          qrText: `demo-payment|orderId=${orderId}|user=${user?.id}|showtime=${showtime?.showtimeId}|token=${randomToken}`,
+        });
+        setLoading(false);
       } else {
         alert('Hình thức thanh toán này đang được bảo trì. Vui lòng chọn Ví MoMo.');
         setLoading(false);
@@ -171,6 +166,30 @@ export default function Payment() {
     } catch (err) {
       console.error('Payment failed', err);
       alert(err.message || 'Đã có lỗi xảy ra. Vui lòng thử lại.');
+      setLoading(false);
+    }
+  };
+
+  const handleDemoResult = async (isSuccess) => {
+    if (!demoQr) return;
+    try {
+      setLoading(true);
+      const checkoutData = {
+        userId: user.id,
+        showtimeId: showtime.showtimeId,
+        seatIds: selectedSeats.map(s => s.seatId),
+        fnbs: (selectedSnacks || []).map(s => ({ itemId: s.itemId, quantity: s.quantity })),
+        promoCode: voucherCode || null,
+      };
+      const result = await demoCheckout(checkoutData, isSuccess);
+      const target = isSuccess
+        ? `/profile/transactions?payment=success&orderId=${encodeURIComponent(result?.bookingCode || demoQr.orderId)}&bookingId=${result?.bookingId || ''}&demo=1`
+        : `/profile/transactions?payment=failed&errorCode=DEMO_CANCEL&bookingId=${result?.bookingId || ''}&demo=1`;
+      setDemoQr(null);
+      navigate(target);
+    } catch (err) {
+      alert(err.message || 'Không thể cập nhật trạng thái thanh toán demo');
+    } finally {
       setLoading(false);
     }
   };
@@ -185,6 +204,45 @@ export default function Payment() {
 
   return (
     <main className="pt-44 pb-20 bg-slate-50 dark:bg-slate-950 min-h-screen">
+      {demoQr && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center px-4">
+          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 shadow-2xl p-6">
+            <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">QR Thanh Toán Demo</h3>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">Mã đơn: <span className="font-bold">{demoQr.orderId}</span></p>
+            <p className="text-sm text-slate-500 dark:text-slate-300 mb-4">Số tiền: <span className="font-black text-orange-500">{Number(demoQr.amount || 0).toLocaleString('vi-VN')}đ</span></p>
+
+            <div className="bg-white rounded-2xl p-4 border border-slate-200 mx-auto w-fit">
+              <img
+                alt="Demo payment QR"
+                className="w-64 h-64 object-contain"
+                src={`https://quickchart.io/qr?text=${encodeURIComponent(demoQr.qrText)}&size=320`}
+              />
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button
+                onClick={() => handleDemoResult(false)}
+                className="py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-black uppercase text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              >
+                Thất bại
+              </button>
+              <button
+                onClick={() => handleDemoResult(true)}
+                className="py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 text-white font-black uppercase text-xs shadow-lg shadow-green-500/30 hover:scale-[1.02] transition"
+              >
+                Thành công
+              </button>
+            </div>
+
+            <button
+              onClick={() => setDemoQr(null)}
+              className="mt-3 w-full py-2 text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      )}
       <div className="max-w-[1440px] mx-auto px-6 md:px-10">
         <Stepper active={3} />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">

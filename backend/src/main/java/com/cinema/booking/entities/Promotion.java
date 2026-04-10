@@ -14,26 +14,28 @@ import java.time.LocalDateTime;
 public class Promotion {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "promo_id")
-    private Integer promoId;
+    @Column(name = "id")
+    private Integer id;
 
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 
-    @Column(name = "discount_percentage", nullable = false, precision = 5, scale = 2)
-    private BigDecimal discountPercentage;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "discount_type", nullable = false, length = 10)
+    private DiscountType discountType;
 
-    @Column(name = "max_discount_amount", precision = 10, scale = 2)
-    private BigDecimal maxDiscountAmount;
+    @Column(name = "discount_value", nullable = false, precision = 10, scale = 2)
+    private BigDecimal discountValue;
 
-    @Column(name = "min_purchase_amount", precision = 10, scale = 2)
-    private BigDecimal minPurchaseAmount;
-
-    @Column(name = "valid_from", nullable = false)
-    private LocalDateTime validFrom;
+    @Column(name = "quantity")
+    @Builder.Default
+    private Integer quantity = 0;
 
     @Column(name = "valid_to", nullable = false)
     private LocalDateTime validTo;
 
-    private Integer quantity = 0;
+    public enum DiscountType {
+        PERCENT,
+        FIXED
+    }
 }

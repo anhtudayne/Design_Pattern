@@ -10,20 +10,17 @@ const selectCls = inputCls + ' bg-white';
 
 // ── Config per entity type ────────────────────────────────────────────────────
 const TYPES = {
-  actors: {
-    label: 'Diễn viên', labelSingle: 'diễn viên',
-    icon: 'person_play', color: 'blue',
-    idField: 'actorId', endpoint: `${API}/actors`,
-  },
-  directors: {
-    label: 'Đạo diễn', labelSingle: 'đạo diễn',
-    icon: 'video_camera_front', color: 'violet',
-    idField: 'directorId', endpoint: `${API}/directors`,
+  castMembers: {
+    label: 'Cast & Crew', labelSingle: 'nhân sự điện ảnh',
+    icon: 'groups', color: 'blue',
+    idField: 'id', endpoint: `${API}/cast-members`,
+    fields: { fullName: true, bio: true, birthDate: false, nationality: false, imageUrl: false },
   },
   artists: {
     label: 'Nghệ sĩ âm nhạc', labelSingle: 'nghệ sĩ',
     icon: 'music_note', color: 'orange',
     idField: 'artistId', endpoint: `${API}/artists`,
+    fields: { fullName: true, bio: true, birthDate: true, nationality: true, imageUrl: true },
   },
 };
 
@@ -208,26 +205,34 @@ function PersonForm({ form, setForm, onSubmit, onClose, isEdit, typeCfg, loading
           placeholder={`Tên ${typeCfg.labelSingle}...`} required />
       </FormField>
 
-      <div className="grid grid-cols-2 gap-3">
-        <FormField label="Ngày sinh">
-          <input className={inputCls} type="date" value={form.birthDate}
-            onChange={e => setForm({ ...form, birthDate: e.target.value })} />
-        </FormField>
-        <FormField label="Quốc tịch">
-          <select className={selectCls} value={form.nationality} onChange={e => setForm({ ...form, nationality: e.target.value })}>
-            <option value="">-- Chọn --</option>
-            {NATIONALITIES.map(n => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </FormField>
-      </div>
+      {(typeCfg.fields?.birthDate || typeCfg.fields?.nationality) && (
+        <div className="grid grid-cols-2 gap-3">
+          {typeCfg.fields?.birthDate && (
+            <FormField label="Ngày sinh">
+              <input className={inputCls} type="date" value={form.birthDate}
+                onChange={e => setForm({ ...form, birthDate: e.target.value })} />
+            </FormField>
+          )}
+          {typeCfg.fields?.nationality && (
+            <FormField label="Quốc tịch">
+              <select className={selectCls} value={form.nationality} onChange={e => setForm({ ...form, nationality: e.target.value })}>
+                <option value="">-- Chọn --</option>
+                {NATIONALITIES.map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </FormField>
+          )}
+        </div>
+      )}
 
-      <FormField label="Ảnh đại diện">
-        <ImageUpload
-          folder={typeCfg.labelSingle === 'diễn viên' ? 'actors' : typeCfg.labelSingle === 'đạo diễn' ? 'directors' : 'artists'}
-          value={form.imageUrl}
-          onChange={val => setForm({ ...form, imageUrl: val })}
-        />
-      </FormField>
+      {typeCfg.fields?.imageUrl && (
+        <FormField label="Ảnh đại diện">
+          <ImageUpload
+            folder={typeCfg.idField === 'artistId' ? 'artists' : 'cast-members'}
+            value={form.imageUrl}
+            onChange={val => setForm({ ...form, imageUrl: val })}
+          />
+        </FormField>
+      )}
 
       <FormField label="Tiểu sử">
         <textarea className={inputCls + ' resize-none'} rows={4} value={form.bio}
@@ -290,7 +295,8 @@ function PersonTab({ typeKey, notify }) {
     const url = isEdit ? `${cfg.endpoint}/${item[cfg.idField]}` : cfg.endpoint;
     const method = isEdit ? 'PUT' : 'POST';
     try {
-      const r = await fetch(url, { method, headers: getAuthHeaders(), body: JSON.stringify(form) });
+      const payload = cfg.fields?.birthDate ? form : { fullName: form.fullName, bio: form.bio };
+      const r = await fetch(url, { method, headers: getAuthHeaders(), body: JSON.stringify(payload) });
       if (r.ok) {
         notify(isEdit ? 'Cập nhật thành công!' : 'Thêm mới thành công!', 'success');
         setModal(null); setDetail(null); load();
@@ -472,13 +478,12 @@ function PersonTab({ typeKey, notify }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const TABS = [
-  { key: 'actors',    label: 'Diễn viên',       icon: 'person_play',         color: 'blue'   },
-  { key: 'directors', label: 'Đạo diễn',         icon: 'video_camera_front',  color: 'violet' },
-  { key: 'artists',   label: 'Nghệ sĩ âm nhạc',  icon: 'music_note',          color: 'orange' },
+  { key: 'castMembers', label: 'Cast & Crew',      icon: 'groups',      color: 'blue'   },
+  { key: 'artists',     label: 'Nghệ sĩ âm nhạc',  icon: 'music_note',  color: 'orange' },
 ];
 
 export default function ArtistManagement() {
-  const [activeTab, setActiveTab] = useState('actors');
+  const [activeTab, setActiveTab] = useState('castMembers');
   const [toast, setToast] = useState(null);
 
   const notify = (msg, type = 'info') => setToast({ msg, type });

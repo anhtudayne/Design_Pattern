@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.time.DayOfWeek;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -36,7 +35,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         dto.setStartTime(showtime.getStartTime());
         dto.setEndTime(showtime.getEndTime());
         dto.setBasePrice(showtime.getBasePrice());
-        dto.setSurcharge(showtime.getSurcharge());
+        dto.setSurcharge(BigDecimal.ZERO);
 
         // Enriched fields for frontend display
         Movie movie = showtime.getMovie();
@@ -83,14 +82,6 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         
         showtime.setBasePrice(dto.getBasePrice());
 
-        // Logic Phụ Thu: Thứ 7 (SATURDAY) hoặc Chủ Nhật (SUNDAY) thì + 15,000 VND
-        DayOfWeek day = dto.getStartTime().getDayOfWeek();
-        if (day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY) {
-            showtime.setSurcharge(new BigDecimal("15000"));
-        } else {
-            showtime.setSurcharge(BigDecimal.ZERO);
-        }
-
         return mapToDTO(showtimeRepository.save(showtime));
     }
 
@@ -109,13 +100,6 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         showtime.setStartTime(dto.getStartTime());
         showtime.setEndTime(dto.getStartTime().plusMinutes(movie.getDurationMinutes()));
         showtime.setBasePrice(dto.getBasePrice());
-
-        DayOfWeek day = dto.getStartTime().getDayOfWeek();
-        if (day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY) {
-            showtime.setSurcharge(new BigDecimal("15000"));
-        } else {
-            showtime.setSurcharge(BigDecimal.ZERO);
-        }
 
         return mapToDTO(showtimeRepository.save(showtime));
     }

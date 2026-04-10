@@ -18,7 +18,13 @@ public class CorsConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(frontendUrl));        // FRONTEND_URL từ .env
+        // Allow the configured frontend URL plus typical local dev origins.
+        // Using allowedOriginPatterns keeps dev flexible across ports (Vite/React/etc.).
+        config.setAllowedOriginPatterns(List.of(
+                frontendUrl,
+                "http://localhost:*",
+                "http://127.0.0.1:*"
+        ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
@@ -29,4 +35,4 @@ public class CorsConfig {
         return source;
     }
 }
-
+

@@ -50,6 +50,7 @@ public class MovieServiceImpl implements MovieService {
                 c.setCastMemberId(mc.getCastMember().getId());
                 c.setCastMemberName(mc.getCastMember().getFullName());
                 c.setCastMemberBio(mc.getCastMember().getBio());
+                c.setCastMemberImageUrl(mc.getCastMember().getImageUrl());
             }
             c.setRoleName(mc.getRoleName());
             c.setRoleType(mc.getRoleType());

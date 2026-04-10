@@ -411,7 +411,7 @@ export default function FnbManagement() {
     fetch(`${API}/categories`, { headers: getAuthHeaders() })
       .then(r => r.ok ? r.json() : [])
       .then(data => setCategories(data));
-  }, []);
+  }, [activeTab]);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] p-6 md:p-8 font-['Space_Grotesk'] antialiased">

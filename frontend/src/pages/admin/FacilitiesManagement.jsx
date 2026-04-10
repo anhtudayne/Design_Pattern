@@ -94,7 +94,7 @@ function SeatMapEditor({ room, notify }) {
     try {
       const r = await fetch(`${API}/seats?roomId=${room.roomId}`, { headers: getAuthHeaders() });
       const data = await r.json();
-      setSeats(data);
+      setSeats(data.map(s => ({ ...s, seatType: s.seatTypeName || 'STANDARD' })));
       setDirty(false);
     } finally { setLoading(false); }
   }, [room.roomId]);

@@ -2,6 +2,7 @@ package com.cinema.booking.entities;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "cast_members")
@@ -22,5 +23,14 @@ public class CastMember {
 
     @Column(name = "bio", columnDefinition = "TEXT")
     private String bio;
+
+    @Column(name = "birth_date")
+    private LocalDate birthDate;
+
+    @Column(name = "nationality", length = 100)
+    private String nationality;
+
+    @Column(name = "image_url")
+    private String imageUrl;
 }
 

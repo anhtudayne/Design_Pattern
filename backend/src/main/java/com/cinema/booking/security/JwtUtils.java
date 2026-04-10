@@ -23,7 +23,8 @@ public class JwtUtils {
     private int jwtExpirationMs;
 
     private Key key() {
-        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
+        // Dùng raw bytes của secret string
+        return Keys.hmacShaKeyFor(jwtSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     public String generateJwtToken(Authentication authentication) {

@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 public class MembershipTier {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
     private Integer tierId;
 
     @Column(nullable = false, length = 50)

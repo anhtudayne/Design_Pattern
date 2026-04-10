@@ -8,12 +8,12 @@ INSERT INTO users (id, fullname, phone) VALUES
 (4, 'Staff Member A', '0988776655');
 
 -- 2. Chèn dữ liệu tài khoản vào user_accounts (Liên kết 1-1 với users)
--- Mật khẩu giả định: 'password123' (đã hash theo BCrypt)
+-- Mật khẩu: 'password123' (BCrypt $2a$10, verified)
 INSERT INTO user_accounts (user_id, email, password_hash) VALUES
-(1, 'huy.it@example.com', '$2b$10$KsrSMyJq9W36zpnEbt9LvOe4TePOFCWKqjwVWq2sWRpIYd72QGA3u'),
-(2, 'tu.vo@example.com', '$2b$10$KsrSMyJq9W36zpnEbt9LvOe4TePOFCWKqjwVWq2sWRpIYd72QGA3u'),
-(3, 'quoc.vu@example.com', '$2b$10$KsrSMyJq9W36zpnEbt9LvOe4TePOFCWKqjwVWq2sWRpIYd72QGA3u'),
-(4, 'staff.a@example.com', '$2b$10$KsrSMyJq9W36zpnEbt9LvOe4TePOFCWKqjwVWq2sWRpIYd72QGA3u');
+(1, 'huy.it@example.com', '$2a$10$CFf0QcO8MiBVVkd3Gt427u2dcD88U7nPa5YcRcWF.Rk0SD5QetiPW'),
+(2, 'tu.vo@example.com', '$2a$10$CFf0QcO8MiBVVkd3Gt427u2dcD88U7nPa5YcRcWF.Rk0SD5QetiPW'),
+(3, 'quoc.vu@example.com', '$2a$10$CFf0QcO8MiBVVkd3Gt427u2dcD88U7nPa5YcRcWF.Rk0SD5QetiPW'),
+(4, 'staff.a@example.com', '$2a$10$CFf0QcO8MiBVVkd3Gt427u2dcD88U7nPa5YcRcWF.Rk0SD5QetiPW');
 
 -- 3. Phân vai trò vào các bảng con (Joined Inheritance)
 -- Nguyen Nhat Huy là Customer

@@ -42,6 +42,7 @@ public class MovieDTO {
         private Integer castMemberId;
         private String castMemberName;
         private String castMemberBio;
+        private String castMemberImageUrl;
         private String roleName;
         private RoleType roleType;
     }

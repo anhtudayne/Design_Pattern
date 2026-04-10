@@ -1,8 +1,11 @@
 package com.cinema.booking.controllers;
 
 import com.cinema.booking.dtos.FnbItemDTO;
+import com.cinema.booking.dtos.FnbCategoryDTO;
 import com.cinema.booking.entities.FnbItem;
+import com.cinema.booking.entities.FnbCategory;
 import com.cinema.booking.repositories.FnbItemRepository;
+import com.cinema.booking.repositories.FnbCategoryRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +24,9 @@ public class FnbController {
     @Autowired
     private FnbItemRepository itemRepository;
 
+    @Autowired
+    private FnbCategoryRepository categoryRepository;
+
     // --- ITEM CRUD ---
 
     @Operation(summary = "Lấy danh sách tất cả sản phẩm F&B", description = "Trả về toàn bộ danh sách bắp nước kèm thông tin giá và danh mục")
@@ -32,12 +38,18 @@ public class FnbController {
     @Operation(summary = "Tạo sản phẩm F&B mới", description = "Thêm một món ăn/nước uống mới theo schema hiện tại.")
     @PostMapping("/items")
     public ResponseEntity<FnbItemDTO> createItem(@RequestBody FnbItemDTO dto) {
+        FnbCategory category = null;
+        if (dto.getCategoryId() != null) {
+            category = categoryRepository.findById(dto.getCategoryId())
+                    .orElseThrow(() -> new RuntimeException("Category not found"));
+        }
         FnbItem item = FnbItem.builder()
                 .name(dto.getName())
                 .description(dto.getDescription())
                 .price(dto.getPrice())
                 .stockQuantity(dto.getStockQuantity())
                 .isActive(dto.getIsActive() != null ? dto.getIsActive() : true)
+                .category(category)
                 .build();
         
         return ResponseEntity.ok(toDto(itemRepository.save(item)));
@@ -48,6 +60,14 @@ public class FnbController {
     public ResponseEntity<FnbItemDTO> updateItem(@PathVariable Integer id, @RequestBody FnbItemDTO dto) {
         FnbItem item = itemRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Item not found"));
+
+        if (dto.getCategoryId() != null) {
+            FnbCategory category = categoryRepository.findById(dto.getCategoryId())
+                    .orElseThrow(() -> new RuntimeException("Category not found"));
+            item.setCategory(category);
+        } else {
+            item.setCategory(null);
+        }
 
         item.setName(dto.getName());
         item.setDescription(dto.getDescription());
@@ -65,25 +85,47 @@ public class FnbController {
         return ResponseEntity.ok().build();
     }
 
-    // Legacy endpoints for old frontend contract. No-op in strict schema mode.
+    // --- CATEGORY CRUD ---
+
+    @Operation(summary = "Lấy danh sách Danh mục", description = "Lấy toàn bộ danh mục sản phẩm")
     @GetMapping("/categories")
-    public List<Map<String, Object>> getAllCategories() {
-        return List.of();
+    public List<FnbCategoryDTO> getAllCategories() {
+        return categoryRepository.findAll().stream().map(this::toCategoryDto).toList();
     }
 
+    @Operation(summary = "Thêm danh mục mới")
     @PostMapping("/categories")
-    public ResponseEntity<?> createCategory() {
-        return ResponseEntity.status(501).body(Map.of("message", "F&B categories are not supported in current schema"));
+    public ResponseEntity<FnbCategoryDTO> createCategory(@RequestBody FnbCategoryDTO dto) {
+        FnbCategory cat = FnbCategory.builder()
+                .name(dto.getName())
+                .isActive(dto.getIsActive() != null ? dto.getIsActive() : true)
+                .build();
+        return ResponseEntity.ok(toCategoryDto(categoryRepository.save(cat)));
     }
 
+    @Operation(summary = "Cập nhật danh mục")
     @PutMapping("/categories/{id}")
-    public ResponseEntity<?> updateCategory(@PathVariable Integer id) {
-        return ResponseEntity.status(501).body(Map.of("message", "F&B categories are not supported in current schema"));
+    public ResponseEntity<FnbCategoryDTO> updateCategory(@PathVariable Integer id, @RequestBody FnbCategoryDTO dto) {
+        FnbCategory cat = categoryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+        cat.setName(dto.getName());
+        cat.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : cat.getIsActive());
+        return ResponseEntity.ok(toCategoryDto(categoryRepository.save(cat)));
     }
 
+    @Operation(summary = "Xóa danh mục")
     @DeleteMapping("/categories/{id}")
     public ResponseEntity<?> deleteCategory(@PathVariable Integer id) {
-        return ResponseEntity.status(501).body(Map.of("message", "F&B categories are not supported in current schema"));
+        categoryRepository.deleteById(id);
+        return ResponseEntity.ok().build();
+    }
+
+    private FnbCategoryDTO toCategoryDto(FnbCategory cat) {
+        FnbCategoryDTO dto = new FnbCategoryDTO();
+        dto.setCategoryId(cat.getCategoryId());
+        dto.setName(cat.getName());
+        dto.setIsActive(cat.getIsActive());
+        return dto;
     }
 
     private FnbItemDTO toDto(FnbItem item) {
@@ -95,7 +137,7 @@ public class FnbController {
         dto.setStockQuantity(item.getStockQuantity());
         dto.setIsActive(item.getIsActive());
         dto.setImageUrl(null);
-        dto.setCategoryId(null);
+        dto.setCategoryId(item.getCategory() != null ? item.getCategory().getCategoryId() : null);
         return dto;
     }
 }

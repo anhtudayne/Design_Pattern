@@ -13,6 +13,20 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Membership Tiers (Hạng thành viên)
+CREATE TABLE membership_tiers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    min_spending DECIMAL(10,2) DEFAULT 0,
+    discount_percent DECIMAL(5,2) DEFAULT 0
+);
+
+-- Seed data cho membership tiers
+INSERT INTO membership_tiers (name, min_spending, discount_percent) VALUES
+('SILVER', 0, 0.00),
+('GOLD', 500.00, 0.05),
+('PLATINUM', 2000.00, 0.10);
+
 -- Tách biệt thông tin tài khoản
 CREATE TABLE user_accounts (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -28,7 +42,8 @@ CREATE TABLE customers (
     tier_id INT,
     total_spending DECIMAL(15, 2) DEFAULT 0,
     loyalty_points INT DEFAULT 0,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (tier_id) REFERENCES membership_tiers(id)
 );
 
 CREATE TABLE admins (

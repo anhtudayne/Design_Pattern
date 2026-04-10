@@ -24,6 +24,8 @@ public class AuthController {
             JwtResponse response = authService.authenticateUser(loginRequest);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            System.err.println(">>> [AuthService] Login failed for " + loginRequest.getEmail() + ": " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.badRequest().body(new MessageResponse("Sai thông tin đăng nhập: " + e.getMessage()));
         }
     }

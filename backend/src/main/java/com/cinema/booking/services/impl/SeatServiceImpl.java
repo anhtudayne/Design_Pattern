@@ -47,7 +47,7 @@ public class SeatServiceImpl implements SeatService {
                 dto.setSeatNumber(null);
             }
         }
-        dto.setIsActive(Boolean.TRUE);
+        dto.setIsActive(seat.getIsActive() != null ? seat.getIsActive() : Boolean.TRUE);
         if (seat.getSeatType() != null) {
             dto.setSeatTypeId(seat.getSeatType().getId());
             dto.setSeatTypeName(seat.getSeatType().getName());
@@ -132,6 +132,7 @@ public class SeatServiceImpl implements SeatService {
             seat.setRoom(room);
             seat.setSeatCode(resolveSeatCode(dto));
             seat.setSeatType(seatType);
+            seat.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : true);
             newSeats.add(seat);
         }
         List<Seat> savedSeats = seatRepository.saveAll(newSeats);

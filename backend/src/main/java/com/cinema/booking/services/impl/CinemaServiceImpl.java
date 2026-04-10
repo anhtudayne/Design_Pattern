@@ -33,7 +33,7 @@ public class CinemaServiceImpl implements CinemaService {
         
         dto.setName(cinema.getName());
         dto.setAddress(cinema.getAddress());
-        dto.setHotline(null);
+        dto.setHotline(cinema.getHotline());
         return dto;
     }
 
@@ -63,6 +63,7 @@ public class CinemaServiceImpl implements CinemaService {
         cinema.setLocation(location);
         cinema.setName(dto.getName());
         cinema.setAddress(dto.getAddress());
+        cinema.setHotline(dto.getHotline());
         
         return mapToDTO(cinemaRepository.save(cinema));
     }
@@ -78,6 +79,7 @@ public class CinemaServiceImpl implements CinemaService {
         cinema.setLocation(location);
         cinema.setName(dto.getName());
         cinema.setAddress(dto.getAddress());
+        cinema.setHotline(dto.getHotline());
         
         return mapToDTO(cinemaRepository.save(cinema));
     }

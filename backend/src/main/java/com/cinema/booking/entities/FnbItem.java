@@ -31,4 +31,10 @@ public class FnbItem {
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private FnbCategory category;
 }

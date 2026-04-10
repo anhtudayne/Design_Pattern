@@ -25,4 +25,7 @@ public class Cinema {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String address;
 
+    @Column(length = 20)
+    private String hotline;
 }
+

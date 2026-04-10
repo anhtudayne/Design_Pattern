@@ -76,6 +76,9 @@ public class MetadataController {
         CastMember castMember = castMemberRepository.findById(id).orElseThrow();
         castMember.setFullName(details.getFullName());
         castMember.setBio(details.getBio());
+        castMember.setBirthDate(details.getBirthDate());
+        castMember.setNationality(details.getNationality());
+        castMember.setImageUrl(details.getImageUrl());
         return castMemberRepository.save(castMember);
     }
 

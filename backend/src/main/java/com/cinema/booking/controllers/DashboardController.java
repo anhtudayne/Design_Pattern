@@ -36,6 +36,9 @@ public class DashboardController {
     private PaymentRepository paymentRepository;
 
     @Autowired
+    private TicketRepository ticketRepository;
+
+    @Autowired
     private VoucherService voucherService;
 
     @Operation(summary = "Lấy số liệu tổng quan hệ thống")
@@ -65,7 +68,7 @@ public class DashboardController {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         stats.put("totalRevenue", revenue);
-        stats.put("totalTickets", successfulPayments.size()); // Rough estimate: 1 success payment = 1 booking (multiple tickets potentially, but good enough for simple stat)
+        stats.put("totalTickets", ticketRepository.count());
         return ResponseEntity.ok(stats);
     }
     @Operation(summary = "Lấy dữ liệu doanh thu 7 ngày gần nhất")

@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -83,22 +82,16 @@ public class PublicController {
             @RequestParam(required = false) Integer movieId,
             @RequestParam(required = false) String date) {
 
-        List<ShowtimeDTO> all = showtimeService.getAllShowtimes();
-
-        // Filter theo cinemaId (enriched field trên ShowtimeDTO)
-        if (cinemaId != null) {
-            all = all.stream().filter(s -> cinemaId.equals(s.getCinemaId())).collect(Collectors.toList());
-        }
-        // Filter theo movieId
-        if (movieId != null) {
-            all = all.stream().filter(s -> movieId.equals(s.getMovieId())).collect(Collectors.toList());
-        }
-        // Filter theo date (YYYY-MM-DD)
+        LocalDate filterDate = null;
         if (date != null && !date.isBlank()) {
-            LocalDate filterDate = LocalDate.parse(date);
-            all = all.stream().filter(s -> s.getStartTime().toLocalDate().equals(filterDate)).collect(Collectors.toList());
+            try {
+                filterDate = LocalDate.parse(date);
+            } catch (Exception e) {
+                return ResponseEntity.badRequest().build();
+            }
         }
-        return ResponseEntity.ok(all);
+
+        return ResponseEntity.ok(showtimeService.searchPublicShowtimes(cinemaId, movieId, filterDate));
     }
 
     // 4.6 Menu F&B công khai (danh mục)

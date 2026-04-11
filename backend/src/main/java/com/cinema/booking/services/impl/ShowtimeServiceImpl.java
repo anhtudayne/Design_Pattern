@@ -4,14 +4,17 @@ import com.cinema.booking.dtos.ShowtimeDTO;
 import com.cinema.booking.entities.Movie;
 import com.cinema.booking.entities.Room;
 import com.cinema.booking.entities.Showtime;
+import com.cinema.booking.patterns.specification.ShowtimeSpecifications;
 import com.cinema.booking.repositories.MovieRepository;
 import com.cinema.booking.repositories.RoomRepository;
 import com.cinema.booking.repositories.ShowtimeRepository;
 import com.cinema.booking.services.ShowtimeService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -107,5 +110,16 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     @Override
     public void deleteShowtime(Integer id) {
         showtimeRepository.deleteById(id);
+    }
+
+    @Override
+    public List<ShowtimeDTO> searchPublicShowtimes(Integer cinemaId, Integer movieId, LocalDate date) {
+        Specification<Showtime> spec = Specification
+                .where(ShowtimeSpecifications.hasCinemaId(cinemaId))
+                .and(ShowtimeSpecifications.hasMovieId(movieId))
+                .and(ShowtimeSpecifications.onDate(date));
+        return showtimeRepository.findAll(spec).stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
     }
 }

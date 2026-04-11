@@ -69,6 +69,9 @@ public class CheckoutServiceImpl implements CheckoutService {
     @Autowired
     private com.cinema.booking.patterns.chainofresponsibility.CheckoutValidationHandler checkoutValidationChain;
 
+    @Autowired
+    private com.cinema.booking.patterns.mediator.PostPaymentMediator postPaymentMediator;
+
     @Override
     @Transactional
     public String createBooking(Integer userId, Integer showtimeId, List<Integer> seatIds, List<BookingCalculationDTO.FnbOrderDTO> fnbs, String promoCode) throws Exception {
@@ -160,24 +163,12 @@ public class CheckoutServiceImpl implements CheckoutService {
         Integer bookingId = Integer.parseInt(parts[0]);
         Booking booking = bookingRepository.findById(bookingId).orElseThrow(() -> new RuntimeException("Không tìm thấy Booking ID: " + bookingId));
 
-        // Nếu chế độ "Tất cả thành công" đang bật HOẶC resultCode == 0 (Thanh toán thành công thực sự)
-        if (devAllSuccess || callback.getResultCode() == 0) {
-            System.out.println(">>> [StarCine] Xử lý thanh toán THÀNH CÔNG cho Booking #" + bookingId);
-            
-            // 1. Thanh toán THÀNH CÔNG -> Cập nhật trạng thái Booking
-            booking.confirm();
-            bookingRepository.save(booking);
+        boolean success = devAllSuccess || callback.getResultCode() == 0;
 
-            // 1.5 Cập nhật tổng chi tiêu cho khách hàng (Customer)
-            Customer customer = booking.getCustomer();
-            if (customer != null) {
-                BigDecimal paidAmount = new BigDecimal(callback.getAmount());
-                safeIncreaseCustomerSpending(customer.getUserId(), paidAmount);
-                System.out.println(">>> [StarCine] Đã cộng total_spending cho User #" + customer.getUserId() + " thêm: " + paidAmount);
-            }
+        List<Integer> seatIds = null;
+        Integer showtimeId = null;
 
-            // 1.7 Bóc tách seatIds từ extraData và tạo Ticket thực sự cho Booking này
-            // Log thực tế extraData để debug chính xác
+        if (success) {
             System.out.println(">>> [StarCine] rawExtraData nhận được: " + extraData);
             
             // Thử Decode nếu extraData bị URL encode (vd: %7C cho |)
@@ -192,91 +183,31 @@ public class CheckoutServiceImpl implements CheckoutService {
             }
 
             if (parts.length > 2 && !parts[2].isEmpty()) {
-                Integer showtimeId = Integer.parseInt(parts[1]);
+                showtimeId = Integer.parseInt(parts[1]);
                 String[] seatIdStrs = parts[2].split(",");
-                Showtime showtime = showtimeRepository.findById(showtimeId)
-                        .orElseThrow(() -> new RuntimeException("Không tìm thấy Showtime ID: " + showtimeId));
-                int ticketsCreated = 0;
-                
-                for (String sId : seatIdStrs) {
+                seatIds = new java.util.ArrayList<>();
+                for (String s : seatIdStrs) {
                     try {
-                        Integer seatId = Integer.parseInt(sId.trim());
-                        Seat seat = seatRepository.findById(seatId).orElse(null);
-                        if (seat != null) {
-                            BigDecimal ticketPrice = showtime.getBasePrice()
-                                    .add(seat.getSeatType() != null && seat.getSeatType().getPriceSurcharge() != null
-                                            ? seat.getSeatType().getPriceSurcharge()
-                                            : BigDecimal.ZERO);
-
-                            Ticket ticket = Ticket.builder()
-                                    .booking(booking)
-                                    .seat(seat)
-                                    .showtime(showtime)
-                                    .price(ticketPrice)
-                                    .build();
-                            ticketRepository.save(ticket);
-                            ticketsCreated++;
-                        } else {
-                            System.err.println(">>> [StarCine] WARNING: Không tìm thấy Ghế (Seat) với ID: " + seatId);
-                        }
-                    } catch (NumberFormatException nfe) {
-                        System.err.println(">>> [StarCine] ERROR: Không thể parse seatId từ chuỗi: " + sId);
-                    }
+                        seatIds.add(Integer.parseInt(s.trim()));
+                    } catch (NumberFormatException ignored) {}
                 }
-                System.out.println(">>> [StarCine] Đã tạo THÀNH CÔNG " + ticketsCreated + " vé cho Booking #" + bookingId);
-            } else {
-                System.err.println(">>> [StarCine] BỎ QUA TẠO VÉ: extraData không đúng định dạng mong muốn 'id|seatids' hoặc seatids bị trống.");
             }
+        }
 
-            // 2. Cập nhật record Payment hiện tại từ PENDING -> SUCCESS
-            try {
-                // Lấy ra Payment PENDING mới nhất của Booking này để cập nhật
-                List<Payment> payments = paymentRepository.findByBookingAndPaymentMethodAndStatus(booking, "MOMO", Payment.PaymentStatus.PENDING);
-                
-                Payment payment;
-                if (!payments.isEmpty()) {
-                    payment = payments.get(payments.size() - 1); // Lấy cái cuối cùng (mới nhất)
-                } else {
-                    // Nếu không thấy (đề phòng), tạo mới 
-                    payment = Payment.builder()
-                            .booking(booking)
-                            .paymentMethod("MOMO")
-                            .amount(new BigDecimal(callback.getAmount()))
-                            .build();
-                }
+        com.cinema.booking.patterns.mediator.MomoCallbackContext context = com.cinema.booking.patterns.mediator.MomoCallbackContext.builder()
+                .callback(callback)
+                .booking(booking)
+                .seatIds(seatIds)
+                .showtimeId(showtimeId)
+                .success(success)
+                .build();
 
-                payment.setStatus(Payment.PaymentStatus.SUCCESS);
-                payment.setPaidAt(LocalDateTime.now());
-                paymentRepository.save(payment);
-            } catch (Exception e) {
-                System.err.println(">>> [StarCine] ERROR khi cập nhật Payment: " + e.getMessage());
-                // Không throw exception để tránh rollback trạng thái PAID của Booking
-            }
-
-            // 3. Gửi Email vé
-            try {
-                System.out.println(">>> [StarCine] Đang gửi Email vé trực tiếp...");
-                emailService.sendTicketEmail(bookingId);
-            } catch (Exception e) {
-                System.err.println(">>> [StarCine] ERROR khi gửi Email: " + e.getMessage());
-            }
+        if (success) {
+            System.out.println(">>> [StarCine] Xử lý thanh toán THÀNH CÔNG cho Booking #" + bookingId);
+            postPaymentMediator.settleSuccess(context);
         } else {
             System.out.println(">>> [StarCine] Xử lý thanh toán THẤT BẠI cho Booking #" + bookingId + " (resultCode=" + callback.getResultCode() + ")");
-            // Cập nhật record Payment sang FAILED
-            try {
-                List<Payment> payments = paymentRepository.findByBookingAndPaymentMethodAndStatus(booking, "MOMO", Payment.PaymentStatus.PENDING);
-                
-                if (!payments.isEmpty()) {
-                    Payment payment = payments.get(payments.size() - 1);
-                    payment.setStatus(Payment.PaymentStatus.FAILED);
-                    paymentRepository.save(payment);
-                }
-            } catch (Exception e) {
-                System.err.println(">>> [StarCine] ERROR khi cập nhật Payment FAILED: " + e.getMessage());
-            }
-
-            booking.setStatus(Booking.BookingStatus.CANCELLED);
-            bookingRepository.save(booking);
+            postPaymentMediator.settleFailure(context);
         }
     }
 

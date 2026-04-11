@@ -111,13 +111,25 @@ classDiagram
   direction TB
   class MovieService {
     <<interface>>
+    +getAllMovies()
+    +getMoviesByStatus(status)
+    +getMovieById(id)
+    +createMovie(dto)
+    +updateMovie(id, dto)
+    +deleteMovie(id)
   }
   class MovieServiceImpl
-  class CachingMovieServiceProxy
+  class CachingMovieServiceProxy {
+    -delegate: MovieService
+    -redisTemplate: RedisTemplate
+    -ttlSeconds: long
+  }
+  class RedisTemplate
 
   MovieService <|.. MovieServiceImpl
   MovieService <|.. CachingMovieServiceProxy
   CachingMovieServiceProxy o-- MovieService : delegate
+  CachingMovieServiceProxy --> RedisTemplate : caches via
 ```
 
 ---

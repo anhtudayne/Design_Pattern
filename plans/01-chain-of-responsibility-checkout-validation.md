@@ -109,7 +109,14 @@ Sau moi handler: neu OK thi goi `next.handle(ctx)`.
 ```mermaid
 classDiagram
   direction TB
-  class CheckoutValidationContext
+  class CheckoutValidationContext {
+    -userId: Integer
+    -showtimeId: Integer
+    -seatIds: List~Integer~
+    -promoCode: String
+    -user: User
+    -showtime: Showtime
+  }
   class CheckoutValidationHandler {
     <<interface>>
     +setNext(handler)
@@ -117,12 +124,17 @@ classDiagram
   }
   class AbstractCheckoutValidationHandler {
     <<abstract>>
+    -next: CheckoutValidationHandler
+    +handle(ctx)
+    #doHandle(ctx)*
   }
   class MaxSeatsHandler
   class UserExistsHandler
   class ShowtimeExistsHandler
   class SeatsNotSoldHandler
-  class CheckoutValidationConfig
+  class CheckoutValidationConfig {
+    <<configuration>>
+  }
 
   CheckoutValidationHandler <|.. AbstractCheckoutValidationHandler
   AbstractCheckoutValidationHandler <|-- MaxSeatsHandler
@@ -130,8 +142,11 @@ classDiagram
   AbstractCheckoutValidationHandler <|-- ShowtimeExistsHandler
   AbstractCheckoutValidationHandler <|-- SeatsNotSoldHandler
   AbstractCheckoutValidationHandler o-- CheckoutValidationHandler : next
-  CheckoutValidationConfig ..> CheckoutValidationHandler : builds
-  CheckoutValidationHandler ..> CheckoutValidationContext : reads
+  CheckoutValidationConfig ..> CheckoutValidationHandler : builds chain
+  CheckoutValidationHandler ..> CheckoutValidationContext : uses
+  UserExistsHandler --> UserRepository : finds user
+  ShowtimeExistsHandler --> ShowtimeRepository : finds showtime
+  SeatsNotSoldHandler --> TicketRepository : checks sold
 ```
 
 ---

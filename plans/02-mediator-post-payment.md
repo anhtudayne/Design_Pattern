@@ -115,13 +115,23 @@
 ```mermaid
 classDiagram
   direction TB
-  class MomoCallbackContext
+  class MomoCallbackContext {
+    -callback: MomoCallbackRequest
+    -booking: Booking
+    -seatIds: List~Integer~
+    -showtimeId: Integer
+    -success: boolean
+  }
   class PaymentColleague {
     <<interface>>
     +onPaymentSuccess(ctx)
     +onPaymentFailure(ctx)
   }
-  class PostPaymentMediator
+  class PostPaymentMediator {
+    -colleagues: List~PaymentColleague~
+    +settleSuccess(ctx)
+    +settleFailure(ctx)
+  }
   class BookingStatusUpdater
   class UserSpendingUpdater
   class TicketIssuer
@@ -133,8 +143,9 @@ classDiagram
   PaymentColleague <|.. TicketIssuer
   PaymentColleague <|.. PaymentStatusUpdater
   PaymentColleague <|.. TicketEmailNotifier
-  PostPaymentMediator o-- PaymentColleague : coordinates
-  PostPaymentMediator ..> MomoCallbackContext
+  PostPaymentMediator "1" o-- "*" PaymentColleague : coordinates
+  PostPaymentMediator ..> MomoCallbackContext : passes to colleagues
+  PaymentColleague ..> MomoCallbackContext : reads/writes
 ```
 
 ---

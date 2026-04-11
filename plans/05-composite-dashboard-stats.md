@@ -116,9 +116,11 @@ classDiagram
   direction TB
   class StatsComponent {
     <<interface>>
-    +collect(target)
+    +collect(target: Map)
   }
-  class DashboardStatsComposite
+  class DashboardStatsComposite {
+    -children: List~StatsComponent~
+  }
   class MovieStatsLeaf
   class UserStatsLeaf
   class ShowtimeStatsLeaf
@@ -133,7 +135,7 @@ classDiagram
   StatsComponent <|.. FnbStatsLeaf
   StatsComponent <|.. VoucherStatsLeaf
   StatsComponent <|.. RevenueStatsLeaf
-  DashboardStatsComposite o-- StatsComponent : children
+  DashboardStatsComposite "1" o-- "*" StatsComponent : children
 ```
 
 ---

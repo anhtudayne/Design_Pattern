@@ -1,14 +1,14 @@
 package com.cinema.booking.patterns.mediator;
 
 import com.cinema.booking.services.EmailService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class TicketEmailNotifier implements PaymentColleague {
 
-    @Autowired
-    private EmailService emailService;
+    private final EmailService emailService;
 
     @Override
     public void onPaymentSuccess(MomoCallbackContext context) {
@@ -22,6 +22,6 @@ public class TicketEmailNotifier implements PaymentColleague {
 
     @Override
     public void onPaymentFailure(MomoCallbackContext context) {
-        // Do nothing
+        // No email on failure
     }
 }

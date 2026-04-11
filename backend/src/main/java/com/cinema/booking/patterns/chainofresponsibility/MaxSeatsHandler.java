@@ -4,6 +4,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class MaxSeatsHandler extends AbstractCheckoutValidationHandler {
+
     private static final int MAX_SEATS_PER_BOOKING = 8;
 
     @Override

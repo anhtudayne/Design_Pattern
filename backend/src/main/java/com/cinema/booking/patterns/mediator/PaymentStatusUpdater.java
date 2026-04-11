@@ -2,7 +2,7 @@ package com.cinema.booking.patterns.mediator;
 
 import com.cinema.booking.entities.Payment;
 import com.cinema.booking.repositories.PaymentRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -10,16 +10,17 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Component
+@RequiredArgsConstructor
 public class PaymentStatusUpdater implements PaymentColleague {
 
-    @Autowired
-    private PaymentRepository paymentRepository;
+    private final PaymentRepository paymentRepository;
 
     @Override
     public void onPaymentSuccess(MomoCallbackContext context) {
         try {
-            List<Payment> payments = paymentRepository.findByBookingAndPaymentMethodAndStatus(context.getBooking(), "MOMO", Payment.PaymentStatus.PENDING);
-            
+            List<Payment> payments = paymentRepository.findByBookingAndPaymentMethodAndStatus(
+                    context.getBooking(), "MOMO", Payment.PaymentStatus.PENDING);
+
             Payment payment;
             if (!payments.isEmpty()) {
                 payment = payments.get(payments.size() - 1);
@@ -42,8 +43,9 @@ public class PaymentStatusUpdater implements PaymentColleague {
     @Override
     public void onPaymentFailure(MomoCallbackContext context) {
         try {
-            List<Payment> payments = paymentRepository.findByBookingAndPaymentMethodAndStatus(context.getBooking(), "MOMO", Payment.PaymentStatus.PENDING);
-            
+            List<Payment> payments = paymentRepository.findByBookingAndPaymentMethodAndStatus(
+                    context.getBooking(), "MOMO", Payment.PaymentStatus.PENDING);
+
             if (!payments.isEmpty()) {
                 Payment payment = payments.get(payments.size() - 1);
                 payment.setStatus(Payment.PaymentStatus.FAILED);

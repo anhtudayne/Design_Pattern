@@ -38,8 +38,8 @@ public class DashboardController {
     @Operation(summary = "Lấy dữ liệu doanh thu 7 ngày gần nhất")
     @GetMapping("/revenue-weekly")
     public ResponseEntity<List<Map<String, Object>>> getWeeklyRevenue() {
-        List<Payment> payments = paymentRepository.findAll().stream()
-                .filter(p -> p.getStatus() == Payment.PaymentStatus.SUCCESS && p.getPaidAt() != null)
+        List<Payment> payments = paymentRepository.findByStatus(Payment.PaymentStatus.SUCCESS).stream()
+                .filter(p -> p.getPaidAt() != null)
                 .toList();
 
         // Khởi tạo map cho 7 ngày trong tuần

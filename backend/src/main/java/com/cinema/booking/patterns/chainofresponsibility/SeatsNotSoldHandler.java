@@ -1,14 +1,14 @@
 package com.cinema.booking.patterns.chainofresponsibility;
 
 import com.cinema.booking.repositories.TicketRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class SeatsNotSoldHandler extends AbstractCheckoutValidationHandler {
 
-    @Autowired
-    private TicketRepository ticketRepository;
+    private final TicketRepository ticketRepository;
 
     @Override
     protected void doHandle(CheckoutValidationContext context) {

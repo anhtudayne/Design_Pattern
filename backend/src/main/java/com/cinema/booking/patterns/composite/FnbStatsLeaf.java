@@ -1,16 +1,16 @@
 package com.cinema.booking.patterns.composite;
 
 import com.cinema.booking.repositories.FnbItemRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
 @Component
+@RequiredArgsConstructor
 public class FnbStatsLeaf implements StatsComponent {
 
-    @Autowired
-    private FnbItemRepository fnbItemRepository;
+    private final FnbItemRepository fnbItemRepository;
 
     @Override
     public void collect(Map<String, Object> target) {

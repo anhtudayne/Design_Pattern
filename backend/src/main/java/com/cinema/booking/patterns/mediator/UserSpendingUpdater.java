@@ -2,17 +2,20 @@ package com.cinema.booking.patterns.mediator;
 
 import com.cinema.booking.entities.Customer;
 import com.cinema.booking.repositories.CustomerRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.concurrent.TimeUnit;
 
 @Component
+@RequiredArgsConstructor
 public class UserSpendingUpdater implements PaymentColleague {
 
-    @Autowired
-    private CustomerRepository customerRepository;
+    private static final int MAX_DEADLOCK_RETRIES = 3;
+    private static final long RETRY_BASE_MS = 120L;
+
+    private final CustomerRepository customerRepository;
 
     @Override
     public void onPaymentSuccess(MomoCallbackContext context) {
@@ -20,18 +23,19 @@ public class UserSpendingUpdater implements PaymentColleague {
         if (customer != null) {
             BigDecimal paidAmount = new BigDecimal(context.getCallback().getAmount());
             safeIncreaseCustomerSpending(customer.getUserId(), paidAmount);
-            System.out.println(">>> [StarCine] Đã cộng total_spending cho User #" + customer.getUserId() + " thêm: " + paidAmount);
+            System.out.println(">>> [StarCine] Đã cộng total_spending cho User #"
+                    + customer.getUserId() + " thêm: " + paidAmount);
         }
     }
 
     @Override
     public void onPaymentFailure(MomoCallbackContext context) {
-        // Do nothing on failure
+        // No spending update on failure
     }
 
     private void safeIncreaseCustomerSpending(Integer userId, BigDecimal amount) {
         RuntimeException last = null;
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < MAX_DEADLOCK_RETRIES; i++) {
             try {
                 customerRepository.increaseTotalSpending(userId, amount);
                 return;
@@ -42,7 +46,7 @@ public class UserSpendingUpdater implements PaymentColleague {
                     throw ex;
                 }
                 try {
-                    TimeUnit.MILLISECONDS.sleep(120L * (i + 1));
+                    TimeUnit.MILLISECONDS.sleep(RETRY_BASE_MS * (i + 1));
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                     throw ex;

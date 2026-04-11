@@ -1,14 +1,15 @@
 package com.cinema.booking.patterns.mediator;
 
+import com.cinema.booking.entities.Booking;
 import com.cinema.booking.repositories.BookingRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class BookingStatusUpdater implements PaymentColleague {
 
-    @Autowired
-    private BookingRepository bookingRepository;
+    private final BookingRepository bookingRepository;
 
     @Override
     public void onPaymentSuccess(MomoCallbackContext context) {
@@ -18,7 +19,7 @@ public class BookingStatusUpdater implements PaymentColleague {
 
     @Override
     public void onPaymentFailure(MomoCallbackContext context) {
-        context.getBooking().setStatus(com.cinema.booking.entities.Booking.BookingStatus.CANCELLED);
+        context.getBooking().setStatus(Booking.BookingStatus.CANCELLED);
         bookingRepository.save(context.getBooking());
     }
 }

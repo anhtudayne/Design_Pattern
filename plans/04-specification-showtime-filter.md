@@ -106,23 +106,28 @@ classDiagram
   direction TB
   class ShowtimeSpecifications {
     <<final>>
-    +hasCinemaId()
-    +hasMovieId()
-    +onDate()
+    +hasCinemaId() Specification
+    +hasMovieId() Specification
+    +onDate() Specification
   }
-  class Specification {
+  class Specification~T~ {
     <<interface>>
   }
   class ShowtimeRepository
   class ShowtimeServiceImpl
-  class JpaSpecificationExecutor {
+  class ShowtimeService {
+    <<interface>>
+  }
+  class JpaSpecificationExecutor~T~ {
     <<interface>>
   }
 
-  ShowtimeSpecifications ..> Specification : builds
-  ShowtimeRepository ..|> JpaSpecificationExecutor
-  ShowtimeServiceImpl ..> ShowtimeSpecifications
-  ShowtimeServiceImpl ..> ShowtimeRepository
+  ShowtimeSpecifications ..> Specification : creates
+  JpaSpecificationExecutor <|-- ShowtimeRepository : extends
+  ShowtimeService <|.. ShowtimeServiceImpl
+  ShowtimeServiceImpl --> ShowtimeRepository : @Autowired
+  ShowtimeServiceImpl ..> ShowtimeSpecifications : calls static
+  ShowtimeRepository ..> Specification : accepts in findAll
 ```
 
 ---

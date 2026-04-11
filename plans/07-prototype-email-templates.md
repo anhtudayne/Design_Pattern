@@ -102,18 +102,22 @@ classDiagram
   direction TB
   class EmailTemplate {
     <<interface>>
-    +copy()
-    +toMessage()
+    +copy() EmailTemplate
+    +toMessage() SimpleMailMessage
   }
   class TicketEmailPrototype
   class WelcomeEmailPrototype
   class RefundEmailPrototype
-  class EmailServiceImpl
+  class EmailServiceImpl {
+    -ticketEmailPrototype: TicketEmailPrototype
+    -welcomeEmailPrototype: WelcomeEmailPrototype
+  }
 
   EmailTemplate <|.. TicketEmailPrototype
   EmailTemplate <|.. WelcomeEmailPrototype
   EmailTemplate <|.. RefundEmailPrototype
-  EmailServiceImpl ..> EmailTemplate : uses copy
+  EmailServiceImpl --> EmailTemplate : uses (ticket prototype)
+  EmailServiceImpl --> EmailTemplate : uses (welcome prototype)
 ```
 
 ---

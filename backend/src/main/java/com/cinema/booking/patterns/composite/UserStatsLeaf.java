@@ -1,16 +1,16 @@
 package com.cinema.booking.patterns.composite;
 
 import com.cinema.booking.repositories.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
 @Component
+@RequiredArgsConstructor
 public class UserStatsLeaf implements StatsComponent {
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
     @Override
     public void collect(Map<String, Object> target) {

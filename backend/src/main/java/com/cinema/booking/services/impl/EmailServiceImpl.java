@@ -2,6 +2,8 @@ package com.cinema.booking.services.impl;
 
 import com.cinema.booking.entities.Booking;
 import com.cinema.booking.entities.Ticket;
+import com.cinema.booking.patterns.prototype.TicketEmailPrototype;
+import com.cinema.booking.patterns.prototype.WelcomeEmailPrototype;
 import com.cinema.booking.repositories.BookingRepository;
 import com.cinema.booking.repositories.TicketRepository;
 import com.cinema.booking.services.EmailService;
@@ -10,6 +12,10 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Objects;
 
 @Service
 public class EmailServiceImpl implements EmailService {
@@ -22,6 +28,13 @@ public class EmailServiceImpl implements EmailService {
 
     @Autowired
     private TicketRepository ticketRepository;
+
+    // Prototype singletons — Spring manages their lifecycle
+    @Autowired
+    private TicketEmailPrototype ticketEmailPrototype;
+
+    @Autowired
+    private WelcomeEmailPrototype welcomeEmailPrototype;
 
     @Override
     @Transactional(readOnly = true)
@@ -37,27 +50,26 @@ public class EmailServiceImpl implements EmailService {
             return;
         }
 
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(email);
-        message.setSubject("Vé xem phim StarCine của bạn #" + bookingId);
-        java.util.List<Ticket> tickets = ticketRepository.findByBooking_BookingId(bookingId);
+        List<Ticket> tickets = ticketRepository.findByBooking_BookingId(bookingId);
         Ticket firstTicket = tickets.isEmpty() ? null : tickets.get(0);
         String movieTitle = (firstTicket != null && firstTicket.getShowtime() != null && firstTicket.getShowtime().getMovie() != null)
                 ? firstTicket.getShowtime().getMovie().getTitle() : "N/A";
-        String showtime = (firstTicket != null && firstTicket.getShowtime() != null)
+        String showtimeStr = (firstTicket != null && firstTicket.getShowtime() != null)
                 ? String.valueOf(firstTicket.getShowtime().getStartTime()) : "N/A";
-        java.math.BigDecimal total = tickets.stream()
+        BigDecimal total = tickets.stream()
                 .map(Ticket::getPrice)
-                .filter(java.util.Objects::nonNull)
-                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
-        message.setText("Chào " + booking.getCustomer().getFullname() + ",\n\n" +
-                "Cảm ơn bạn đã đặt vé tại StarCine.\n" +
-                "Mã số đặt vé: " + bookingId + "\n" +
-                "Suất chiếu: " + movieTitle + "\n" +
-                "Thời gian: " + showtime + "\n" +
-                "Tổng tiền: " + total + " VNĐ\n\n" +
-                "Bạn có thể dùng mã booking để nhận vé tại quầy.\n\n" +
-                "Trân trọng,\nStarCine Team");
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Prototype — copy() → populate → toMessage()
+        SimpleMailMessage message = ((TicketEmailPrototype) ticketEmailPrototype.copy())
+                .to(email)
+                .bookingId(bookingId)
+                .customerName(booking.getCustomer().getFullname())
+                .movieTitle(movieTitle)
+                .showtime(showtimeStr)
+                .totalAmount(total)
+                .toMessage();
 
         try {
             mailSender.send(message);
@@ -66,16 +78,14 @@ public class EmailServiceImpl implements EmailService {
             System.err.println(">>> Lỗi gửi Email: " + e.getMessage());
         }
     }
+
     @Override
     public void sendWelcomeEmail(String email, String fullname) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(email);
-        message.setSubject("Chào mừng bạn đến với StarCine!");
-        message.setText("Chào " + fullname + ",\n\n" +
-                "Chào mừng bạn đã gia nhập gia đình StarCine! " +
-                "Chúng tôi rất vui mừng khi thấy bạn đăng ký tài khoản.\n\n" +
-                "Hãy bắt đầu đặt vé và tận hưởng những bộ phim hay nhất ngay hôm nay!\n\n" +
-                "Trân trọng,\nStarCine Team");
+        // Prototype — copy() → populate → toMessage()
+        SimpleMailMessage message = ((WelcomeEmailPrototype) welcomeEmailPrototype.copy())
+                .to(email)
+                .fullname(fullname)
+                .toMessage();
 
         try {
             mailSender.send(message);

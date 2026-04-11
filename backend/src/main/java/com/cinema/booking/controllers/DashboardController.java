@@ -1,8 +1,8 @@
 package com.cinema.booking.controllers;
 
 import com.cinema.booking.entities.Payment;
-import com.cinema.booking.repositories.*;
-import com.cinema.booking.services.VoucherService;
+import com.cinema.booking.patterns.composite.DashboardStatsComposite;
+import com.cinema.booking.repositories.PaymentRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,55 +20,19 @@ import java.util.Map;
 @Tag(name = "14. Dashboard Thống kê", description = "Các API cung cấp dữ liệu tổng quan cho trang quản trị")
 public class DashboardController {
 
+    /** Composite — aggregates all stat leaves; replaces 6 direct repo/service injections in getStats. */
     @Autowired
-    private MovieRepository movieRepository;
+    private DashboardStatsComposite dashboardStatsComposite;
 
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private ShowtimeRepository showtimeRepository;
-
-    @Autowired
-    private FnbItemRepository fnbItemRepository;
-
+    /** Still needed for the weekly revenue endpoint (not yet composited). */
     @Autowired
     private PaymentRepository paymentRepository;
-
-    @Autowired
-    private TicketRepository ticketRepository;
-
-    @Autowired
-    private VoucherService voucherService;
 
     @Operation(summary = "Lấy số liệu tổng quan hệ thống")
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> getStats() {
         Map<String, Object> stats = new HashMap<>();
-        
-        stats.put("totalMovies", movieRepository.count());
-        stats.put("totalUsers", userRepository.count());
-        stats.put("totalShowtimes", showtimeRepository.count());
-        stats.put("totalFnbItems", fnbItemRepository.count());
-        
-        // Vouchers from Redis (VoucherService)
-        try {
-            stats.put("totalVouchers", voucherService.getAllVouchers().size());
-        } catch (Exception e) {
-            stats.put("totalVouchers", 0);
-        }
-
-        // Calculate Revenue from Successful Payments
-        List<Payment> successfulPayments = paymentRepository.findAll().stream()
-                .filter(p -> p.getStatus() == Payment.PaymentStatus.SUCCESS)
-                .toList();
-
-        BigDecimal revenue = successfulPayments.stream()
-                .map(Payment::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        stats.put("totalRevenue", revenue);
-        stats.put("totalTickets", ticketRepository.count());
+        dashboardStatsComposite.collect(stats);
         return ResponseEntity.ok(stats);
     }
     @Operation(summary = "Lấy dữ liệu doanh thu 7 ngày gần nhất")

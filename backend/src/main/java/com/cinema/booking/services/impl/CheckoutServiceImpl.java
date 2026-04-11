@@ -66,19 +66,21 @@ public class CheckoutServiceImpl implements CheckoutService {
     @Autowired
     private CustomerRepository customerRepository;
 
+    @Autowired
+    private com.cinema.booking.patterns.chainofresponsibility.CheckoutValidationHandler checkoutValidationChain;
+
     @Override
     @Transactional
     public String createBooking(Integer userId, Integer showtimeId, List<Integer> seatIds, List<BookingCalculationDTO.FnbOrderDTO> fnbs, String promoCode) throws Exception {
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
-        if (!(user instanceof Customer customer)) {
-            throw new RuntimeException("Chỉ Customer mới có thể đặt vé.");
-        }
-        // Kiểm tra xem ghế đã được bán chưa
-        for (Integer seatId : seatIds) {
-            if (ticketRepository.existsByShowtime_ShowtimeIdAndSeat_SeatId(showtimeId, seatId)) {
-                throw new RuntimeException("Ghế ID " + seatId + " đã được bán. Vui lòng chọn ghế khác.");
-            }
-        }
+        com.cinema.booking.patterns.chainofresponsibility.CheckoutValidationContext context = com.cinema.booking.patterns.chainofresponsibility.CheckoutValidationContext.builder()
+                .userId(userId)
+                .showtimeId(showtimeId)
+                .seatIds(seatIds)
+                .promoCode(promoCode)
+                .build();
+        checkoutValidationChain.handle(context);
+        
+        Customer customer = (Customer) context.getUser();
 
         Promotion promotion = promoCode != null ? promotionRepository.findByCode(promoCode).orElse(null) : null;
 
@@ -288,18 +290,16 @@ public class CheckoutServiceImpl implements CheckoutService {
             String promoCode,
             boolean success
     ) throws Exception {
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
-        if (!(user instanceof Customer customer)) {
-            throw new RuntimeException("Chỉ Customer mới có thể đặt vé.");
-        }
-        Showtime showtime = showtimeRepository.findById(showtimeId)
-                .orElseThrow(() -> new RuntimeException("Suất chiếu không tồn tại"));
-
-        for (Integer seatId : seatIds) {
-            if (ticketRepository.existsByShowtime_ShowtimeIdAndSeat_SeatId(showtimeId, seatId)) {
-                throw new RuntimeException("Ghế ID " + seatId + " đã được bán. Vui lòng chọn ghế khác.");
-            }
-        }
+        com.cinema.booking.patterns.chainofresponsibility.CheckoutValidationContext context = com.cinema.booking.patterns.chainofresponsibility.CheckoutValidationContext.builder()
+                .userId(userId)
+                .showtimeId(showtimeId)
+                .seatIds(seatIds)
+                .promoCode(promoCode)
+                .build();
+        checkoutValidationChain.handle(context);
+        
+        Customer customer = (Customer) context.getUser();
+        Showtime showtime = context.getShowtime();
 
         Promotion promotion = promoCode != null ? promotionRepository.findByCode(promoCode).orElse(null) : null;
 

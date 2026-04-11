@@ -4,6 +4,7 @@ import com.cinema.booking.dtos.MomoPaymentRequest;
 import com.cinema.booking.dtos.MomoPaymentResponse;
 import com.cinema.booking.security.SecurityUtils;
 import com.cinema.booking.services.MomoService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -31,7 +32,12 @@ public class MomoServiceImpl implements MomoService {
     @Value("${momo.ipn-url}")
     private String ipnUrl;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
+
+    @Autowired
+    public MomoServiceImpl(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
 
     @Override
     public MomoPaymentResponse createPayment(String orderId, long amount, String orderInfo, String extraData) throws Exception {

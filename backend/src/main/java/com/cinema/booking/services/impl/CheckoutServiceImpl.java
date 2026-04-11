@@ -1,8 +1,9 @@
 package com.cinema.booking.services.impl;
 
 import com.cinema.booking.dtos.BookingCalculationDTO;
+import com.cinema.booking.dtos.CheckoutRequest;
+import com.cinema.booking.dtos.CheckoutResult;
 import com.cinema.booking.dtos.MomoCallbackRequest;
-import com.cinema.booking.dtos.MomoPaymentResponse;
 import com.cinema.booking.dtos.PriceBreakdownDTO;
 import com.cinema.booking.entities.*;
 import com.cinema.booking.repositories.*;
@@ -10,6 +11,9 @@ import com.cinema.booking.services.BookingService;
 import com.cinema.booking.services.CheckoutService;
 import com.cinema.booking.services.EmailService;
 import com.cinema.booking.services.MomoService;
+import com.cinema.booking.services.factory.BookingFactory;
+import com.cinema.booking.services.template_method.checkout.DemoCheckoutProcess;
+import com.cinema.booking.services.template_method.checkout.MomoCheckoutProcess;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -19,7 +23,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 @Service
 public class CheckoutServiceImpl implements CheckoutService {
@@ -66,82 +69,43 @@ public class CheckoutServiceImpl implements CheckoutService {
     @Autowired
     private CustomerRepository customerRepository;
 
+    @Autowired
+    private BookingFactory bookingFactory;
+
+    // ──────────────────────────────────────────────────────────────────
+    //  Template Method Pattern: Inject 2 concrete checkout processes
+    // ──────────────────────────────────────────────────────────────────
+    @Autowired
+    private MomoCheckoutProcess momoCheckoutProcess;
+
+    @Autowired
+    private DemoCheckoutProcess demoCheckoutProcess;
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  1. createBooking — delegate to MomoCheckoutProcess (Template Method)
+    // ═══════════════════════════════════════════════════════════════════
     @Override
     @Transactional
-    public String createBooking(Integer userId, Integer showtimeId, List<Integer> seatIds, List<BookingCalculationDTO.FnbOrderDTO> fnbs, String promoCode) throws Exception {
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
-        if (!(user instanceof Customer customer)) {
-            throw new RuntimeException("Chỉ Customer mới có thể đặt vé.");
-        }
-        // Kiểm tra xem ghế đã được bán chưa
-        for (Integer seatId : seatIds) {
-            if (ticketRepository.existsByShowtime_ShowtimeIdAndSeat_SeatId(showtimeId, seatId)) {
-                throw new RuntimeException("Ghế ID " + seatId + " đã được bán. Vui lòng chọn ghế khác.");
-            }
-        }
-
-        Promotion promotion = promoCode != null ? promotionRepository.findByCode(promoCode).orElse(null) : null;
-
-        // Tính giá final
-        BookingCalculationDTO calculationRequest = new BookingCalculationDTO();
-        calculationRequest.setShowtimeId(showtimeId);
-        calculationRequest.setSeatIds(seatIds);
-        calculationRequest.setFnbs(fnbs);
-        calculationRequest.setPromoCode(promoCode);
-        PriceBreakdownDTO price = bookingService.calculatePrice(calculationRequest);
-
-        // Lưu Booking PENDING
-        Booking booking = Booking.builder()
-                .customer(customer)
-                .promotion(promotion)
-                .status(Booking.BookingStatus.PENDING)
-                .createdAt(LocalDateTime.now())
+    public String createBooking(Integer userId, Integer showtimeId, List<Integer> seatIds,
+                                List<BookingCalculationDTO.FnbOrderDTO> fnbs, String promoCode) throws Exception {
+        CheckoutRequest request = CheckoutRequest.builder()
+                .userId(userId)
+                .showtimeId(showtimeId)
+                .seatIds(seatIds)
+                .fnbs(fnbs)
+                .promoCode(promoCode)
                 .build();
-        booking = bookingRepository.save(booking);
 
-        // Lưu F&B
-        if (fnbs != null && !fnbs.isEmpty()) {
-            for (BookingCalculationDTO.FnbOrderDTO fnbDto : fnbs) {
-                FnbItem fnbItem = fnbItemRepository.findById(fnbDto.getItemId())
-                        .orElseThrow(() -> new RuntimeException("Sản phẩm F&B không tồn tại: " + fnbDto.getItemId()));
-                
-                FnBLine item = FnBLine.builder()
-                        .booking(booking)
-                        .item(fnbItem)
-                        .quantity(fnbDto.getQuantity())
-                        .unitPrice(fnbItem.getPrice())
-                        .build();
-                fnBLineRepository.save(item);
-            }
-        }
-
-        // Tạo MoMo Payment URL
-        // Gửi kèm seatIds qua extraData để khi callback quay lại có thông tin tạo Ticket
-        String seatIdsStr = (seatIds != null) ? seatIds.stream().map(String::valueOf).collect(Collectors.joining(",")) : "";
-        String extraData = booking.getBookingId() + "|" + showtimeId + "|" + seatIdsStr;
-
-        MomoPaymentResponse momoResponse = momoService.createPayment(
-                "BOOKING_" + booking.getBookingId(),
-                price.getFinalTotal().longValue(),
-                "Thanh toán vé xem phim StarCine cho Booking #" + booking.getBookingId(),
-                extraData
-        );
-        // Tạo Payment record PENDING
-        try {
-            Payment payment = Payment.builder()
-                    .booking(booking)
-                    .paymentMethod("MOMO")
-                    .amount(price.getFinalTotal())
-                    .status(Payment.PaymentStatus.PENDING)
-                    .build();
-            paymentRepository.save(payment);
-        } catch (Exception e) {
-            System.err.println(">>> [StarCine] ERROR khi lưu Payment PENDING: " + e.getMessage());
-        }
-
-        return momoResponse.getPayUrl();
+        CheckoutResult result = momoCheckoutProcess.checkout(request);
+        // processPayment() returns the MoMo payUrl string
+        return (String) result.getPaymentResult();
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    //  2. processMomoCallback — giữ nguyên logic callback (không refactor)
+    //     Vì callback không phải luồng "checkout mới" mà là xử lý kết quả
+    //     từ MoMo trả về, cấu trúc khác hoàn toàn so với checkout flow.
+    // ═══════════════════════════════════════════════════════════════════
     @Override
     @Transactional
     public void processMomoCallback(MomoCallbackRequest callback) throws Exception {
@@ -161,7 +125,7 @@ public class CheckoutServiceImpl implements CheckoutService {
         // Nếu chế độ "Tất cả thành công" đang bật HOẶC resultCode == 0 (Thanh toán thành công thực sự)
         if (devAllSuccess || callback.getResultCode() == 0) {
             System.out.println(">>> [StarCine] Xử lý thanh toán THÀNH CÔNG cho Booking #" + bookingId);
-            
+
             // 1. Thanh toán THÀNH CÔNG -> Cập nhật trạng thái Booking
             booking.confirm();
             bookingRepository.save(booking);
@@ -175,9 +139,8 @@ public class CheckoutServiceImpl implements CheckoutService {
             }
 
             // 1.7 Bóc tách seatIds từ extraData và tạo Ticket thực sự cho Booking này
-            // Log thực tế extraData để debug chính xác
             System.out.println(">>> [StarCine] rawExtraData nhận được: " + extraData);
-            
+
             // Thử Decode nếu extraData bị URL encode (vd: %7C cho |)
             if (extraData != null && extraData.contains("%7C")) {
                 try {
@@ -195,7 +158,7 @@ public class CheckoutServiceImpl implements CheckoutService {
                 Showtime showtime = showtimeRepository.findById(showtimeId)
                         .orElseThrow(() -> new RuntimeException("Không tìm thấy Showtime ID: " + showtimeId));
                 int ticketsCreated = 0;
-                
+
                 for (String sId : seatIdStrs) {
                     try {
                         Integer seatId = Integer.parseInt(sId.trim());
@@ -206,12 +169,8 @@ public class CheckoutServiceImpl implements CheckoutService {
                                             ? seat.getSeatType().getPriceSurcharge()
                                             : BigDecimal.ZERO);
 
-                            Ticket ticket = Ticket.builder()
-                                    .booking(booking)
-                                    .seat(seat)
-                                    .showtime(showtime)
-                                    .price(ticketPrice)
-                                    .build();
+                            // Sử dụng BookingFactory (Factory Method Pattern)
+                            Ticket ticket = bookingFactory.createTicket(booking, seat, showtime, ticketPrice);
                             ticketRepository.save(ticket);
                             ticketsCreated++;
                         } else {
@@ -228,19 +187,14 @@ public class CheckoutServiceImpl implements CheckoutService {
 
             // 2. Cập nhật record Payment hiện tại từ PENDING -> SUCCESS
             try {
-                // Lấy ra Payment PENDING mới nhất của Booking này để cập nhật
                 List<Payment> payments = paymentRepository.findByBookingAndPaymentMethodAndStatus(booking, "MOMO", Payment.PaymentStatus.PENDING);
-                
+
                 Payment payment;
                 if (!payments.isEmpty()) {
                     payment = payments.get(payments.size() - 1); // Lấy cái cuối cùng (mới nhất)
                 } else {
-                    // Nếu không thấy (đề phòng), tạo mới 
-                    payment = Payment.builder()
-                            .booking(booking)
-                            .paymentMethod("MOMO")
-                            .amount(new BigDecimal(callback.getAmount()))
-                            .build();
+                    // Nếu không thấy (đề phòng), tạo mới bằng Factory Method
+                    payment = bookingFactory.createPayment(booking, "MOMO", new BigDecimal(callback.getAmount()), Payment.PaymentStatus.SUCCESS);
                 }
 
                 payment.setStatus(Payment.PaymentStatus.SUCCESS);
@@ -263,7 +217,7 @@ public class CheckoutServiceImpl implements CheckoutService {
             // Cập nhật record Payment sang FAILED
             try {
                 List<Payment> payments = paymentRepository.findByBookingAndPaymentMethodAndStatus(booking, "MOMO", Payment.PaymentStatus.PENDING);
-                
+
                 if (!payments.isEmpty()) {
                     Payment payment = payments.get(payments.size() - 1);
                     payment.setStatus(Payment.PaymentStatus.FAILED);
@@ -278,6 +232,9 @@ public class CheckoutServiceImpl implements CheckoutService {
         }
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    //  3. processDemoCheckout — delegate to DemoCheckoutProcess (Template Method)
+    // ═══════════════════════════════════════════════════════════════════
     @Override
     @Transactional
     public java.util.Map<String, Object> processDemoCheckout(
@@ -288,93 +245,23 @@ public class CheckoutServiceImpl implements CheckoutService {
             String promoCode,
             boolean success
     ) throws Exception {
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
-        if (!(user instanceof Customer customer)) {
-            throw new RuntimeException("Chỉ Customer mới có thể đặt vé.");
-        }
-        Showtime showtime = showtimeRepository.findById(showtimeId)
-                .orElseThrow(() -> new RuntimeException("Suất chiếu không tồn tại"));
-
-        for (Integer seatId : seatIds) {
-            if (ticketRepository.existsByShowtime_ShowtimeIdAndSeat_SeatId(showtimeId, seatId)) {
-                throw new RuntimeException("Ghế ID " + seatId + " đã được bán. Vui lòng chọn ghế khác.");
-            }
-        }
-
-        Promotion promotion = promoCode != null ? promotionRepository.findByCode(promoCode).orElse(null) : null;
-
-        BookingCalculationDTO calculationRequest = new BookingCalculationDTO();
-        calculationRequest.setShowtimeId(showtimeId);
-        calculationRequest.setSeatIds(seatIds);
-        calculationRequest.setFnbs(fnbs);
-        calculationRequest.setPromoCode(promoCode);
-        PriceBreakdownDTO price = bookingService.calculatePrice(calculationRequest);
-
-        Booking booking = Booking.builder()
-                .customer(customer)
-                .promotion(promotion)
-                .status(success ? Booking.BookingStatus.CONFIRMED : Booking.BookingStatus.CANCELLED)
-                .createdAt(LocalDateTime.now())
+        CheckoutRequest request = CheckoutRequest.builder()
+                .userId(userId)
+                .showtimeId(showtimeId)
+                .seatIds(seatIds)
+                .fnbs(fnbs)
+                .promoCode(promoCode)
+                .demoSuccess(success)
                 .build();
-        booking = bookingRepository.save(booking);
 
-        if (fnbs != null && !fnbs.isEmpty()) {
-            for (BookingCalculationDTO.FnbOrderDTO fnbDto : fnbs) {
-                FnbItem fnbItem = fnbItemRepository.findById(fnbDto.getItemId())
-                        .orElseThrow(() -> new RuntimeException("Sản phẩm F&B không tồn tại: " + fnbDto.getItemId()));
-                FnBLine item = FnBLine.builder()
-                        .booking(booking)
-                        .item(fnbItem)
-                        .quantity(fnbDto.getQuantity())
-                        .unitPrice(fnbItem.getPrice())
-                        .build();
-                fnBLineRepository.save(item);
-            }
-        }
+        CheckoutResult result = demoCheckoutProcess.checkout(request);
 
-        if (success) {
-            for (Integer seatId : seatIds) {
-                Seat seat = seatRepository.findById(seatId)
-                        .orElseThrow(() -> new RuntimeException("Ghế không tồn tại: " + seatId));
-                BigDecimal ticketPrice = showtime.getBasePrice()
-                        .add(seat.getSeatType() != null && seat.getSeatType().getPriceSurcharge() != null
-                                ? seat.getSeatType().getPriceSurcharge()
-                                : BigDecimal.ZERO);
-                Ticket ticket = Ticket.builder()
-                        .booking(booking)
-                        .seat(seat)
-                        .showtime(showtime)
-                        .price(ticketPrice)
-                        .build();
-                ticketRepository.save(ticket);
-            }
-
-            safeIncreaseCustomerSpending(customer.getUserId(), price.getFinalTotal());
-        }
-
-        Payment payment = Payment.builder()
-                .booking(booking)
-                .paymentMethod("MOMO")
-                .amount(price.getFinalTotal())
-                .status(success ? Payment.PaymentStatus.SUCCESS : Payment.PaymentStatus.FAILED)
-                .paidAt(success ? LocalDateTime.now() : null)
-                .build();
-        paymentRepository.save(payment);
-
-        if (success) {
-            try {
-                emailService.sendTicketEmail(booking.getBookingId());
-            } catch (Exception e) {
-                System.err.println(">>> [StarCine] ERROR gửi email demo checkout: " + e.getMessage());
-            }
-        }
-
-        java.util.Map<String, Object> result = new java.util.HashMap<>();
-        result.put("bookingId", booking.getBookingId());
-        result.put("bookingCode", booking.getBookingCode());
-        result.put("paymentStatus", payment.getStatus().name());
-        result.put("totalAmount", price.getFinalTotal());
-        return result;
+        // Build response Map từ CheckoutResult
+        return demoCheckoutProcess.buildDemoResult(
+                result.getBooking(),
+                (Payment) result.getPaymentResult(),
+                result.getPrice()
+        );
     }
 
     private void safeIncreaseCustomerSpending(Integer userId, BigDecimal amount) {

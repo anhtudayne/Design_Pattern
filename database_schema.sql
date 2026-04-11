@@ -67,6 +67,9 @@ CREATE TABLE movies (
     duration_minutes INT NOT NULL,
     release_date DATE,
     language VARCHAR(50),
+    age_rating VARCHAR(10) NULL,
+    poster_url VARCHAR(1024) NULL,
+    trailer_url VARCHAR(1024) NULL,
     status ENUM('NOW_SHOWING', 'COMING_SOON', 'STOPPED') DEFAULT 'COMING_SOON'
 );
 
@@ -74,7 +77,10 @@ CREATE TABLE movies (
 CREATE TABLE cast_members (
     id INT AUTO_INCREMENT PRIMARY KEY,
     full_name VARCHAR(150) NOT NULL,
-    bio TEXT
+    bio TEXT,
+    birth_date DATE NULL,
+    nationality VARCHAR(100) NULL,
+    image_url VARCHAR(1024) NULL
 );
 
 -- Bảng trung gian quản lý vai trò trong phim
@@ -198,7 +204,8 @@ CREATE TABLE fnb_items (
     description TEXT,
     price DECIMAL(10, 2) NOT NULL,
     stock_quantity INT DEFAULT 0,
-    is_active BOOLEAN DEFAULT TRUE
+    is_active BOOLEAN DEFAULT TRUE,
+    image_url VARCHAR(1024) NULL
 );
 
 -- Chi tiết FnB trong đơn hàng (FnBLine)

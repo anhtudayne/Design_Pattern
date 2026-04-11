@@ -32,6 +32,9 @@ public class FnbItem {
     @Builder.Default
     private Boolean isActive = true;
 
+    @Column(name = "image_url")
+    private String imageUrl;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     @ToString.Exclude

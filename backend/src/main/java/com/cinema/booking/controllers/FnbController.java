@@ -49,6 +49,7 @@ public class FnbController {
                 .price(dto.getPrice())
                 .stockQuantity(dto.getStockQuantity())
                 .isActive(dto.getIsActive() != null ? dto.getIsActive() : true)
+                .imageUrl(dto.getImageUrl())
                 .category(category)
                 .build();
         
@@ -74,6 +75,7 @@ public class FnbController {
         item.setPrice(dto.getPrice());
         item.setStockQuantity(dto.getStockQuantity());
         item.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : item.getIsActive());
+        item.setImageUrl(dto.getImageUrl());
         
         return ResponseEntity.ok(toDto(itemRepository.save(item)));
     }
@@ -136,7 +138,7 @@ public class FnbController {
         dto.setPrice(item.getPrice());
         dto.setStockQuantity(item.getStockQuantity());
         dto.setIsActive(item.getIsActive());
-        dto.setImageUrl(null);
+        dto.setImageUrl(item.getImageUrl());
         dto.setCategoryId(item.getCategory() != null ? item.getCategory().getCategoryId() : null);
         return dto;
     }

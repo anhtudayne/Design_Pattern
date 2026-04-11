@@ -152,7 +152,14 @@ function SeatMapEditor({ room, notify }) {
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error('Lưu thất bại');
+      if (!res.ok) {
+        let msg = `Lưu thất bại (${res.status})`;
+        try {
+          const text = await res.text();
+          if (text) msg = text.length > 280 ? text.slice(0, 280) + '…' : text;
+        } catch { /* ignore */ }
+        throw new Error(msg);
+      }
       notify('Lưu sơ đồ ghế thành công!', 'success');
       setDirty(false);
       loadSeats();

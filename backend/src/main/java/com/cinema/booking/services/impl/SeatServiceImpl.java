@@ -9,13 +9,20 @@ import com.cinema.booking.entities.SeatType;
 import com.cinema.booking.repositories.RoomRepository;
 import com.cinema.booking.repositories.SeatRepository;
 import com.cinema.booking.repositories.SeatTypeRepository;
+import com.cinema.booking.repositories.TicketRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SeatServiceImpl implements SeatService {
@@ -28,6 +35,9 @@ public class SeatServiceImpl implements SeatService {
 
     @Autowired
     private SeatTypeRepository seatTypeRepository;
+
+    @Autowired
+    private TicketRepository ticketRepository;
 
     private SeatDTO mapToDTO(Seat seat) {
         SeatDTO dto = new SeatDTO();
@@ -116,27 +126,68 @@ public class SeatServiceImpl implements SeatService {
     @Transactional
     public List<SeatDTO> replaceAllSeatsInRoom(Integer roomId, List<SeatDTO> seatDTOs) {
         Room room = roomRepository.findById(roomId)
-            .orElseThrow(() -> new RuntimeException("Phòng chiếu không tồn tại!"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Phong chieu khong ton tai."));
 
-        // 1. Xóa toàn bộ ghế cũ của phòng
-        List<Seat> existingSeats = seatRepository.findByRoom_RoomId(roomId);
-        seatRepository.deleteAll(existingSeats);
-        seatRepository.flush();
-
-        // 2. Tạo toàn bộ ghế mới
-        List<Seat> newSeats = new ArrayList<>();
+        Set<String> seenCodes = new HashSet<>();
+        List<String> orderedCodes = new ArrayList<>();
         for (SeatDTO dto : seatDTOs) {
-            SeatType seatType = seatTypeRepository.findById(dto.getSeatTypeId())
-                    .orElseThrow(() -> new RuntimeException("SeatType không hợp lệ: " + dto.getSeatTypeId()));
-            Seat seat = new Seat();
-            seat.setRoom(room);
-            seat.setSeatCode(resolveSeatCode(dto));
-            seat.setSeatType(seatType);
-            seat.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : true);
-            newSeats.add(seat);
+            String code = resolveSeatCode(dto);
+            if (!seenCodes.add(code)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trung ma ghe trong so do: " + code);
+            }
+            orderedCodes.add(code);
         }
-        List<Seat> savedSeats = seatRepository.saveAll(newSeats);
-        return savedSeats.stream().map(this::mapToDTO).collect(Collectors.toList());
+        Set<String> desiredCodes = new HashSet<>(orderedCodes);
+
+        List<Seat> existingSeats = seatRepository.findByRoom_RoomId(roomId);
+        Map<String, Seat> byNormalizedCode = new HashMap<>();
+        for (Seat s : existingSeats) {
+            String key = normalizeSeatCode(s.getSeatCode());
+            byNormalizedCode.put(key, s);
+        }
+
+        // Chi xoa ghe bo khoi so do; khong xoa neu con ve (FK tickets.seat_id)
+        for (Seat seat : new ArrayList<>(existingSeats)) {
+            String code = normalizeSeatCode(seat.getSeatCode());
+            if (desiredCodes.contains(code)) {
+                continue;
+            }
+            if (ticketRepository.countBySeat_SeatId(seat.getSeatId()) > 0) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Khong bo ghe " + code + ": da co ve gan voi ghe nay. Hay giu vi tri hoac xu ly ve truoc.");
+            }
+            seatRepository.delete(seat);
+            byNormalizedCode.remove(code);
+        }
+
+        List<Seat> savedOrdered = new ArrayList<>();
+        for (SeatDTO dto : seatDTOs) {
+            String code = resolveSeatCode(dto);
+            SeatType seatType = seatTypeRepository.findById(dto.getSeatTypeId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "SeatType khong hop le: " + dto.getSeatTypeId()));
+            boolean active = dto.getIsActive() != null ? dto.getIsActive() : Boolean.TRUE;
+            Seat seat = byNormalizedCode.get(code);
+            if (seat != null) {
+                seat.setSeatType(seatType);
+                seat.setIsActive(active);
+                savedOrdered.add(seatRepository.save(seat));
+            } else {
+                Seat created = new Seat();
+                created.setRoom(room);
+                created.setSeatCode(code);
+                created.setSeatType(seatType);
+                created.setIsActive(active);
+                Seat persisted = seatRepository.save(created);
+                byNormalizedCode.put(code, persisted);
+                savedOrdered.add(persisted);
+            }
+        }
+        return savedOrdered.stream().map(this::mapToDTO).collect(Collectors.toList());
+    }
+
+    private static String normalizeSeatCode(String seatCode) {
+        return seatCode == null ? "" : seatCode.trim().toUpperCase();
     }
 
     private String resolveSeatCode(SeatDTO dto) {

@@ -35,14 +35,16 @@ INSERT INTO seat_types (id, name, price_surcharge) VALUES
 -- 5. Dữ liệu Phim và Thể loại
 INSERT INTO genres (id, name) VALUES (1, 'Hành động'), (2, 'Kinh dị'), (3, 'Hoạt hình');
 
-INSERT INTO movies (id, title, duration_minutes, status) VALUES
-(1, 'Kung Fu Panda 4', 94, 'NOW_SHOWING'),
-(2, 'Dune: Part Two', 166, 'NOW_SHOWING');
+INSERT INTO movies (id, title, duration_minutes, status, poster_url, trailer_url) VALUES
+(1, 'Kung Fu Panda 4', 94, 'NOW_SHOWING',
+ 'https://picsum.photos/seed/starcine-movie-1/480/720', NULL),
+(2, 'Dune: Part Two', 166, 'NOW_SHOWING',
+ 'https://picsum.photos/seed/starcine-movie-2/480/720', NULL);
 
 -- 6. Dữ liệu CastMember (Hệ thống mới)
-INSERT INTO cast_members (id, full_name, bio) VALUES
-(1, 'Denis Villeneuve', 'Đạo diễn tài năng người Canada'),
-(2, 'Timothée Chalamet', 'Nam diễn viên thủ vai Paul Atreides');
+INSERT INTO cast_members (id, full_name, bio, image_url) VALUES
+(1, 'Denis Villeneuve', 'Đạo diễn tài năng người Canada', 'https://picsum.photos/seed/starcine-cast-1/400/400'),
+(2, 'Timothée Chalamet', 'Nam diễn viên thủ vai Paul Atreides', 'https://picsum.photos/seed/starcine-cast-2/400/400');
 
 -- 7. Quản lý vai trò trong phim
 INSERT INTO movie_casts (movie_id, cast_member_id, role_name, role_type) VALUES
@@ -101,12 +103,12 @@ INSERT INTO promotions (id, code, discount_type, discount_value, quantity, valid
 (3, 'HET_HAN', 'PERCENT', 20.00, 0, '2025-01-01 00:00:00');
 
 -- 13. Dữ liệu F&B
-INSERT INTO fnb_items (id, name, description, price, stock_quantity, is_active) VALUES
-(1, 'Combo 1', '1 bap ngot + 1 pepsi lon', 89000.00, 100, TRUE),
-(2, 'Bap caramel', 'Bap vi caramel size vua', 55000.00, 80, TRUE),
-(3, 'Pepsi lon', 'Nuoc ngot pepsi 330ml', 25000.00, 200, TRUE),
-(4, 'Nachos phomai', 'Banh nachos kem sot phomai', 65000.00, 40, TRUE),
-(5, 'Tra dao', 'Tra dao mat lanh', 30000.00, 0, FALSE);
+INSERT INTO fnb_items (id, name, description, price, stock_quantity, is_active, image_url) VALUES
+(1, 'Combo 1', '1 bap ngot + 1 pepsi lon', 89000.00, 100, TRUE, 'https://picsum.photos/seed/starcine-fnb-combo/480/480'),
+(2, 'Bap caramel', 'Bap vi caramel size vua', 55000.00, 80, TRUE, 'https://picsum.photos/seed/starcine-fnb-popcorn/480/480'),
+(3, 'Pepsi lon', 'Nuoc ngot pepsi 330ml', 25000.00, 200, TRUE, 'https://picsum.photos/seed/starcine-fnb-soda/480/480'),
+(4, 'Nachos phomai', 'Banh nachos kem sot phomai', 65000.00, 40, TRUE, 'https://picsum.photos/seed/starcine-fnb-nachos/480/480'),
+(5, 'Tra dao', 'Tra dao mat lanh', 30000.00, 0, FALSE, 'https://picsum.photos/seed/starcine-fnb-tea/480/480');
 
 -- 14. Dữ liệu booking / ticket / fnb_lines / payment
 INSERT INTO bookings (id, booking_code, customer_id, promotion_id, status, created_at) VALUES
@@ -143,10 +145,13 @@ INSERT INTO notifications (id, user_id, title, message, is_read) VALUES
 (4, 4, 'Ca truc moi', 'Ban duoc phan cong ca truc toi thu Bay.', FALSE);
 
 -- 17. Mở rộng dữ liệu test đặt vé: đủ 5 phim + lịch chiếu trải 10 ngày
-INSERT INTO movies (id, title, description, duration_minutes, release_date, language, status) VALUES
-(3, 'Avengers: Secret Wars', 'Sieu anh hung tap hop cho tran chien da vu tru.', 145, '2026-03-28', 'English', 'NOW_SHOWING'),
-(4, 'Your Name', 'Cau chuyen tinh cam ky ao xuyen thoi gian.', 106, '2026-02-14', 'Japanese', 'NOW_SHOWING'),
-(5, 'The Conjuring 4', 'Phan moi cua vu tru kinh di nha Warren.', 118, '2026-04-01', 'English', 'NOW_SHOWING');
+INSERT INTO movies (id, title, description, duration_minutes, release_date, language, status, poster_url, trailer_url) VALUES
+(3, 'Avengers: Secret Wars', 'Sieu anh hung tap hop cho tran chien da vu tru.', 145, '2026-03-28', 'English', 'NOW_SHOWING',
+ 'https://picsum.photos/seed/starcine-movie-3/480/720', NULL),
+(4, 'Your Name', 'Cau chuyen tinh cam ky ao xuyen thoi gian.', 106, '2026-02-14', 'Japanese', 'NOW_SHOWING',
+ 'https://picsum.photos/seed/starcine-movie-4/480/720', NULL),
+(5, 'The Conjuring 4', 'Phan moi cua vu tru kinh di nha Warren.', 118, '2026-04-01', 'English', 'NOW_SHOWING',
+ 'https://picsum.photos/seed/starcine-movie-5/480/720', NULL);
 
 INSERT INTO genres (id, name) VALUES
 (4, 'Tinh cam'),
@@ -157,13 +162,13 @@ INSERT INTO movie_genres (movie_id, genre_id) VALUES
 (4, 3), (4, 4),
 (5, 2);
 
-INSERT INTO cast_members (id, full_name, bio) VALUES
-(3, 'Russo Brothers', 'Dao dien noi tieng voi loat phim Marvel'),
-(4, 'Robert Downey Jr.', 'Dien vien dong Iron Man'),
-(5, 'Makoto Shinkai', 'Dao dien anime Nhat Ban'),
-(6, 'Mitsuha Voice Actress', 'Long tieng nhan vat Mitsuha'),
-(7, 'James Wan', 'Dao dien kinh di noi tieng'),
-(8, 'Patrick Wilson', 'Dien vien dong Ed Warren');
+INSERT INTO cast_members (id, full_name, bio, image_url) VALUES
+(3, 'Russo Brothers', 'Dao dien noi tieng voi loat phim Marvel', 'https://picsum.photos/seed/starcine-cast-3/400/400'),
+(4, 'Robert Downey Jr.', 'Dien vien dong Iron Man', 'https://picsum.photos/seed/starcine-cast-4/400/400'),
+(5, 'Makoto Shinkai', 'Dao dien anime Nhat Ban', 'https://picsum.photos/seed/starcine-cast-5/400/400'),
+(6, 'Mitsuha Voice Actress', 'Long tieng nhan vat Mitsuha', 'https://picsum.photos/seed/starcine-cast-6/400/400'),
+(7, 'James Wan', 'Dao dien kinh di noi tieng', 'https://picsum.photos/seed/starcine-cast-7/400/400'),
+(8, 'Patrick Wilson', 'Dien vien dong Ed Warren', 'https://picsum.photos/seed/starcine-cast-8/400/400');
 
 INSERT INTO movie_casts (movie_id, cast_member_id, role_name, role_type) VALUES
 (3, 3, NULL, 'DIRECTOR'),

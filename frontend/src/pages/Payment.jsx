@@ -205,41 +205,126 @@ export default function Payment() {
   return (
     <main className="pt-44 pb-20 bg-slate-50 dark:bg-slate-950 min-h-screen">
       {demoQr && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center px-4">
-          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 shadow-2xl p-6">
-            <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">QR Thanh Toán Demo</h3>
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">Mã đơn: <span className="font-bold">{demoQr.orderId}</span></p>
-            <p className="text-sm text-slate-500 dark:text-slate-300 mb-4">Số tiền: <span className="font-black text-orange-500">{Number(demoQr.amount || 0).toLocaleString('vi-VN')}đ</span></p>
-
-            <div className="bg-white rounded-2xl p-4 border border-slate-200 mx-auto w-fit">
-              <img
-                alt="Demo payment QR"
-                className="w-64 h-64 object-contain"
-                src={`https://quickchart.io/qr?text=${encodeURIComponent(demoQr.qrText)}&size=320`}
-              />
-            </div>
-
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              <button
-                onClick={() => handleDemoResult(false)}
-                className="py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-black uppercase text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-              >
-                Thất bại
-              </button>
-              <button
-                onClick={() => handleDemoResult(true)}
-                className="py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 text-white font-black uppercase text-xs shadow-lg shadow-green-500/30 hover:scale-[1.02] transition"
-              >
-                Thành công
-              </button>
-            </div>
-
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="relative w-full max-w-5xl bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl overflow-hidden flex flex-col lg:flex-row">
+            {/* Nút Đóng */}
             <button
               onClick={() => setDemoQr(null)}
-              className="mt-3 w-full py-2 text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+              className="absolute top-4 right-4 z-10 w-10 h-10 bg-slate-100/50 hover:bg-slate-200 dark:bg-slate-800/50 dark:hover:bg-slate-700 rounded-full flex items-center justify-center text-slate-500 transition-colors"
             >
-              Đóng
+              <span className="material-symbols-outlined font-black">close</span>
             </button>
+            
+            {/* Cột Trái 70% */}
+            <div className="flex-1 lg:w-[65%] p-8 lg:p-10 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-3 mb-8">
+                  <span className="w-2 h-8 bg-gradient-to-b from-orange-500 to-red-500 rounded-full"></span>
+                  <h3 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Thanh toán vé</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                  <div className="bg-white rounded-3xl p-5 border-2 border-slate-100 shadow-xl mx-auto w-full max-w-[280px]">
+                    <img
+                      alt="Demo payment QR"
+                      className="w-full aspect-square object-contain"
+                      src={`https://quickchart.io/qr?text=${encodeURIComponent(demoQr.qrText)}&size=320`}
+                    />
+                    <div className="mt-4 text-center">
+                      <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Quét mã qua ứng dụng</p>
+                      <p className="text-sm font-black mt-1 bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent">Chuyển khoản / MoMo</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border-l-4 border-orange-500 flex justify-between items-center transition-transform hover:-translate-y-1">
+                      <div className="space-y-1">
+                        <p className="text-[10px] uppercase font-black tracking-widest text-slate-400">Ngân hàng thụ hưởng</p>
+                        <p className="text-[13px] font-bold text-slate-800 dark:text-white">TMCP Cổ Phần Ngoại Thương (VCB)</p>
+                      </div>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border-l-4 border-orange-500 flex justify-between items-center transition-transform hover:-translate-y-1 group">
+                      <div className="space-y-1">
+                        <p className="text-[10px] uppercase font-black tracking-widest text-slate-400">Số tài khoản</p>
+                        <p className="text-base font-black text-slate-800 dark:text-white tracking-widest">1234 5678 9999</p>
+                      </div>
+                      <button className="text-orange-400 p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-orange-100 dark:hover:bg-slate-700 rounded-lg" title="Sao chép"><span className="material-symbols-outlined text-sm">content_copy</span></button>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border-l-4 border-orange-500 flex justify-between items-center transition-transform hover:-translate-y-1 group">
+                      <div className="space-y-1">
+                        <p className="text-[10px] uppercase font-black tracking-widest text-slate-400">Số tiền</p>
+                        <p className="text-2xl font-black text-orange-500">{Number(demoQr.amount || 0).toLocaleString('vi-VN')}đ</p>
+                      </div>
+                      <button className="text-orange-400 p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-orange-100 dark:hover:bg-slate-700 rounded-lg" title="Sao chép"><span className="material-symbols-outlined text-sm">content_copy</span></button>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border-l-4 border-orange-500 flex justify-between items-center transition-transform hover:-translate-y-1 group">
+                      <div className="space-y-1">
+                        <p className="text-[10px] uppercase font-black tracking-widest text-slate-400">Nội dung</p>
+                        <p className="text-sm font-black text-slate-800 dark:text-white">{demoQr.orderId}</p>
+                      </div>
+                      <button className="text-orange-400 p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-orange-100 dark:hover:bg-slate-700 rounded-lg" title="Sao chép"><span className="material-symbols-outlined text-sm">content_copy</span></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-10 pt-6 border-t-2 border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-4 shrink-0">
+                <button
+                  onClick={() => handleDemoResult(false)}
+                  className="py-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-black uppercase tracking-widest text-[10px] md:text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                >
+                  Xác nhận Hủy
+                </button>
+                <button
+                  onClick={() => handleDemoResult(true)}
+                  className="py-4 px-2 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-500 text-white font-black uppercase tracking-widest text-[10px] md:text-xs shadow-xl shadow-green-500/30 hover:scale-[1.02] flex items-center justify-center gap-2 transition"
+                >
+                  <span className="material-symbols-outlined text-base">check_circle</span>
+                  Đã chuyển khoản
+                </button>
+              </div>
+            </div>
+
+            {/* Cột Phải 30% */}
+            <div className="lg:w-[35%] bg-slate-50 dark:bg-slate-800 p-8 lg:p-10 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-700 flex flex-col">
+              <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6 shrink-0">Chi tiết đơn hàng</h4>
+              
+              <div className="flex gap-4 pb-6 border-b-2 border-slate-200 dark:border-slate-700 shrink-0">
+                <img 
+                  alt={movie.title} 
+                  className="w-16 h-24 object-cover rounded-xl shadow-md border border-slate-200 dark:border-slate-600" 
+                  src={movie.posterUrl && movie.posterUrl.startsWith('http') ? movie.posterUrl : `https://lh3.googleusercontent.com/aida-public/${movie.posterUrl}`} 
+                />
+                <div className="flex-1">
+                  <h3 className="font-black text-slate-800 dark:text-white leading-snug uppercase text-[13px] line-clamp-3">{movie.title}</h3>
+                  <div className="mt-2 px-2 py-0.5 w-fit rounded bg-red-600 text-white text-[9px] font-bold uppercase">{movie.ageRating}</div>
+                </div>
+              </div>
+
+              <div className="py-6 space-y-4 border-b-2 border-slate-200 dark:border-slate-700 flex-1">
+                <div className="flex justify-between line-clamp-2">
+                  <span className="text-[10px] font-black uppercase text-slate-400 w-1/3">Rạp</span>
+                  <span className="text-sm font-bold text-slate-800 dark:text-white text-right w-2/3">{cinema?.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[10px] font-black uppercase text-slate-400">Thời gian</span>
+                  <span className="text-sm font-bold text-slate-800 dark:text-white text-right">
+                    {showtime?.startTime?.split('T')[1]?.substring(0, 5)} • {showtime?.startTime ? new Date(showtime.startTime).toLocaleDateString('vi-VN') : ''}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[10px] font-black uppercase text-slate-400">Ghế</span>
+                  <span className="text-sm font-bold text-slate-800 dark:text-white text-right max-w-[60%]">
+                    {(selectedSeats || []).map(s => `${s.seatRow || s.rowName}${s.seatNumber}`).join(', ')}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="pt-6 shrink-0">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Cần thanh toán</p>
+                <p className="text-3xl font-black text-orange-500 tracking-tighter">{Number(demoQr.amount || 0).toLocaleString('vi-VN')}đ</p>
+              </div>
+            </div>
           </div>
         </div>
       )}

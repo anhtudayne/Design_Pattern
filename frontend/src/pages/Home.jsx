@@ -278,7 +278,7 @@ export default function Home() {
         <div className="absolute inset-0 overflow-hidden">
           {slides.map((slide, index) => (
             <div 
-              key={index}
+              key={`hero-${slide.tag}-${slide.title1}`}
               className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
                 index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
               }`}
@@ -338,10 +338,10 @@ export default function Home() {
 
         {/* Slide Indicators */}
         <div className="absolute bottom-[140px] left-1/2 -translate-x-1/2 z-30 flex gap-3">
-          {slides.map((_, i) => (
+          {slides.map((s, i) => (
             <button 
               onClick={() => setCurrentSlide(i)} 
-              key={i} 
+              key={`dot-${s.tag}-${i}`} 
               className={`h-2 rounded-full transition-all duration-500 ${i === currentSlide ? 'bg-orange-500 w-10 shadow-[0_0_10px_rgba(249,115,22,0.8)]' : 'bg-white/40 hover:bg-white/80 w-2'}`}
               aria-label={`Go to slide ${i + 1}`}
             ></button>
@@ -430,7 +430,7 @@ export default function Home() {
                 <div className={`absolute top-full left-0 w-[250px] pt-4 transition-all duration-300 origin-top shadow-2xl z-[60] ${openDropdown === 'time' ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-0 pointer-events-none'}`}>
                   <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-2 space-y-1 shadow-2xl">
                     {timesList.map(t => (
-                      <div key={t.id} onClick={(e) => { e.stopPropagation(); handleTimeChange(t); }} className="p-3 hover:bg-orange-50 dark:hover:bg-orange-500/10 rounded-xl transition-colors cursor-pointer flex items-center gap-3">
+                      <div key={`${t.id}-${t.showtime?.startTime ?? ''}`} onClick={(e) => { e.stopPropagation(); handleTimeChange(t); }} className="p-3 hover:bg-orange-50 dark:hover:bg-orange-500/10 rounded-xl transition-colors cursor-pointer flex items-center gap-3">
                         <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{t.label}</span>
                       </div>
                     ))}
@@ -464,8 +464,8 @@ export default function Home() {
         <div ref={nowShowingRef} className="flex overflow-x-auto gap-8 pb-8 no-scrollbar scroll-smooth">
           {loadingMovies ? (
             Array.from({ length: 5 }).map((_, i) => (<div key={i} className="min-w-[300px] aspect-[2/3] rounded-2xl bg-slate-200 animate-pulse" />))
-          ) : nowShowingMovies.map((movie) => (
-            <div key={movie.movieId} className="min-w-[300px]"><MovieCard movie={movie} /></div>
+          ) : nowShowingMovies.map((movie, index) => (
+            <div key={movie.movieId != null ? `now-${movie.movieId}-${index}` : `now-idx-${index}`} className="min-w-[300px]"><MovieCard movie={movie} /></div>
           ))}
         </div>
       </section>
@@ -485,8 +485,8 @@ export default function Home() {
         <div ref={comingSoonRef} className="flex overflow-x-auto gap-8 pb-8 no-scrollbar scroll-smooth">
           {loadingMovies ? (
             Array.from({ length: 5 }).map((_, i) => (<div key={i} className="min-w-[300px] aspect-[2/3] rounded-2xl bg-slate-200 animate-pulse" />))
-          ) : comingSoonMovies.map((movie) => (
-            <div key={movie.movieId} className="min-w-[300px]"><MovieCard movie={{ ...movie, isComingSoon: true }} /></div>
+          ) : comingSoonMovies.map((movie, index) => (
+            <div key={movie.movieId != null ? `soon-${movie.movieId}-${index}` : `soon-idx-${index}`} className="min-w-[300px]"><MovieCard movie={{ ...movie, isComingSoon: true }} /></div>
           ))}
         </div>
       </section>
@@ -499,8 +499,8 @@ export default function Home() {
             { title: "COMBO PIZZA & PHIM", sub: "Thưởng thức trọn vẹn hương vị Ý cùng những siêu phẩm điện ảnh tháng này.", img: "AB6AXuBFDm1HRCaB7TRXMh95OcNvMZg_qaFOcV-xFruKvjcX4sdNor-CvMBo3Ci-xg09Y9ZMt7a9r1z72qDXfLFFZkk0XgsyCXIIYGvsFt5SCaMnr5ycyxQH24aal1DEFpX2sGrwgkVGphzLUImQJdevEVryNXJgTp-K9pjypvU_oWJIl4A4lrb7ZrEkn5VJQXjfc8cQzjLPd5nJRC-sTz0vMNeRtA0y5uwCtOJksCm9NnT9MzGuDY8h6THeUVkqDbCG0PUa4D5IEFXKX0o" },
             { title: "GIẢM 50% VÉ THỨ 2", sub: "Áp dụng cho mọi suất chiếu IMAX vào mỗi thứ Tư hàng tuần tại StarCine.", img: "AB6AXuAsPM7bAjYl8k_9u58hLEJnOIvF5uYu3R0K9LGauF86cuwNCbatBReSJaF1ozmiYoyEiZC7ei2c6-Wn4Ni5jA4ls_oy-vP0kkJeK7JlwwmJsgVeR-GAhvP2GeiUdGerSdEvMEOg_kNBDrnuDwpaFIYcQ67Ykb1f1CqVJxBWuAc_gpcc5sBwTWrXbzCPGP03KY9NB4sttjfe7MIdoG1_bh91tWJZZM76saiF-lWD-fgSO6R9dFLJLaHibZoRUUN2DE0NZtobg_Lk4Ls" },
             { title: "THỨ 2 SINH VIÊN", sub: "Đồng giá 45.000đ cho tất cả các bạn học sinh, sinh viên trên toàn hệ thống.", img: "AB6AXuDGodo9mvmlpK8-G16HE3OjmJ7_nJsIWtvoxJaqhohDq154RtgGwAnXKwy5_OYxHjjHFBviEdzvuPIglR4_o35LT17eAwqienblkajoX2x6lWknmpH1bGYKnfMV31BcXADiIHnUD2iN00PiPRVo7jOQ5ywL46mFzd47c36V7qg95gsUM-a65YJEgGkHPfJTbcoSJ1BDeqZL0Agut8We0p9tbZYpVGTm7mke3gky3-CgtrljtVO7uzrkGTwiwvi83-ZV1wyjNELWwQo" }
-          ].map((promo, i) => (
-            <div key={i} className="group relative bg-white rounded-2xl overflow-hidden shadow-lg transition-transform hover:scale-[1.02] duration-300">
+          ].map((promo) => (
+            <div key={promo.title} className="group relative bg-white rounded-2xl overflow-hidden shadow-lg transition-transform hover:scale-[1.02] duration-300">
               <img className="w-full h-48 object-cover" src={`https://lh3.googleusercontent.com/aida-public/${promo.img}`} alt={promo.title}/>
               <div className="p-6">
                 <h4 className="font-bold text-lg mb-2">{promo.title}</h4>

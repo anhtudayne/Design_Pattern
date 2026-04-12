@@ -38,7 +38,8 @@ public class PaymentController {
                     request.getShowtimeId(),
                     request.getSeatIds(),
                     request.getFnbs(),
-                    request.getPromoCode()
+                    request.getPromoCode(),
+                    request.getPaymentMethod()
             );
             if (payUrl == null || payUrl.isBlank()) {
                 return ResponseEntity.badRequest().body("Không tạo được link thanh toán MoMo. Vui lòng kiểm tra cấu hình MoMo hoặc thử lại sau.");

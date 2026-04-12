@@ -11,8 +11,9 @@ import com.cinema.booking.patterns.mediator.PostPaymentMediator;
 import com.cinema.booking.repositories.BookingRepository;
 import com.cinema.booking.services.CheckoutService;
 import com.cinema.booking.services.MomoService;
-import com.cinema.booking.services.template_method.checkout.DemoCheckoutProcess;
-import com.cinema.booking.services.template_method.checkout.MomoCheckoutProcess;
+import com.cinema.booking.services.payment.DemoPaymentStrategy;
+import com.cinema.booking.services.payment.PaymentMethod;
+import com.cinema.booking.services.payment.PaymentStrategyFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -33,10 +34,7 @@ public class CheckoutServiceImpl implements CheckoutService {
     private MomoService momoService;
 
     @Autowired
-    private MomoCheckoutProcess momoCheckoutProcess;
-
-    @Autowired
-    private DemoCheckoutProcess demoCheckoutProcess;
+    private PaymentStrategyFactory paymentStrategyFactory;
 
     @Autowired
     private PostPaymentMediator postPaymentMediator;
@@ -44,7 +42,14 @@ public class CheckoutServiceImpl implements CheckoutService {
     @Override
     @Transactional
     public String createBooking(Integer userId, Integer showtimeId, List<Integer> seatIds,
-                                List<BookingCalculationDTO.FnbOrderDTO> fnbs, String promoCode) throws Exception {
+                                List<BookingCalculationDTO.FnbOrderDTO> fnbs, String promoCode,
+                                String paymentMethod) throws Exception {
+        PaymentMethod method = PaymentMethod.fromString(paymentMethod);
+        if (method != PaymentMethod.MOMO) {
+            throw new IllegalArgumentException(
+                    "Endpoint checkout chuẩn chỉ hỗ trợ MOMO. Luồng thử không MoMo dùng API /checkout/demo.");
+        }
+
         CheckoutRequest request = CheckoutRequest.builder()
                 .userId(userId)
                 .showtimeId(showtimeId)
@@ -53,7 +58,7 @@ public class CheckoutServiceImpl implements CheckoutService {
                 .promoCode(promoCode)
                 .build();
 
-        CheckoutResult result = momoCheckoutProcess.checkout(request);
+        CheckoutResult result = paymentStrategyFactory.getStrategy(method).checkout(request);
         return (String) result.getPaymentResult();
     }
 
@@ -142,9 +147,10 @@ public class CheckoutServiceImpl implements CheckoutService {
                 .demoSuccess(success)
                 .build();
 
-        CheckoutResult result = demoCheckoutProcess.checkout(request);
+        DemoPaymentStrategy demoStrategy = paymentStrategyFactory.getStrategy(PaymentMethod.DEMO, DemoPaymentStrategy.class);
+        CheckoutResult result = demoStrategy.checkout(request);
 
-        return demoCheckoutProcess.buildDemoResult(
+        return demoStrategy.buildDemoResult(
                 result.getBooking(),
                 (Payment) result.getPaymentResult(),
                 result.getPrice()

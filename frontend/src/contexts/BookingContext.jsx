@@ -1,4 +1,6 @@
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useReducer, useCallback, useEffect, useRef } from 'react';
+import { bookingReducer, defaultBookingState } from '../booking/bookingReducer';
+import { BOOKING_ACTIONS } from '../booking/bookingActionTypes';
 
 const BookingContext = createContext(null);
 
@@ -9,84 +11,105 @@ const loadBooking = () => {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
+  } catch (_e) { return null; }
 };
 
 const saveBooking = (state) => {
   try {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch { /* ignore */ }
-};
-
-// ── Default state ────────────────────────────────────────────────────
-const defaultState = {
-  selectedMovie: null,      // { movieId, title, posterUrl, ageRating, durationMinutes }
-  selectedCinema: null,     // { cinemaId, name, address }
-  selectedShowtime: null,   // { showtimeId, startTime, endTime, roomId, roomName, basePrice, surcharge, screenType }
-  selectedSeats: [],        // [{ seatId, seatRow, seatNumber, seatType, seatTypeSurcharge, totalPrice }]
-  selectedFnbs: [],         // [{ itemId, name, unitPrice, imageUrl, quantity }]
-  priceBreakdown: null,     // { ticketTotal, fnbTotal, discountAmount, finalTotal }
-  voucherCode: '',
+  } catch (_e) { /* ignore */ }
 };
 
 // ── Provider ─────────────────────────────────────────────────────────
+// eslint-disable-next-line react-refresh/only-export-components
+export function useBooking() {
+  const ctx = useContext(BookingContext);
+  if (!ctx) throw new Error('useBooking must be used within a BookingProvider');
+  return ctx;
+}
+
 export function BookingProvider({ children }) {
-  const [booking, setBooking] = useState(() => loadBooking() || defaultState);
+  // ═══════════════════════════════════════════════════════════════════
+  //  Reducer Pattern: Thay thế useState bằng useReducer
+  //  Tất cả state transitions đi qua bookingReducer duy nhất
+  // ═══════════════════════════════════════════════════════════════════
+  const [booking, dispatch] = useReducer(
+    bookingReducer,
+    defaultBookingState,
+    // Initializer: load từ sessionStorage nếu có
+    (initial) => loadBooking() || initial
+  );
+
+  // Ref để expose getState cho Command objects
+  const bookingRef = useRef(booking);
+
+  // Cập nhật ref trong useEffect để tránh lỗi "Cannot update ref during render"
+  useEffect(() => {
+    bookingRef.current = booking;
+  }, [booking]);
+
+  const getState = useCallback(() => bookingRef.current, []);
 
   // Persist to sessionStorage whenever state changes
   useEffect(() => {
     saveBooking(booking);
   }, [booking]);
 
+  // ═══════════════════════════════════════════════════════════════════
+  //  Command Pattern: executeCommand chạy command objects
+  //  Mỗi Command đóng gói logic + validation, gọi dispatch bên trong
+  // ═══════════════════════════════════════════════════════════════════
+  const executeCommand = useCallback(async (command) => {
+    return await command.execute(dispatch, getState);
+  }, [getState]);
+
+  // ── Legacy setter wrappers (backward-compatible) ───────────────
+  // Các setter này wrap dispatch calls để giữ API cũ cho các page hiện tại.
+  // Khi page được refactor sang Command pattern, có thể xoá dần.
   const setMovie = useCallback((movie) => {
-    setBooking(prev => ({ ...prev, selectedMovie: movie }));
+    dispatch({ type: BOOKING_ACTIONS.SELECT_MOVIE, payload: movie });
   }, []);
 
   const setCinema = useCallback((cinema) => {
-    setBooking(prev => ({ ...prev, selectedCinema: cinema }));
+    dispatch({ type: BOOKING_ACTIONS.SELECT_CINEMA, payload: cinema });
   }, []);
 
   const setShowtime = useCallback((showtime) => {
-    setBooking(prev => ({ ...prev, selectedShowtime: showtime }));
+    dispatch({ type: BOOKING_ACTIONS.SELECT_SHOWTIME, payload: showtime });
   }, []);
 
   const setSeats = useCallback((seats) => {
-    setBooking(prev => ({ ...prev, selectedSeats: seats }));
+    dispatch({ type: BOOKING_ACTIONS.SELECT_SEATS, payload: seats });
   }, []);
 
   const setFnbs = useCallback((fnbs) => {
-    setBooking(prev => ({ ...prev, selectedFnbs: fnbs }));
+    dispatch({ type: BOOKING_ACTIONS.SET_FNBS, payload: fnbs });
   }, []);
 
   const setPriceBreakdown = useCallback((breakdown) => {
-    setBooking(prev => ({ ...prev, priceBreakdown: breakdown }));
+    dispatch({ type: BOOKING_ACTIONS.SET_PRICE_BREAKDOWN, payload: breakdown });
   }, []);
 
   const setVoucherCode = useCallback((code) => {
-    setBooking(prev => ({ ...prev, voucherCode: code }));
+    dispatch({ type: BOOKING_ACTIONS.SET_VOUCHER_CODE, payload: code });
   }, []);
 
   /** Set movie + cinema + showtime in one shot (from Quick Booking / MovieList) */
   const setBookingSelection = useCallback(({ movie, cinema, showtime }) => {
-    setBooking(prev => ({
-      ...prev,
-      selectedMovie: movie || prev.selectedMovie,
-      selectedCinema: cinema || prev.selectedCinema,
-      selectedShowtime: showtime || prev.selectedShowtime,
-    }));
+    dispatch({ type: BOOKING_ACTIONS.SET_BOOKING_SELECTION, payload: { movie, cinema, showtime } });
   }, []);
 
   /** Reset entire booking flow (after payment or cancel) */
   const resetBooking = useCallback(() => {
-    setBooking(defaultState);
+    dispatch({ type: BOOKING_ACTIONS.RESET });
     sessionStorage.removeItem(STORAGE_KEY);
   }, []);
 
   const value = {
-    // Legacy support (optional)
+    // Legacy support (backward-compatible)
     ...booking,
 
-    // The preferred way for my recent components
+    // The preferred way for components
     bookingSelection: {
       movie: booking.selectedMovie,
       cinema: booking.selectedCinema,
@@ -97,7 +120,14 @@ export function BookingProvider({ children }) {
       voucherCode: booking.voucherCode,
     },
 
-    // Setters
+    // ─── Reducer Pattern: raw dispatch + state getter ──────────
+    dispatch,
+    getState,
+
+    // ─── Command Pattern: execute any BookingCommand ───────────
+    executeCommand,
+
+    // ─── Legacy setters (backward-compatible) ─────────────────
     setBookingMovie: setMovie,
     setBookingCinema: setCinema,
     setBookingShowtime: setShowtime,
@@ -114,13 +144,6 @@ export function BookingProvider({ children }) {
       {children}
     </BookingContext.Provider>
   );
-}
-
-// ── Hook ─────────────────────────────────────────────────────────────
-export function useBooking() {
-  const ctx = useContext(BookingContext);
-  if (!ctx) throw new Error('useBooking must be used within a BookingProvider');
-  return ctx;
 }
 
 export default BookingContext;

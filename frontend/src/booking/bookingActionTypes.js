@@ -1,0 +1,15 @@
+/**
+ * Action Type Constants cho Booking Reducer.
+ * Mỗi action type đại diện cho một hành động cụ thể trong luồng đặt vé.
+ */
+export const BOOKING_ACTIONS = {
+  SELECT_MOVIE: 'SELECT_MOVIE',
+  SELECT_CINEMA: 'SELECT_CINEMA',
+  SELECT_SHOWTIME: 'SELECT_SHOWTIME',
+  SELECT_SEATS: 'SELECT_SEATS',
+  SET_FNBS: 'SET_FNBS',
+  SET_PRICE_BREAKDOWN: 'SET_PRICE_BREAKDOWN',
+  SET_VOUCHER_CODE: 'SET_VOUCHER_CODE',
+  SET_BOOKING_SELECTION: 'SET_BOOKING_SELECTION',
+  RESET: 'RESET',
+};

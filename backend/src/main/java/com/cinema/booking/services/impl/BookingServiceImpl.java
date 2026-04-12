@@ -7,13 +7,14 @@ import com.cinema.booking.dtos.SeatStatusDTO;
 import com.cinema.booking.entities.*;
 import com.cinema.booking.repositories.*;
 import com.cinema.booking.services.BookingService;
+import com.cinema.booking.services.strategy_decorator.pricing.PricingContext;
+import com.cinema.booking.services.strategy_decorator.pricing.PricingEngine;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -48,6 +49,9 @@ public class BookingServiceImpl implements BookingService {
 
     @Value("${cinema.app.redisTtlSeconds:600}")
     private long redisTtlSeconds;
+
+    @Autowired
+    private PricingEngine pricingEngine;
 
     private String getLockKey(Integer showtimeId, Integer seatId) {
         return "showtime:" + showtimeId + ":seat:" + seatId + ":lock";
@@ -128,7 +132,14 @@ public class BookingServiceImpl implements BookingService {
                 ? promotionRepository.findByCode(request.getPromoCode()).orElse(null)
                 : null;
 
-        return calculateTotalPrice(showtime, seats, request.getFnbs(), promotion);
+        return pricingEngine.calculateTotalPrice(
+                PricingContext.builder()
+                        .showtime(showtime)
+                        .seats(seats)
+                        .fnbs(request.getFnbs())
+                        .promotion(promotion)
+                        .build()
+        );
     }
 
     @Override
@@ -178,57 +189,6 @@ public class BookingServiceImpl implements BookingService {
                             .lineTotal(lineTotal)
                             .build();
                 }).toList())
-                .build();
-    }
-
-    private PriceBreakdownDTO calculateTotalPrice(
-            Showtime showtime,
-            List<Seat> seats,
-            List<BookingCalculationDTO.FnbOrderDTO> fnbs,
-            Promotion promotion
-    ) {
-        // Tiền vé: base_price + seatType.price_surcharge
-        BigDecimal ticketTotal = BigDecimal.ZERO;
-        for (Seat seat : seats) {
-            BigDecimal seatSurcharge = (seat.getSeatType() != null && seat.getSeatType().getPriceSurcharge() != null)
-                    ? seat.getSeatType().getPriceSurcharge()
-                    : BigDecimal.ZERO;
-            ticketTotal = ticketTotal.add(showtime.getBasePrice().add(seatSurcharge));
-        }
-
-        // Tiền F&B: sum(qty * unit_price) với unit_price là giá hiện tại của FnbItem (tại thời điểm tính)
-        BigDecimal fnbTotal = BigDecimal.ZERO;
-        if (fnbs != null) {
-            for (BookingCalculationDTO.FnbOrderDTO fnbOrder : fnbs) {
-                FnbItem item = fnbItemRepository.findById(fnbOrder.getItemId())
-                        .orElseThrow(() -> new RuntimeException("Sản phẩm F&B không tồn tại!"));
-                BigDecimal line = item.getPrice().multiply(BigDecimal.valueOf(fnbOrder.getQuantity()));
-                fnbTotal = fnbTotal.add(line);
-            }
-        }
-
-        BigDecimal subtotal = ticketTotal.add(fnbTotal);
-
-        BigDecimal discountAmount = BigDecimal.ZERO;
-        if (promotion != null && promotion.getValidTo() != null && LocalDateTime.now().isBefore(promotion.getValidTo())) {
-            if (promotion.getDiscountType() == Promotion.DiscountType.PERCENT) {
-                discountAmount = subtotal.multiply(promotion.getDiscountValue().divide(new BigDecimal("100")));
-            } else if (promotion.getDiscountType() == Promotion.DiscountType.FIXED) {
-                discountAmount = promotion.getDiscountValue();
-            }
-        }
-
-        BigDecimal finalTotal = subtotal.subtract(discountAmount);
-        if (finalTotal.compareTo(BigDecimal.ZERO) < 0) {
-            finalTotal = BigDecimal.ZERO;
-            discountAmount = subtotal; // clamp to not negative
-        }
-
-        return PriceBreakdownDTO.builder()
-                .ticketTotal(ticketTotal)
-                .fnbTotal(fnbTotal)
-                .discountAmount(discountAmount)
-                .finalTotal(finalTotal)
                 .build();
     }
 

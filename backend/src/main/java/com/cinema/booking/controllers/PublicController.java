@@ -13,12 +13,16 @@ import com.cinema.booking.services.CinemaService;
 import com.cinema.booking.services.LocationService;
 import com.cinema.booking.services.MovieService;
 import com.cinema.booking.services.ShowtimeService;
+import com.cinema.booking.services.builder.filter.ShowtimeFilter;
+import com.cinema.booking.services.builder.filter.ShowtimeFilterBuilder;
+import com.cinema.booking.services.builder.filter.ShowtimeQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -45,6 +49,12 @@ public class PublicController {
 
     @Autowired
     private FnbItemRepository fnbItemRepository;
+
+    // ──────────────────────────────────────────────────────────────────
+    //  Builder Pattern: ShowtimeQueryService sử dụng ShowtimeFilter
+    // ──────────────────────────────────────────────────────────────────
+    @Autowired
+    private ShowtimeQueryService showtimeQueryService;
 
     // 4.1 API Đổ danh sách "Phim đang chiếu"
     @Operation(summary = "Lấy danh sách phim đang chiếu", description = "Trả về danh sách các bộ phim có trạng thái NOW_SHOWING")
@@ -74,24 +84,52 @@ public class PublicController {
         return ResponseEntity.ok(locationService.getAllLocations());
     }
 
-    // 4.5 Lịch chiếu công khai (có filter)
-    @Operation(summary = "Lấy lịch chiếu công khai", description = "Trả về danh sách lịch chiếu, có thể lọc theo cinemaId, movieId, date. Trả kèm thông tin phim, phòng, rạp.")
+    // ═══════════════════════════════════════════════════════════════════
+    //  4.5 Lịch chiếu — Sử dụng Builder Pattern (ShowtimeFilterBuilder)
+    //  Giữ nguyên endpoint cũ /showtimes cho backward compatibility
+    // ═══════════════════════════════════════════════════════════════════
+    @Operation(summary = "Lấy lịch chiếu công khai", description = "Trả về danh sách lịch chiếu, có thể lọc theo cinemaId, movieId, date. Sử dụng Builder Pattern để xây dựng filter.")
     @GetMapping("/showtimes")
     public ResponseEntity<List<ShowtimeDTO>> getPublicShowtimes(
             @RequestParam(required = false) Integer cinemaId,
             @RequestParam(required = false) Integer movieId,
             @RequestParam(required = false) String date) {
 
-        LocalDate filterDate = null;
-        if (date != null && !date.isBlank()) {
-            try {
-                filterDate = LocalDate.parse(date);
-            } catch (Exception e) {
-                return ResponseEntity.badRequest().build();
-            }
-        }
+        // Sử dụng Builder Pattern thay vì filter thủ công
+        ShowtimeFilter filter = new ShowtimeFilterBuilder()
+                .byCinema(cinemaId)
+                .byMovie(movieId)
+                .byDate(date != null && !date.isBlank() ? LocalDate.parse(date) : null)
+                .build();
 
-        return ResponseEntity.ok(showtimeService.searchPublicShowtimes(cinemaId, movieId, filterDate));
+        return ResponseEntity.ok(showtimeQueryService.findShowtimes(filter));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  4.5b Lịch chiếu mở rộng — Builder Pattern với đầy đủ tiêu chí
+    //  Endpoint mới /showtimes/filter hỗ trợ thêm locationId, screenType, price range
+    // ═══════════════════════════════════════════════════════════════════
+    @Operation(summary = "Lọc lịch chiếu nâng cao", description = "Lọc lịch chiếu với nhiều tiêu chí: cinemaId, movieId, date, locationId, screenType, giá. Sử dụng Builder Pattern.")
+    @GetMapping("/showtimes/filter")
+    public ResponseEntity<List<ShowtimeDTO>> filterShowtimes(
+            @RequestParam(required = false) Integer cinemaId,
+            @RequestParam(required = false) Integer movieId,
+            @RequestParam(required = false) String date,
+            @RequestParam(required = false) Integer locationId,
+            @RequestParam(required = false) String screenType,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice) {
+
+        ShowtimeFilter filter = new ShowtimeFilterBuilder()
+                .byCinema(cinemaId)
+                .byMovie(movieId)
+                .byDate(date != null && !date.isBlank() ? LocalDate.parse(date) : null)
+                .byLocation(locationId)
+                .byScreenType(screenType)
+                .byPriceRange(minPrice, maxPrice)
+                .build();
+
+        return ResponseEntity.ok(showtimeQueryService.findShowtimes(filter));
     }
 
     // 4.6 Menu F&B công khai (danh mục)
@@ -108,4 +146,3 @@ public class PublicController {
         return ResponseEntity.ok(fnbItemRepository.findAll());
     }
 }
-

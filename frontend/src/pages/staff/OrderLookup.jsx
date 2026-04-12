@@ -32,29 +32,22 @@ export default function OrderLookup() {
     setTickets([]);
 
     try {
-      // Try searching by booking ID first
-      const bookingId = parseInt(query.trim());
-      if (!isNaN(bookingId)) {
-        const res = await fetch(`${BASE_URL}/tickets/booking/${bookingId}`, {
-          headers: getAuthHeaders(),
-        });
-        if (res.ok) {
-          const ticketData = await res.json();
-          if (ticketData.length > 0) {
-            setResults([{
-              bookingId: bookingId,
-              tickets: ticketData,
-              status: 'PAID',
-              createdAt: new Date().toISOString(),
-            }]);
-          } else {
-            setResults([]);
-          }
-        } else {
-          setResults([]);
-        }
+      // Call our new dynamic Specification search endpoint
+      const res = await fetch(`${BASE_URL}/booking/search?query=${encodeURIComponent(query.trim())}`, {
+        headers: getAuthHeaders(),
+      });
+      
+      if (res.ok) {
+        const bookingData = await res.json();
+        // The API returns List<BookingDTO>. The frontend expects { bookingId, tickets, status, createdAt }
+        const mappedResults = bookingData.map(b => ({
+          bookingId: b.bookingId,
+          tickets: b.tickets || [], // BookingDTO has tickets field now
+          status: b.status || 'PAID',
+          createdAt: b.createdAt || new Date().toISOString()
+        }));
+        setResults(mappedResults);
       } else {
-        // For phone/email search — mock since API doesn't exist yet
         setResults([]);
       }
     } catch (e) {
@@ -250,15 +243,41 @@ export default function OrderLookup() {
 
                         {/* Actions */}
                         <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-200 dark:border-slate-700">
-                          <button className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:border-orange-500 hover:text-orange-500 transition-all shadow-sm">
+                          <button 
+                            onClick={async () => {
+                              try {
+                                const res = await fetch(`${BASE_URL}/booking/${booking.bookingId}/print`, { method: 'POST', headers: getAuthHeaders() });
+                                const msg = await res.text();
+                                alert(res.ok ? 'Chỉ thị In vé đã được gửi!' : `Lỗi: ${msg}`);
+                              } catch(e) { alert('Lỗi mạng'); }
+                            }}
+                            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:border-orange-500 hover:text-orange-500 transition-all shadow-sm">
                             <span className="material-symbols-outlined text-base">print</span>
                             In lại vé
                           </button>
-                          <button className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-xs font-bold text-red-500 hover:bg-red-100 transition-all shadow-sm">
+                          <button 
+                            onClick={async () => {
+                              try {
+                                const res = await fetch(`${BASE_URL}/booking/${booking.bookingId}/cancel`, { method: 'POST', headers: getAuthHeaders() });
+                                const msg = await res.text();
+                                alert(res.ok ? msg : `Lỗi: ${msg}`);
+                                if(res.ok) handleSearch(); // refresh
+                              } catch(e) { alert('Lỗi mạng'); }
+                            }}
+                            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-xs font-bold text-red-500 hover:bg-red-100 transition-all shadow-sm">
                             <span className="material-symbols-outlined text-base">cancel</span>
                             Hủy đơn
                           </button>
-                          <button className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 text-xs font-bold text-blue-500 hover:bg-blue-100 transition-all shadow-sm">
+                          <button 
+                            onClick={async () => {
+                              try {
+                                const res = await fetch(`${BASE_URL}/booking/${booking.bookingId}/refund`, { method: 'POST', headers: getAuthHeaders() });
+                                const msg = await res.text();
+                                alert(res.ok ? msg : `Lỗi: ${msg}`);
+                                if(res.ok) handleSearch(); // refresh
+                              } catch(e) { alert('Lỗi mạng'); }
+                            }}
+                            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 text-xs font-bold text-blue-500 hover:bg-blue-100 transition-all shadow-sm">
                             <span className="material-symbols-outlined text-base">currency_exchange</span>
                             Hoàn tiền
                           </button>

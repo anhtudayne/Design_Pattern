@@ -66,4 +66,48 @@ public class BookingController {
     public ResponseEntity<BookingDTO> getBookingDetail(@PathVariable Integer bookingId) {
         return ResponseEntity.ok(bookingService.getBookingDetail(bookingId));
     }
+
+    @Operation(summary = "Tìm kiếm Booking linh động", description = "Dành cho Staff tra cứu theo ID, SDT hoặc Email")
+    @GetMapping("/search")
+    public ResponseEntity<?> searchBookings(@RequestParam String query) {
+        try {
+            return ResponseEntity.ok(bookingService.searchBookings(query));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Error: " + e.getMessage() + " / Cause: " + (e.getCause() != null ? e.getCause().getMessage() : "null"));
+        }
+    }
+
+    @Operation(summary = "Hủy Đơn (State Pattern)")
+    @PostMapping("/{bookingId}/cancel")
+    public ResponseEntity<?> cancelBooking(@PathVariable Integer bookingId) {
+        try {
+            bookingService.cancelBooking(bookingId);
+            return ResponseEntity.ok("Hủy đơn thành công.");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "Hoàn Tiền (State Pattern)")
+    @PostMapping("/{bookingId}/refund")
+    public ResponseEntity<?> refundBooking(@PathVariable Integer bookingId) {
+        try {
+            bookingService.refundBooking(bookingId);
+            return ResponseEntity.ok("Hoàn tiền thành công.");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "In Vé (State Pattern)")
+    @PostMapping("/{bookingId}/print")
+    public ResponseEntity<?> printTickets(@PathVariable Integer bookingId) {
+        try {
+            bookingService.printTickets(bookingId);
+            return ResponseEntity.ok("In vé thành công.");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }

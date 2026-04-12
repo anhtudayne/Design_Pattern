@@ -11,6 +11,7 @@ import com.cinema.booking.patterns.mediator.PostPaymentMediator;
 import com.cinema.booking.repositories.BookingRepository;
 import com.cinema.booking.services.CheckoutService;
 import com.cinema.booking.services.MomoService;
+import com.cinema.booking.services.payment.CashPaymentStrategy;
 import com.cinema.booking.services.payment.DemoPaymentStrategy;
 import com.cinema.booking.services.payment.PaymentMethod;
 import com.cinema.booking.services.payment.PaymentStrategyFactory;
@@ -151,6 +152,30 @@ public class CheckoutServiceImpl implements CheckoutService {
         CheckoutResult result = demoStrategy.checkout(request);
 
         return demoStrategy.buildDemoResult(
+                result.getBooking(),
+                (Payment) result.getPaymentResult(),
+                result.getPrice()
+        );
+    }
+
+    @Override
+    @Transactional
+    public java.util.Map<String, Object> processStaffCashCheckout(
+            Integer customerId, Integer showtimeId, List<Integer> seatIds,
+            List<BookingCalculationDTO.FnbOrderDTO> fnbs, String promoCode) throws Exception {
+        CheckoutRequest request = CheckoutRequest.builder()
+                .userId(customerId)
+                .showtimeId(showtimeId)
+                .seatIds(seatIds)
+                .fnbs(fnbs)
+                .promoCode(promoCode)
+                .demoSuccess(true)
+                .build();
+
+        CashPaymentStrategy cashStrategy = (CashPaymentStrategy) paymentStrategyFactory.getStrategy(PaymentMethod.CASH);
+        CheckoutResult result = cashStrategy.checkout(request);
+
+        return cashStrategy.buildResult(
                 result.getBooking(),
                 (Payment) result.getPaymentResult(),
                 result.getPrice()

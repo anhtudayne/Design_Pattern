@@ -3,9 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { 
     googleLogin, loginUser, registerUser, clearAuthError, clearRegisterStatus,
-    selectAuthStatus, selectAuthError, selectRegisterStatus, selectRegisterError, selectRegisterSuccess,
+    selectAuthStatus, selectAuthError, selectRegisterStatus, selectRegisterError, selectRegisterSuccess, selectCurrentUser
 } from '../store/authSlice';
-import { useGoogleLogin, GoogleLogin } from '@react-oauth/google';
+// import { useGoogleLogin, GoogleLogin } from '@react-oauth/google';
 
 function FormInput({ id, icon, label, type = 'text', placeholder, value, onChange, required, minLength, error, children }) {
   return (
@@ -54,7 +54,19 @@ export default function Login() {
   const [loginForm, setLoginForm] = useState({ email: '', password: '', remember: false });
   const [registerForm, setRegisterForm] = useState({ fullName: '', email: '', phone: '', password: '', confirmPassword: '', agreeTerms: false });
 
-  useEffect(() => { if (loginStatus === 'succeeded') navigate('/'); }, [loginStatus, navigate]);
+  const currentUser = useSelector(selectCurrentUser);
+
+  useEffect(() => { 
+    if (loginStatus === 'succeeded' && currentUser) {
+      if (currentUser.roles?.includes('ROLE_ADMIN')) {
+        navigate('/admin');
+      } else if (currentUser.roles?.includes('ROLE_STAFF')) {
+        navigate('/staff');
+      } else {
+        navigate('/');
+      }
+    } 
+  }, [loginStatus, navigate, currentUser]);
   useEffect(() => {
     if (registerStatus === 'succeeded') {
       const t = setTimeout(() => { dispatch(clearRegisterStatus()); setActiveTab('login'); setRegisterForm({ fullName: '', email: '', phone: '', password: '', confirmPassword: '', agreeTerms: false }); }, 2000);
@@ -72,7 +84,7 @@ export default function Login() {
   const pwMismatch = registerForm.confirmPassword && registerForm.password !== registerForm.confirmPassword;
 
   // ── GOOGLE LOGIN LOGIC ──
-  const handleGoogleLogin = useGoogleLogin({
+  /* const handleGoogleLogin = useGoogleLogin({
     onSuccess: (tokenResponse) => {
       // Lưu ý: tokenResponse.access_token là Access Token
       // Nhưng Backend của chúng ta cần ID Token. 
@@ -87,7 +99,7 @@ export default function Login() {
       // Ta sẽ sửa backend để chấp nhận access_token hoặc dùng component chính thức.
     },
     onError: () => console.log('Login Failed'),
-  });
+  }); */
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-slate-50 relative overflow-hidden font-sans">
@@ -178,7 +190,7 @@ export default function Login() {
               
               <div className="space-y-4 pt-4">
                 <div className="flex justify-center w-full">
-                  <GoogleLogin 
+                  {/* <GoogleLogin 
                     onSuccess={credentialResponse => {
                       console.log(">>> [StarCine] ID Token received:", credentialResponse.credential);
                       dispatch(googleLogin(credentialResponse.credential));
@@ -188,7 +200,7 @@ export default function Login() {
                     width="360"
                     text="signin_with"
                     shape="pill"
-                  />
+                  /> */}
                 </div>
                 
                 <div className="relative py-2 flex items-center gap-4">

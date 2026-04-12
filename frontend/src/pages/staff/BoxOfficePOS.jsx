@@ -1,8 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { useSelector } from 'react-redux';
+import { selectCurrentUser } from '../../store/authSlice';
 import { fetchPublicShowtimes } from '../../services/showtimeService';
 import { fetchCinemas } from '../../services/cinemaService';
 import { fetchSeatStatuses, calculatePrice } from '../../services/bookingService';
 import { fetchFnBItems } from '../../services/fnbService';
+import { BASE_URL, getAuthHeaders } from '../../utils/api';
+import { PosCommandInvoker, AddSeatCommand, RemoveSeatCommand, AddFnbCommand, RemoveFnbCommand } from '../../patterns/posCommands';
 
 // ── Seat palette ────────────────────────────────────────────────────
 const SEAT_STYLES = {
@@ -45,6 +49,33 @@ export default function BoxOfficePOS() {
   const [showFnbPanel, setShowFnbPanel] = useState(false);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [lastAction, setLastAction] = useState(null); // last command label for feedback
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  // Command Pattern Invoker
+  const invokerRef = useRef(new PosCommandInvoker());
+  const currentUser = useSelector(selectCurrentUser);
+
+  // Helper to run + sync undo/redo state after any command
+  const runCmd = (cmd) => {
+    const label = invokerRef.current.execute(cmd);
+    setLastAction(label);
+    setCanUndo(invokerRef.current.canUndo());
+    setCanRedo(invokerRef.current.canRedo());
+  };
+  const handleUndo = () => {
+    const label = invokerRef.current.undo();
+    if (label) setLastAction(label);
+    setCanUndo(invokerRef.current.canUndo());
+    setCanRedo(invokerRef.current.canRedo());
+  };
+  const handleRedo = () => {
+    const label = invokerRef.current.redo();
+    if (label) setLastAction(label);
+    setCanUndo(invokerRef.current.canUndo());
+    setCanRedo(invokerRef.current.canRedo());
+  };
 
   // ── Load initial data ───────────────────────────────────────────────
   useEffect(() => {
@@ -165,42 +196,61 @@ export default function BoxOfficePOS() {
     setStep(4);
   };
 
+  // Command Pattern: Toggle seat (Add or Remove)
   const handleToggleSeat = (seat) => {
     if (seat.status === 'SOLD' || seat.status === 'PENDING') return;
-    setSelectedSeats(prev => {
-      const exists = prev.find(s => s.seatId === seat.seatId);
-      if (exists) return prev.filter(s => s.seatId !== seat.seatId);
-      if (prev.length >= 10) return prev;
-      return [...prev, seat];
-    });
+    const isSelected = selectedSeats.find(s => s.seatId === seat.seatId);
+    if (isSelected) {
+      runCmd(new RemoveSeatCommand(seat, setSelectedSeats));
+    } else {
+      if (selectedSeats.length >= 10) return;
+      runCmd(new AddSeatCommand(seat, setSelectedSeats));
+    }
   };
 
+  // Command Pattern: Add F&B item
   const handleAddFnb = (item) => {
-    setCartFnb(prev => {
-      const exists = prev.find(f => f.itemId === item.itemId);
-      if (exists) return prev.map(f => f.itemId === item.itemId ? { ...f, quantity: f.quantity + 1 } : f);
-      return [...prev, { ...item, quantity: 1 }];
-    });
+    runCmd(new AddFnbCommand(item, setCartFnb));
   };
 
+  // Command Pattern: Remove F&B item
   const handleRemoveFnb = (itemId) => {
-    setCartFnb(prev => {
-      const item = prev.find(f => f.itemId === itemId);
-      if (!item) return prev;
-      if (item.quantity <= 1) return prev.filter(f => f.itemId !== itemId);
-      return prev.map(f => f.itemId === itemId ? { ...f, quantity: f.quantity - 1 } : f);
-    });
+    const item = cartFnb.find(f => f.itemId === itemId);
+    if (!item) return;
+    runCmd(new RemoveFnbCommand(itemId, item.name, setCartFnb));
   };
 
+  // Real Staff Cash Checkout → /api/payment/staff/cash-checkout
   const handlePayment = async () => {
+    if (!selectedShowtime || selectedSeats.length === 0) return;
     setPaymentProcessing(true);
-    // Mock payment for Phase 1
-    await new Promise(r => setTimeout(r, 1500));
-    setPaymentProcessing(false);
-    setPaymentSuccess(true);
-    setTimeout(() => {
-      resetAll();
-    }, 3000);
+    try {
+      const res = await fetch(`${BASE_URL}/payment/staff/cash-checkout`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser?.id,
+          showtimeId: selectedShowtime.showtimeId,
+          seatIds: selectedSeats.map(s => s.seatId),
+          fnbs: cartFnb.map(f => ({ itemId: f.itemId, quantity: f.quantity })),
+          promoCode: promoCode || null,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        alert('Lỗi thanh toán: ' + err);
+        setPaymentProcessing(false);
+        return;
+      }
+      setPaymentProcessing(false);
+      setPaymentSuccess(true);
+      invokerRef.current.reset();
+      setCanUndo(false); setCanRedo(false);
+      setTimeout(() => resetAll(), 3000);
+    } catch (e) {
+      alert('Lỗi mạng: ' + e.message);
+      setPaymentProcessing(false);
+    }
   };
 
   const resetAll = () => {
@@ -215,12 +265,18 @@ export default function BoxOfficePOS() {
     setPriceBreakdown(null);
     setShowFnbPanel(false);
     setPaymentSuccess(false);
+    setLastAction(null);
+    invokerRef.current.reset();
+    setCanUndo(false);
+    setCanRedo(false);
   };
 
-  // ── Hotkeys ─────────────────────────────────────────────────────────
+  // ── Hotkeys: Escape = reset, Ctrl+Z = undo, Ctrl+Y = redo ──────────
   useEffect(() => {
     const handler = (e) => {
-      if (e.key === 'Escape') resetAll();
+      if (e.key === 'Escape') { resetAll(); return; }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); handleUndo(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); handleRedo(); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -270,6 +326,23 @@ export default function BoxOfficePOS() {
           LEFT: WORKSPACE (70%)
       ════════════════════════════════════════════════════════════════ */}
       <div className="flex-[7] flex flex-col min-w-0 overflow-y-auto pr-1">
+
+        {/* Command Pattern: Undo / Redo toolbar */}
+        {(canUndo || canRedo || lastAction) && (
+          <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+            <button onClick={handleUndo} disabled={!canUndo}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold disabled:opacity-30 disabled:cursor-not-allowed text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition-all">
+              <span className="material-symbols-outlined text-base">undo</span>Ctrl+Z
+            </button>
+            <button onClick={handleRedo} disabled={!canRedo}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold disabled:opacity-30 disabled:cursor-not-allowed text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition-all">
+              <span className="material-symbols-outlined text-base">redo</span>Ctrl+Y
+            </button>
+            {lastAction && (
+              <span className="ml-auto text-[11px] text-slate-400 italic">↩ {lastAction}</span>
+            )}
+          </div>
+        )}
 
         {/* Breadcrumb / Step Indicator */}
         <div className="flex items-center gap-2 mb-4 text-xs font-bold text-slate-400 uppercase tracking-widest flex-wrap">

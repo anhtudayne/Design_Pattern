@@ -12,7 +12,10 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class PriceBreakdownDTO {
     private BigDecimal ticketTotal;
+    private BigDecimal occupancySurcharge;
     private BigDecimal fnbTotal;
-    private BigDecimal discountAmount;
+    private BigDecimal membershipDiscount;
+    private BigDecimal discountAmount;      // voucher discount
+    private String appliedStrategy;
     private BigDecimal finalTotal;
 }

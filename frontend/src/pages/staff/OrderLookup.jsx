@@ -17,45 +17,59 @@ export default function OrderLookup() {
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [isDefaultList, setIsDefaultList] = useState(true); // Nhận biết đang xem list mặc định hay kết quả search
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [tickets, setTickets] = useState([]);
   const [loadingTickets, setLoadingTickets] = useState(false);
 
-  // ── Search handler ──────────────────────────────────────────────────
-  const handleSearch = async (e) => {
-    e?.preventDefault();
-    if (!query.trim()) return;
-
+  // ── Initial Load ────────────────────────────────────────────────────
+  const fetchBookings = async (searchQuery = '') => {
     setSearching(true);
-    setHasSearched(true);
     setSelectedBooking(null);
     setTickets([]);
-
+    
     try {
-      // Call our new dynamic Specification search endpoint
-      const res = await fetch(`${BASE_URL}/booking/search?query=${encodeURIComponent(query.trim())}`, {
+      const res = await fetch(`${BASE_URL}/booking/search?query=${encodeURIComponent(searchQuery)}`, {
         headers: getAuthHeaders(),
       });
       
       if (res.ok) {
         const bookingData = await res.json();
-        // The API returns List<BookingDTO>. The frontend expects { bookingId, tickets, status, createdAt }
         const mappedResults = bookingData.map(b => ({
           bookingId: b.bookingId,
-          tickets: b.tickets || [], // BookingDTO has tickets field now
+          tickets: b.tickets || [],
           status: b.status || 'PAID',
           createdAt: b.createdAt || new Date().toISOString()
-        }));
+        })).sort((a, b) => b.bookingId - a.bookingId); // Sắp xếp giảm dần (mới nhất lên đầu)
+        
         setResults(mappedResults);
+        setHasSearched(true);
       } else {
         setResults([]);
       }
     } catch (e) {
-      console.error('Search error:', e);
+      console.error('Fetch error:', e);
       setResults([]);
     } finally {
       setSearching(false);
     }
+  };
+
+  useEffect(() => {
+    fetchBookings(''); // Tải tất cả đơn khi vừa vào trang
+  }, []);
+
+  // ── Search handler ──────────────────────────────────────────────────
+  const handleSearch = async (e) => {
+    e?.preventDefault();
+    if (!query.trim()) {
+      setIsDefaultList(true);
+      fetchBookings('');
+      return;
+    }
+
+    setIsDefaultList(false);
+    fetchBookings(query.trim());
   };
 
   // ── View booking detail ─────────────────────────────────────────────
@@ -119,8 +133,8 @@ export default function OrderLookup() {
           </div>
           <button
             type="submit"
-            disabled={searching || !query.trim()}
-            className="px-8 py-4 rounded-2xl bg-gradient-to-r from-orange-500 to-red-500 text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+            disabled={searching}
+            className="px-8 py-4 rounded-2xl bg-gradient-to-r from-orange-500 to-red-500 text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 disabled:opacity-40 transition-all flex items-center gap-2"
           >
             {searching ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -135,10 +149,10 @@ export default function OrderLookup() {
       </form>
 
       {/* Results / Empty State */}
-      {!hasSearched ? (
+      {!hasSearched && isDefaultList && results.length === 0 ? (
         <div className="text-center py-20">
           <span className="material-symbols-outlined text-7xl text-slate-200 dark:text-slate-700 mb-4 block">receipt_long</span>
-          <h2 className="text-lg font-black text-slate-400 uppercase tracking-tight mb-2">Nhập thông tin để bắt đầu tra cứu</h2>
+          <h2 className="text-lg font-black text-slate-400 uppercase tracking-tight mb-2">Chưa có đơn hàng nào trong hệ thống</h2>
           <p className="text-sm text-slate-300 dark:text-slate-600">Hỗ trợ tìm kiếm theo mã đơn hàng</p>
 
           {/* Quick tips */}
@@ -165,7 +179,7 @@ export default function OrderLookup() {
       ) : (
         <div className="space-y-4">
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-            Tìm thấy {results.length} kết quả
+            {isDefaultList ? `Danh sách đơn hàng gần đây (${results.length})` : `Tìm thấy ${results.length} kết quả`}
           </p>
 
           {results.map(booking => {

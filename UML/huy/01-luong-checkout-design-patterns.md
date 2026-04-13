@@ -1,10 +1,10 @@
-# Luồng checkout / thanh toán — Design patterns
+# Luồng checkout / thanh toán — Strategy và Factory
 
-**Áp dụng:** **Template Method** (khung `checkout`) + **Strategy** (mỗi kênh thanh toán) + **Factory Method** (chọn strategy theo `PaymentMethod`).
+**Áp dụng:** **Strategy** (mỗi kênh thanh toán một lớp triển khai `PaymentStrategy`) + **Factory** (`PaymentStrategyFactory` chọn đúng strategy theo `PaymentMethod`).
 
 ---
 
-## 1. Class diagram — các lớp pattern (backend)
+## 1. Class diagram — Strategy + Factory
 
 ```mermaid
 classDiagram
@@ -23,12 +23,12 @@ class PaymentStrategy {
 }
 
 class MomoPaymentStrategy {
-  -momoCheckoutProcess: MomoCheckoutProcess
+  +getPaymentMethod() PaymentMethod
   +checkout(CheckoutRequest) CheckoutResult
 }
 
 class DemoPaymentStrategy {
-  -demoCheckoutProcess: DemoCheckoutProcess
+  +getPaymentMethod() PaymentMethod
   +checkout(CheckoutRequest) CheckoutResult
   +buildDemoResult(...) Map
 }
@@ -40,40 +40,24 @@ class PaymentStrategyFactory {
   +getStrategy(PaymentMethod, Class subtype) PaymentStrategy
 }
 
+class CheckoutServiceImpl {
+  -paymentStrategyFactory: PaymentStrategyFactory
+  +createBooking(...) String
+  +processDemoCheckout(...) Map
+}
+
 PaymentStrategy <|.. MomoPaymentStrategy
 PaymentStrategy <|.. DemoPaymentStrategy
-PaymentStrategyFactory ..> PaymentStrategy : creates / resolves
+PaymentStrategyFactory ..> PaymentStrategy : resolves
+CheckoutServiceImpl --> PaymentStrategyFactory
 
-MomoPaymentStrategy --> MomoCheckoutProcess
-DemoPaymentStrategy --> DemoCheckoutProcess
-
-class AbstractCheckoutTemplate {
-  <<abstract>>
-  +checkout(CheckoutRequest) CheckoutResult
-  #processPayment(...) Object
-  #finalizeBooking(...) void
-}
-
-class MomoCheckoutProcess {
-  +processPayment(...)
-  +finalizeBooking(...)
-}
-
-class DemoCheckoutProcess {
-  +processPayment(...)
-  +finalizeBooking(...)
-}
-
-AbstractCheckoutTemplate <|-- MomoCheckoutProcess
-AbstractCheckoutTemplate <|-- DemoCheckoutProcess
-
-note for AbstractCheckoutTemplate "Template Method:\nfinal checkout() định nghĩa các bước;\nhook ở subclass."
-note for PaymentStrategyFactory "Factory:\nmap enum → bean strategy\n(lúc khởi tạo Spring)."
+note for PaymentStrategy "Strategy:\nđóng gói thuật toán checkout\ntheo từng kênh."
+note for PaymentStrategyFactory "Factory:\nmap PaymentMethod → bean strategy\n(khởi tạo Spring)."
 ```
 
 ---
 
-## 2. Sequence diagram — checkout MoMo (tạo booking + payUrl)
+## 2. Sequence diagram — checkout MoMo (factory chọn strategy, strategy thực hiện checkout)
 
 ```mermaid
 sequenceDiagram
@@ -83,25 +67,22 @@ sequenceDiagram
     participant CheckoutServiceImpl
     participant PaymentStrategyFactory
     participant MomoPaymentStrategy
-    participant MomoCheckoutProcess as AbstractTemplate_Momo
 
-    Client->>PaymentController: POST /checkout (body + paymentMethod?)
+    Client->>PaymentController: POST /checkout (body + paymentMethod)
     PaymentController->>CheckoutServiceImpl: createBooking(..., paymentMethod)
-    CheckoutServiceImpl->>CheckoutServiceImpl: PaymentMethod.fromString (MOMO)
+    CheckoutServiceImpl->>CheckoutServiceImpl: PaymentMethod.fromString → MOMO
     CheckoutServiceImpl->>PaymentStrategyFactory: getStrategy(MOMO)
     PaymentStrategyFactory-->>CheckoutServiceImpl: MomoPaymentStrategy
     CheckoutServiceImpl->>MomoPaymentStrategy: checkout(CheckoutRequest)
-    MomoPaymentStrategy->>MomoCheckoutProcess: checkout(request)
-    Note over MomoCheckoutProcess: Template Method:\nvalidate → price →\ncreate booking → F&B →\nprocessPayment (MoMo API) →\nfinalize (Payment PENDING)
-    MomoCheckoutProcess-->>MomoPaymentStrategy: CheckoutResult
-    MomoPaymentStrategy-->>CheckoutServiceImpl: CheckoutResult
+    Note over MomoPaymentStrategy: Strategy thực hiện toàn bộ\nluồng checkout kênh MoMo
+    MomoPaymentStrategy-->>CheckoutServiceImpl: CheckoutResult (payUrl)
     CheckoutServiceImpl-->>PaymentController: payUrl (String)
     PaymentController-->>Client: { payUrl }
 ```
 
 ---
 
-## 3. Sequence diagram — demo checkout (không gọi cổng thật)
+## 3. Sequence diagram — demo checkout (factory + subtype, strategy demo)
 
 ```mermaid
 sequenceDiagram
@@ -111,16 +92,13 @@ sequenceDiagram
     participant CheckoutServiceImpl
     participant PaymentStrategyFactory
     participant DemoPaymentStrategy
-    participant DemoCheckoutProcess as AbstractTemplate_Demo
 
     Client->>PaymentController: POST /checkout/demo?success=...
     PaymentController->>CheckoutServiceImpl: processDemoCheckout(...)
     CheckoutServiceImpl->>PaymentStrategyFactory: getStrategy(DEMO, DemoPaymentStrategy.class)
     PaymentStrategyFactory-->>CheckoutServiceImpl: DemoPaymentStrategy
     CheckoutServiceImpl->>DemoPaymentStrategy: checkout(CheckoutRequest)
-    DemoPaymentStrategy->>DemoCheckoutProcess: checkout(request)
-    Note over DemoCheckoutProcess: Cùng skeleton template;\nkhác hook: payment/ticket ngay
-    DemoCheckoutProcess-->>DemoPaymentStrategy: CheckoutResult
+    Note over DemoPaymentStrategy: Strategy demo:\nkhông gọi cổng thật
     DemoPaymentStrategy-->>CheckoutServiceImpl: CheckoutResult
     CheckoutServiceImpl->>DemoPaymentStrategy: buildDemoResult(booking, payment, price)
     DemoPaymentStrategy-->>CheckoutServiceImpl: Map JSON

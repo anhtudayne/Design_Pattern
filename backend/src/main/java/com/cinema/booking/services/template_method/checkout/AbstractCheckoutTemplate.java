@@ -84,9 +84,25 @@ public abstract class AbstractCheckoutTemplate {
     protected Customer validateUser(Integer userId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
         if (!(user instanceof Customer)) {
-            throw new RuntimeException("Chỉ Customer mới có thể đặt vé.");
+            // Đối tượng mặc định (Khách vãng lai) cho các Staff bán vé tại quầy
+            return getOrCreateWalkInGuest();
         }
         return (Customer) user;
+    }
+
+    private Customer getOrCreateWalkInGuest() {
+        // Tìm xem đã có Khách vãng lai mặc định trong DB chưa (dựa theo SDT 0000000000)
+        return userRepository.findByPhone("0000000000")
+                .filter(u -> u instanceof Customer)
+                .map(u -> (Customer) u)
+                .orElseGet(() -> {
+                    Customer guest = new Customer();
+                    guest.setFullname("Khách Vãng Lai");
+                    guest.setPhone("0000000000");
+                    guest.setTotalSpending(java.math.BigDecimal.ZERO);
+                    guest.setLoyaltyPoints(0);
+                    return userRepository.save(guest);
+                });
     }
 
     protected void validateSeats(Integer showtimeId, List<Integer> seatIds) {

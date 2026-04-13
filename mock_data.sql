@@ -13,7 +13,7 @@ INSERT INTO user_accounts (user_id, email, password_hash) VALUES
 (1, 'huy.it@example.com', '$2a$10$CFf0QcO8MiBVVkd3Gt427u2dcD88U7nPa5YcRcWF.Rk0SD5QetiPW'),
 (2, 'tu.vo@example.com', '$2a$10$CFf0QcO8MiBVVkd3Gt427u2dcD88U7nPa5YcRcWF.Rk0SD5QetiPW'),
 (3, 'quoc.vu@example.com', '$2a$10$CFf0QcO8MiBVVkd3Gt427u2dcD88U7nPa5YcRcWF.Rk0SD5QetiPW'),
-(4, 'staff.a@example.com', '$2a$10$CFf0QcO8MiBVVkd3Gt427u2dcD88U7nPa5YcRcWF.Rk0SD5QetiPW');
+(4, 'staff@f3.vn', '$2a$10$CFf0QcO8MiBVVkd3Gt427u2dcD88U7nPa5YcRcWF.Rk0SD5QetiPW');
 
 -- 3. Phân vai trò vào các bảng con (Joined Inheritance)
 -- Nguyen Nhat Huy là Customer

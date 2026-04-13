@@ -22,7 +22,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.springframework.transaction.annotation.Transactional;
+
 @Service
+@Transactional(readOnly = true)
 public class BookingServiceImpl implements BookingService {
 
     @Autowired
@@ -147,6 +150,7 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    @Transactional
     public void cancelBooking(Integer bookingId) {
         Booking booking = bookingRepository.findById(bookingId).orElseThrow(() -> new RuntimeException("Booking not found"));
         com.cinema.booking.patterns.state.BookingContext context = new com.cinema.booking.patterns.state.BookingContext(booking);
@@ -155,6 +159,7 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    @Transactional
     public void refundBooking(Integer bookingId) {
         Booking booking = bookingRepository.findById(bookingId).orElseThrow(() -> new RuntimeException("Booking not found"));
         com.cinema.booking.patterns.state.BookingContext context = new com.cinema.booking.patterns.state.BookingContext(booking);
@@ -163,6 +168,7 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    @Transactional
     public void printTickets(Integer bookingId) {
         Booking booking = bookingRepository.findById(bookingId).orElseThrow(() -> new RuntimeException("Booking not found"));
         com.cinema.booking.patterns.state.BookingContext context = new com.cinema.booking.patterns.state.BookingContext(booking);

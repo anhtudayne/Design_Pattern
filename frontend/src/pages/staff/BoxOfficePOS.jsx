@@ -40,6 +40,7 @@ export default function BoxOfficePOS() {
   const [seats, setSeats] = useState([]);
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [seatsLoading, setSeatsLoading] = useState(false);
+  const [seatsError, setSeatsError] = useState(null);
 
   // Cart
   const [cartFnb, setCartFnb] = useState([]);
@@ -50,6 +51,7 @@ export default function BoxOfficePOS() {
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [lastAction, setLastAction] = useState(null); // last command label for feedback
+  const [toastVisible, setToastVisible] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
 
@@ -61,21 +63,29 @@ export default function BoxOfficePOS() {
   const runCmd = (cmd) => {
     const label = invokerRef.current.execute(cmd);
     setLastAction(label);
+    setToastVisible(true);
     setCanUndo(invokerRef.current.canUndo());
     setCanRedo(invokerRef.current.canRedo());
   };
   const handleUndo = () => {
     const label = invokerRef.current.undo();
-    if (label) setLastAction(label);
+    if (label) { setLastAction(label); setToastVisible(true); }
     setCanUndo(invokerRef.current.canUndo());
     setCanRedo(invokerRef.current.canRedo());
   };
   const handleRedo = () => {
     const label = invokerRef.current.redo();
-    if (label) setLastAction(label);
+    if (label) { setLastAction(label); setToastVisible(true); }
     setCanUndo(invokerRef.current.canUndo());
     setCanRedo(invokerRef.current.canRedo());
   };
+
+  useEffect(() => {
+    if (toastVisible) {
+      const timer = setTimeout(() => setToastVisible(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastVisible, lastAction]);
 
   // ── Load initial data ───────────────────────────────────────────────
   useEffect(() => {
@@ -138,11 +148,13 @@ export default function BoxOfficePOS() {
     if (!selectedShowtime) return;
     const loadSeats = async () => {
       setSeatsLoading(true);
+      setSeatsError(null);
       try {
         const data = await fetchSeatStatuses(selectedShowtime.showtimeId);
         setSeats(data);
       } catch(e) {
         console.error('Failed to load seats', e);
+        setSeatsError(e.message);
       } finally {
         setSeatsLoading(false);
       }
@@ -266,6 +278,7 @@ export default function BoxOfficePOS() {
     setShowFnbPanel(false);
     setPaymentSuccess(false);
     setLastAction(null);
+    setToastVisible(false);
     invokerRef.current.reset();
     setCanUndo(false);
     setCanRedo(false);
@@ -274,13 +287,17 @@ export default function BoxOfficePOS() {
   // ── Hotkeys: Escape = reset, Ctrl+Z = undo, Ctrl+Y = redo ──────────
   useEffect(() => {
     const handler = (e) => {
+      // Fix: Dùng !document.activeElement.matches('input, textarea') để tránh nhận nhầm khi đang gõ text
+      const isInputFocused = document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
+      if (isInputFocused) return;
+      
       if (e.key === 'Escape') { resetAll(); return; }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); handleUndo(); }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); handleRedo(); }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); handleUndo(); }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); handleRedo(); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }); // Bỏ dependency rỗng để closure cập nhật function handleUndo mới nhất, giúp Hotkey không bị kẹt data cũ.
 
   // ── Seat grid builder ───────────────────────────────────────────────
   const seatGrid = useMemo(() => {
@@ -327,20 +344,23 @@ export default function BoxOfficePOS() {
       ════════════════════════════════════════════════════════════════ */}
       <div className="flex-[7] flex flex-col min-w-0 overflow-y-auto pr-1">
 
-        {/* Command Pattern: Undo / Redo toolbar */}
-        {(canUndo || canRedo || lastAction) && (
-          <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-            <button onClick={handleUndo} disabled={!canUndo}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold disabled:opacity-30 disabled:cursor-not-allowed text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition-all">
-              <span className="material-symbols-outlined text-base">undo</span>Ctrl+Z
-            </button>
-            <button onClick={handleRedo} disabled={!canRedo}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold disabled:opacity-30 disabled:cursor-not-allowed text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition-all">
-              <span className="material-symbols-outlined text-base">redo</span>Ctrl+Y
-            </button>
-            {lastAction && (
-              <span className="ml-auto text-[11px] text-slate-400 italic">↩ {lastAction}</span>
-            )}
+        {/* Floating Toast Notification cho Undo/Redo (Kiểu Gmail) */}
+        {toastVisible && lastAction && (
+          <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 flex animate-[bounce-up_0.3s_ease-out]">
+            <div className="bg-slate-800 text-white px-5 py-3.5 rounded-full shadow-2xl flex items-center gap-6 border border-slate-700/50">
+              <span className="text-sm font-medium">{lastAction}</span>
+              <div className="flex items-center gap-4 border-l border-slate-600 pl-4">
+                {canUndo && (
+                  <button onClick={handleUndo} className="text-orange-400 hover:text-orange-300 font-bold text-sm tracking-wide transition-colors uppercase">
+                    Hoàn tác (Ctrl+Z)
+                  </button>
+                )}
+                <button onClick={() => setToastVisible(false)} className="text-slate-400 hover:text-white transition-colors">
+                  <span className="material-symbols-outlined text-lg block">close</span>
+                </button>
+              </div>
+            </div>
+            <style>{`@keyframes bounce-up { 0% { transform: translate(-50%, 20px); opacity: 0; } 100% { transform: translate(-50%, 0); opacity: 1; } }`}</style>
           </div>
         )}
 
@@ -558,6 +578,17 @@ export default function BoxOfficePOS() {
               <div className="flex justify-center py-16">
                 <div className="w-10 h-10 border-4 border-orange-500/20 border-t-orange-500 rounded-full animate-spin"></div>
               </div>
+            ) : seatsError ? (
+              <div className="text-center py-16">
+                <span className="material-symbols-outlined text-4xl text-red-400 mb-2">error</span>
+                <p className="text-red-500 font-bold">{seatsError}</p>
+                <button 
+                  onClick={() => { setSelectedShowtime({...selectedShowtime}); }}
+                  className="mt-4 px-4 py-2 rounded-lg bg-slate-100 text-slate-600 font-bold text-xs hover:bg-slate-200"
+                >
+                  Thử lại
+                </button>
+              </div>
             ) : (
               <div className="space-y-1.5 max-w-3xl mx-auto">
                 {seatGrid.map(({ row, seats: rowSeats }) => (
@@ -599,11 +630,19 @@ export default function BoxOfficePOS() {
       ════════════════════════════════════════════════════════════════ */}
       <div className="flex-[3] flex flex-col min-w-[280px] max-w-[380px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-lg overflow-hidden">
         {/* Cart Header */}
-        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50">
           <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
             <span className="material-symbols-outlined text-orange-500 text-lg">shopping_cart</span>
             Đơn hàng
           </h3>
+          <div className="flex bg-slate-200/50 dark:bg-slate-800 p-1 rounded-xl">
+            <button onClick={handleUndo} disabled={!canUndo} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-white hover:text-orange-500 hover:shadow-sm transition-all disabled:opacity-30 disabled:hover:bg-transparent" title="Hoàn tác (Ctrl+Z)">
+              <span className="material-symbols-outlined text-sm font-bold">undo</span>
+            </button>
+            <button onClick={handleRedo} disabled={!canRedo} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-white hover:text-orange-500 hover:shadow-sm transition-all disabled:opacity-30 disabled:hover:bg-transparent" title="Làm lại (Ctrl+Y)">
+              <span className="material-symbols-outlined text-sm font-bold">redo</span>
+            </button>
+          </div>
         </div>
 
         {/* Cart Body */}

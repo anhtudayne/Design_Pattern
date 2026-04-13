@@ -1,8 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { useSelector } from 'react-redux';
+import { selectCurrentUser } from '../../store/authSlice';
 import { fetchPublicShowtimes } from '../../services/showtimeService';
 import { fetchCinemas } from '../../services/cinemaService';
 import { fetchSeatStatuses, calculatePrice } from '../../services/bookingService';
 import { fetchFnBItems } from '../../services/fnbService';
+import { BASE_URL, getAuthHeaders } from '../../utils/api';
+import { PosCommandInvoker, AddSeatCommand, RemoveSeatCommand, AddFnbCommand, RemoveFnbCommand } from '../../patterns/posCommands';
 
 // ── Seat palette ────────────────────────────────────────────────────
 const SEAT_STYLES = {
@@ -36,6 +40,7 @@ export default function BoxOfficePOS() {
   const [seats, setSeats] = useState([]);
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [seatsLoading, setSeatsLoading] = useState(false);
+  const [seatsError, setSeatsError] = useState(null);
 
   // Cart
   const [cartFnb, setCartFnb] = useState([]);
@@ -45,6 +50,42 @@ export default function BoxOfficePOS() {
   const [showFnbPanel, setShowFnbPanel] = useState(false);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [lastAction, setLastAction] = useState(null); // last command label for feedback
+  const [toastVisible, setToastVisible] = useState(false);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  // Command Pattern Invoker
+  const invokerRef = useRef(new PosCommandInvoker());
+  const currentUser = useSelector(selectCurrentUser);
+
+  // Helper to run + sync undo/redo state after any command
+  const runCmd = (cmd) => {
+    const label = invokerRef.current.execute(cmd);
+    setLastAction(label);
+    setToastVisible(true);
+    setCanUndo(invokerRef.current.canUndo());
+    setCanRedo(invokerRef.current.canRedo());
+  };
+  const handleUndo = () => {
+    const label = invokerRef.current.undo();
+    if (label) { setLastAction(label); setToastVisible(true); }
+    setCanUndo(invokerRef.current.canUndo());
+    setCanRedo(invokerRef.current.canRedo());
+  };
+  const handleRedo = () => {
+    const label = invokerRef.current.redo();
+    if (label) { setLastAction(label); setToastVisible(true); }
+    setCanUndo(invokerRef.current.canUndo());
+    setCanRedo(invokerRef.current.canRedo());
+  };
+
+  useEffect(() => {
+    if (toastVisible) {
+      const timer = setTimeout(() => setToastVisible(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastVisible, lastAction]);
 
   // ── Load initial data ───────────────────────────────────────────────
   useEffect(() => {
@@ -107,11 +148,13 @@ export default function BoxOfficePOS() {
     if (!selectedShowtime) return;
     const loadSeats = async () => {
       setSeatsLoading(true);
+      setSeatsError(null);
       try {
         const data = await fetchSeatStatuses(selectedShowtime.showtimeId);
         setSeats(data);
       } catch(e) {
         console.error('Failed to load seats', e);
+        setSeatsError(e.message);
       } finally {
         setSeatsLoading(false);
       }
@@ -165,42 +208,61 @@ export default function BoxOfficePOS() {
     setStep(4);
   };
 
+  // Command Pattern: Toggle seat (Add or Remove)
   const handleToggleSeat = (seat) => {
     if (seat.status === 'SOLD' || seat.status === 'PENDING') return;
-    setSelectedSeats(prev => {
-      const exists = prev.find(s => s.seatId === seat.seatId);
-      if (exists) return prev.filter(s => s.seatId !== seat.seatId);
-      if (prev.length >= 10) return prev;
-      return [...prev, seat];
-    });
+    const isSelected = selectedSeats.find(s => s.seatId === seat.seatId);
+    if (isSelected) {
+      runCmd(new RemoveSeatCommand(seat, setSelectedSeats));
+    } else {
+      if (selectedSeats.length >= 10) return;
+      runCmd(new AddSeatCommand(seat, setSelectedSeats));
+    }
   };
 
+  // Command Pattern: Add F&B item
   const handleAddFnb = (item) => {
-    setCartFnb(prev => {
-      const exists = prev.find(f => f.itemId === item.itemId);
-      if (exists) return prev.map(f => f.itemId === item.itemId ? { ...f, quantity: f.quantity + 1 } : f);
-      return [...prev, { ...item, quantity: 1 }];
-    });
+    runCmd(new AddFnbCommand(item, setCartFnb));
   };
 
+  // Command Pattern: Remove F&B item
   const handleRemoveFnb = (itemId) => {
-    setCartFnb(prev => {
-      const item = prev.find(f => f.itemId === itemId);
-      if (!item) return prev;
-      if (item.quantity <= 1) return prev.filter(f => f.itemId !== itemId);
-      return prev.map(f => f.itemId === itemId ? { ...f, quantity: f.quantity - 1 } : f);
-    });
+    const item = cartFnb.find(f => f.itemId === itemId);
+    if (!item) return;
+    runCmd(new RemoveFnbCommand(itemId, item.name, setCartFnb));
   };
 
+  // Real Staff Cash Checkout → /api/payment/staff/cash-checkout
   const handlePayment = async () => {
+    if (!selectedShowtime || selectedSeats.length === 0) return;
     setPaymentProcessing(true);
-    // Mock payment for Phase 1
-    await new Promise(r => setTimeout(r, 1500));
-    setPaymentProcessing(false);
-    setPaymentSuccess(true);
-    setTimeout(() => {
-      resetAll();
-    }, 3000);
+    try {
+      const res = await fetch(`${BASE_URL}/payment/staff/cash-checkout`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser?.id,
+          showtimeId: selectedShowtime.showtimeId,
+          seatIds: selectedSeats.map(s => s.seatId),
+          fnbs: cartFnb.map(f => ({ itemId: f.itemId, quantity: f.quantity })),
+          promoCode: promoCode || null,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        alert('Lỗi thanh toán: ' + err);
+        setPaymentProcessing(false);
+        return;
+      }
+      setPaymentProcessing(false);
+      setPaymentSuccess(true);
+      invokerRef.current.reset();
+      setCanUndo(false); setCanRedo(false);
+      setTimeout(() => resetAll(), 3000);
+    } catch (e) {
+      alert('Lỗi mạng: ' + e.message);
+      setPaymentProcessing(false);
+    }
   };
 
   const resetAll = () => {
@@ -215,16 +277,27 @@ export default function BoxOfficePOS() {
     setPriceBreakdown(null);
     setShowFnbPanel(false);
     setPaymentSuccess(false);
+    setLastAction(null);
+    setToastVisible(false);
+    invokerRef.current.reset();
+    setCanUndo(false);
+    setCanRedo(false);
   };
 
-  // ── Hotkeys ─────────────────────────────────────────────────────────
+  // ── Hotkeys: Escape = reset, Ctrl+Z = undo, Ctrl+Y = redo ──────────
   useEffect(() => {
     const handler = (e) => {
-      if (e.key === 'Escape') resetAll();
+      // Fix: Dùng !document.activeElement.matches('input, textarea') để tránh nhận nhầm khi đang gõ text
+      const isInputFocused = document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
+      if (isInputFocused) return;
+      
+      if (e.key === 'Escape') { resetAll(); return; }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); handleUndo(); }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); handleRedo(); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }); // Bỏ dependency rỗng để closure cập nhật function handleUndo mới nhất, giúp Hotkey không bị kẹt data cũ.
 
   // ── Seat grid builder ───────────────────────────────────────────────
   const seatGrid = useMemo(() => {
@@ -270,6 +343,26 @@ export default function BoxOfficePOS() {
           LEFT: WORKSPACE (70%)
       ════════════════════════════════════════════════════════════════ */}
       <div className="flex-[7] flex flex-col min-w-0 overflow-y-auto pr-1">
+
+        {/* Floating Toast Notification cho Undo/Redo (Kiểu Gmail) */}
+        {toastVisible && lastAction && (
+          <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 flex animate-[bounce-up_0.3s_ease-out]">
+            <div className="bg-slate-800 text-white px-5 py-3.5 rounded-full shadow-2xl flex items-center gap-6 border border-slate-700/50">
+              <span className="text-sm font-medium">{lastAction}</span>
+              <div className="flex items-center gap-4 border-l border-slate-600 pl-4">
+                {canUndo && (
+                  <button onClick={handleUndo} className="text-orange-400 hover:text-orange-300 font-bold text-sm tracking-wide transition-colors uppercase">
+                    Hoàn tác (Ctrl+Z)
+                  </button>
+                )}
+                <button onClick={() => setToastVisible(false)} className="text-slate-400 hover:text-white transition-colors">
+                  <span className="material-symbols-outlined text-lg block">close</span>
+                </button>
+              </div>
+            </div>
+            <style>{`@keyframes bounce-up { 0% { transform: translate(-50%, 20px); opacity: 0; } 100% { transform: translate(-50%, 0); opacity: 1; } }`}</style>
+          </div>
+        )}
 
         {/* Breadcrumb / Step Indicator */}
         <div className="flex items-center gap-2 mb-4 text-xs font-bold text-slate-400 uppercase tracking-widest flex-wrap">
@@ -485,6 +578,17 @@ export default function BoxOfficePOS() {
               <div className="flex justify-center py-16">
                 <div className="w-10 h-10 border-4 border-orange-500/20 border-t-orange-500 rounded-full animate-spin"></div>
               </div>
+            ) : seatsError ? (
+              <div className="text-center py-16">
+                <span className="material-symbols-outlined text-4xl text-red-400 mb-2">error</span>
+                <p className="text-red-500 font-bold">{seatsError}</p>
+                <button 
+                  onClick={() => { setSelectedShowtime({...selectedShowtime}); }}
+                  className="mt-4 px-4 py-2 rounded-lg bg-slate-100 text-slate-600 font-bold text-xs hover:bg-slate-200"
+                >
+                  Thử lại
+                </button>
+              </div>
             ) : (
               <div className="space-y-1.5 max-w-3xl mx-auto">
                 {seatGrid.map(({ row, seats: rowSeats }) => (
@@ -526,11 +630,19 @@ export default function BoxOfficePOS() {
       ════════════════════════════════════════════════════════════════ */}
       <div className="flex-[3] flex flex-col min-w-[280px] max-w-[380px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-lg overflow-hidden">
         {/* Cart Header */}
-        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50">
           <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
             <span className="material-symbols-outlined text-orange-500 text-lg">shopping_cart</span>
             Đơn hàng
           </h3>
+          <div className="flex bg-slate-200/50 dark:bg-slate-800 p-1 rounded-xl">
+            <button onClick={handleUndo} disabled={!canUndo} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-white hover:text-orange-500 hover:shadow-sm transition-all disabled:opacity-30 disabled:hover:bg-transparent" title="Hoàn tác (Ctrl+Z)">
+              <span className="material-symbols-outlined text-sm font-bold">undo</span>
+            </button>
+            <button onClick={handleRedo} disabled={!canRedo} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-white hover:text-orange-500 hover:shadow-sm transition-all disabled:opacity-30 disabled:hover:bg-transparent" title="Làm lại (Ctrl+Y)">
+              <span className="material-symbols-outlined text-sm font-bold">redo</span>
+            </button>
+          </div>
         </div>
 
         {/* Cart Body */}

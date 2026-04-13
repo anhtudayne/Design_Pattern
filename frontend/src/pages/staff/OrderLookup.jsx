@@ -17,52 +17,59 @@ export default function OrderLookup() {
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [isDefaultList, setIsDefaultList] = useState(true); // Nhận biết đang xem list mặc định hay kết quả search
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [tickets, setTickets] = useState([]);
   const [loadingTickets, setLoadingTickets] = useState(false);
 
-  // ── Search handler ──────────────────────────────────────────────────
-  const handleSearch = async (e) => {
-    e?.preventDefault();
-    if (!query.trim()) return;
-
+  // ── Initial Load ────────────────────────────────────────────────────
+  const fetchBookings = async (searchQuery = '') => {
     setSearching(true);
-    setHasSearched(true);
     setSelectedBooking(null);
     setTickets([]);
-
+    
     try {
-      // Try searching by booking ID first
-      const bookingId = parseInt(query.trim());
-      if (!isNaN(bookingId)) {
-        const res = await fetch(`${BASE_URL}/tickets/booking/${bookingId}`, {
-          headers: getAuthHeaders(),
-        });
-        if (res.ok) {
-          const ticketData = await res.json();
-          if (ticketData.length > 0) {
-            setResults([{
-              bookingId: bookingId,
-              tickets: ticketData,
-              status: 'PAID',
-              createdAt: new Date().toISOString(),
-            }]);
-          } else {
-            setResults([]);
-          }
-        } else {
-          setResults([]);
-        }
+      const res = await fetch(`${BASE_URL}/booking/search?query=${encodeURIComponent(searchQuery)}`, {
+        headers: getAuthHeaders(),
+      });
+      
+      if (res.ok) {
+        const bookingData = await res.json();
+        const mappedResults = bookingData.map(b => ({
+          bookingId: b.bookingId,
+          tickets: b.tickets || [],
+          status: b.status || 'PAID',
+          createdAt: b.createdAt || new Date().toISOString()
+        })).sort((a, b) => b.bookingId - a.bookingId); // Sắp xếp giảm dần (mới nhất lên đầu)
+        
+        setResults(mappedResults);
+        setHasSearched(true);
       } else {
-        // For phone/email search — mock since API doesn't exist yet
         setResults([]);
       }
     } catch (e) {
-      console.error('Search error:', e);
+      console.error('Fetch error:', e);
       setResults([]);
     } finally {
       setSearching(false);
     }
+  };
+
+  useEffect(() => {
+    fetchBookings(''); // Tải tất cả đơn khi vừa vào trang
+  }, []);
+
+  // ── Search handler ──────────────────────────────────────────────────
+  const handleSearch = async (e) => {
+    e?.preventDefault();
+    if (!query.trim()) {
+      setIsDefaultList(true);
+      fetchBookings('');
+      return;
+    }
+
+    setIsDefaultList(false);
+    fetchBookings(query.trim());
   };
 
   // ── View booking detail ─────────────────────────────────────────────
@@ -126,8 +133,8 @@ export default function OrderLookup() {
           </div>
           <button
             type="submit"
-            disabled={searching || !query.trim()}
-            className="px-8 py-4 rounded-2xl bg-gradient-to-r from-orange-500 to-red-500 text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+            disabled={searching}
+            className="px-8 py-4 rounded-2xl bg-gradient-to-r from-orange-500 to-red-500 text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 disabled:opacity-40 transition-all flex items-center gap-2"
           >
             {searching ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -142,10 +149,10 @@ export default function OrderLookup() {
       </form>
 
       {/* Results / Empty State */}
-      {!hasSearched ? (
+      {!hasSearched && isDefaultList && results.length === 0 ? (
         <div className="text-center py-20">
           <span className="material-symbols-outlined text-7xl text-slate-200 dark:text-slate-700 mb-4 block">receipt_long</span>
-          <h2 className="text-lg font-black text-slate-400 uppercase tracking-tight mb-2">Nhập thông tin để bắt đầu tra cứu</h2>
+          <h2 className="text-lg font-black text-slate-400 uppercase tracking-tight mb-2">Chưa có đơn hàng nào trong hệ thống</h2>
           <p className="text-sm text-slate-300 dark:text-slate-600">Hỗ trợ tìm kiếm theo mã đơn hàng</p>
 
           {/* Quick tips */}
@@ -172,7 +179,7 @@ export default function OrderLookup() {
       ) : (
         <div className="space-y-4">
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-            Tìm thấy {results.length} kết quả
+            {isDefaultList ? `Danh sách đơn hàng gần đây (${results.length})` : `Tìm thấy ${results.length} kết quả`}
           </p>
 
           {results.map(booking => {
@@ -250,15 +257,41 @@ export default function OrderLookup() {
 
                         {/* Actions */}
                         <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-200 dark:border-slate-700">
-                          <button className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:border-orange-500 hover:text-orange-500 transition-all shadow-sm">
+                          <button 
+                            onClick={async () => {
+                              try {
+                                const res = await fetch(`${BASE_URL}/booking/${booking.bookingId}/print`, { method: 'POST', headers: getAuthHeaders() });
+                                const msg = await res.text();
+                                alert(res.ok ? 'Chỉ thị In vé đã được gửi!' : `Lỗi: ${msg}`);
+                              } catch(e) { alert('Lỗi mạng'); }
+                            }}
+                            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:border-orange-500 hover:text-orange-500 transition-all shadow-sm">
                             <span className="material-symbols-outlined text-base">print</span>
                             In lại vé
                           </button>
-                          <button className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-xs font-bold text-red-500 hover:bg-red-100 transition-all shadow-sm">
+                          <button 
+                            onClick={async () => {
+                              try {
+                                const res = await fetch(`${BASE_URL}/booking/${booking.bookingId}/cancel`, { method: 'POST', headers: getAuthHeaders() });
+                                const msg = await res.text();
+                                alert(res.ok ? msg : `Lỗi: ${msg}`);
+                                if(res.ok) handleSearch(); // refresh
+                              } catch(e) { alert('Lỗi mạng'); }
+                            }}
+                            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-xs font-bold text-red-500 hover:bg-red-100 transition-all shadow-sm">
                             <span className="material-symbols-outlined text-base">cancel</span>
                             Hủy đơn
                           </button>
-                          <button className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 text-xs font-bold text-blue-500 hover:bg-blue-100 transition-all shadow-sm">
+                          <button 
+                            onClick={async () => {
+                              try {
+                                const res = await fetch(`${BASE_URL}/booking/${booking.bookingId}/refund`, { method: 'POST', headers: getAuthHeaders() });
+                                const msg = await res.text();
+                                alert(res.ok ? msg : `Lỗi: ${msg}`);
+                                if(res.ok) handleSearch(); // refresh
+                              } catch(e) { alert('Lỗi mạng'); }
+                            }}
+                            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 text-xs font-bold text-blue-500 hover:bg-blue-100 transition-all shadow-sm">
                             <span className="material-symbols-outlined text-base">currency_exchange</span>
                             Hoàn tiền
                           </button>

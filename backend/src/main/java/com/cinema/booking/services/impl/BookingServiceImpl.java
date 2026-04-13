@@ -22,7 +22,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.springframework.transaction.annotation.Transactional;
+
 @Service
+@Transactional(readOnly = true)
 public class BookingServiceImpl implements BookingService {
 
     @Autowired
@@ -136,8 +139,46 @@ public class BookingServiceImpl implements BookingService {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Booking ID: " + bookingId));
 
-        List<Ticket> tickets = ticketRepository.findByBooking_BookingId(bookingId);
-        List<FnBLine> fnbs = fnBLineRepository.findByBooking_BookingId(bookingId);
+        return mapToDTO(booking);
+    }
+
+    @Override
+    public List<BookingDTO> searchBookings(String query) {
+        return bookingRepository.findAll(
+                com.cinema.booking.patterns.specification.BookingSpecificationBuilder.searchBookings(query)
+        ).stream().map(this::mapToDTO).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void cancelBooking(Integer bookingId) {
+        Booking booking = bookingRepository.findById(bookingId).orElseThrow(() -> new RuntimeException("Booking not found"));
+        com.cinema.booking.patterns.state.BookingContext context = new com.cinema.booking.patterns.state.BookingContext(booking);
+        context.cancel();
+        bookingRepository.save(booking);
+    }
+
+    @Override
+    @Transactional
+    public void refundBooking(Integer bookingId) {
+        Booking booking = bookingRepository.findById(bookingId).orElseThrow(() -> new RuntimeException("Booking not found"));
+        com.cinema.booking.patterns.state.BookingContext context = new com.cinema.booking.patterns.state.BookingContext(booking);
+        context.refund();
+        bookingRepository.save(booking);
+    }
+
+    @Override
+    @Transactional
+    public void printTickets(Integer bookingId) {
+        Booking booking = bookingRepository.findById(bookingId).orElseThrow(() -> new RuntimeException("Booking not found"));
+        com.cinema.booking.patterns.state.BookingContext context = new com.cinema.booking.patterns.state.BookingContext(booking);
+        context.printTickets();
+        // Maybe update DB if printing changes a specific physical flag, for now state pattern enforces rules.
+    }
+
+    private BookingDTO mapToDTO(Booking booking) {
+        List<Ticket> tickets = ticketRepository.findByBooking_BookingId(booking.getBookingId());
+        List<FnBLine> fnbs = fnBLineRepository.findByBooking_BookingId(booking.getBookingId());
 
         return BookingDTO.builder()
                 .bookingId(booking.getBookingId())

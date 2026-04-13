@@ -5,7 +5,8 @@ package com.cinema.booking.services.payment;
  */
 public enum PaymentMethod {
     MOMO,
-    DEMO;
+    DEMO,
+    CASH;
 
     public static PaymentMethod fromString(String raw) {
         if (raw == null || raw.isBlank()) {

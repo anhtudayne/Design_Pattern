@@ -1,28 +1,26 @@
 package com.cinema.booking.services.impl;
 
 import com.cinema.booking.dtos.BookingCalculationDTO;
+import com.cinema.booking.dtos.CheckoutRequest;
+import com.cinema.booking.dtos.CheckoutResult;
 import com.cinema.booking.dtos.MomoCallbackRequest;
-import com.cinema.booking.dtos.MomoPaymentResponse;
-import com.cinema.booking.dtos.PriceBreakdownDTO;
-import com.cinema.booking.entities.*;
-import com.cinema.booking.patterns.chainofresponsibility.CheckoutValidationContext;
-import com.cinema.booking.patterns.chainofresponsibility.CheckoutValidationHandler;
+import com.cinema.booking.entities.Booking;
+import com.cinema.booking.entities.Payment;
 import com.cinema.booking.patterns.mediator.MomoCallbackContext;
 import com.cinema.booking.patterns.mediator.PostPaymentMediator;
-import com.cinema.booking.repositories.*;
-import com.cinema.booking.services.BookingService;
+import com.cinema.booking.repositories.BookingRepository;
 import com.cinema.booking.services.CheckoutService;
 import com.cinema.booking.services.MomoService;
+import com.cinema.booking.services.payment.CashPaymentStrategy;
+import com.cinema.booking.services.payment.DemoPaymentStrategy;
+import com.cinema.booking.services.payment.PaymentMethod;
+import com.cinema.booking.services.payment.PaymentStrategyFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.stream.Collectors;
 
 @Service
 public class CheckoutServiceImpl implements CheckoutService {
@@ -34,25 +32,10 @@ public class CheckoutServiceImpl implements CheckoutService {
     private BookingRepository bookingRepository;
 
     @Autowired
-    private PaymentRepository paymentRepository;
-
-    @Autowired
-    private PromotionRepository promotionRepository;
-
-    @Autowired
-    private BookingService bookingService;
-
-    @Autowired
     private MomoService momoService;
 
     @Autowired
-    private FnBLineRepository fnBLineRepository;
-
-    @Autowired
-    private FnbItemRepository fnbItemRepository;
-
-    @Autowired
-    private CheckoutValidationHandler checkoutValidationChain;
+    private PaymentStrategyFactory paymentStrategyFactory;
 
     @Autowired
     private PostPaymentMediator postPaymentMediator;
@@ -60,71 +43,24 @@ public class CheckoutServiceImpl implements CheckoutService {
     @Override
     @Transactional
     public String createBooking(Integer userId, Integer showtimeId, List<Integer> seatIds,
-                                List<BookingCalculationDTO.FnbOrderDTO> fnbs, String promoCode) throws Exception {
-        CheckoutValidationContext context = CheckoutValidationContext.builder()
+                                List<BookingCalculationDTO.FnbOrderDTO> fnbs, String promoCode,
+                                String paymentMethod) throws Exception {
+        PaymentMethod method = PaymentMethod.fromString(paymentMethod);
+        if (method != PaymentMethod.MOMO) {
+            throw new IllegalArgumentException(
+                    "Endpoint checkout chuẩn chỉ hỗ trợ MOMO. Luồng thử không MoMo dùng API /checkout/demo.");
+        }
+
+        CheckoutRequest request = CheckoutRequest.builder()
                 .userId(userId)
                 .showtimeId(showtimeId)
                 .seatIds(seatIds)
+                .fnbs(fnbs)
                 .promoCode(promoCode)
                 .build();
-        checkoutValidationChain.handle(context);
 
-        Customer customer = (Customer) context.getUser();
-        Promotion promotion = promoCode != null ? promotionRepository.findByCode(promoCode).orElse(null) : null;
-
-        BookingCalculationDTO calculationRequest = new BookingCalculationDTO();
-        calculationRequest.setShowtimeId(showtimeId);
-        calculationRequest.setSeatIds(seatIds);
-        calculationRequest.setFnbs(fnbs);
-        calculationRequest.setPromoCode(promoCode);
-        PriceBreakdownDTO price = bookingService.calculatePrice(calculationRequest);
-
-        Booking booking = Booking.builder()
-                .customer(customer)
-                .promotion(promotion)
-                .status(Booking.BookingStatus.PENDING)
-                .createdAt(LocalDateTime.now())
-                .build();
-        booking = bookingRepository.save(booking);
-
-        if (fnbs != null && !fnbs.isEmpty()) {
-            for (BookingCalculationDTO.FnbOrderDTO fnbDto : fnbs) {
-                FnbItem fnbItem = fnbItemRepository.findById(fnbDto.getItemId())
-                        .orElseThrow(() -> new RuntimeException("Sản phẩm F&B không tồn tại: " + fnbDto.getItemId()));
-                FnBLine item = FnBLine.builder()
-                        .booking(booking)
-                        .item(fnbItem)
-                        .quantity(fnbDto.getQuantity())
-                        .unitPrice(fnbItem.getPrice())
-                        .build();
-                fnBLineRepository.save(item);
-            }
-        }
-
-        String seatIdsStr = (seatIds != null)
-                ? seatIds.stream().map(String::valueOf).collect(Collectors.joining(",")) : "";
-        String extraData = booking.getBookingId() + "|" + showtimeId + "|" + seatIdsStr;
-
-        MomoPaymentResponse momoResponse = momoService.createPayment(
-                "BOOKING_" + booking.getBookingId(),
-                price.getFinalTotal().longValue(),
-                "Thanh toán vé xem phim StarCine cho Booking #" + booking.getBookingId(),
-                extraData
-        );
-
-        try {
-            Payment payment = Payment.builder()
-                    .booking(booking)
-                    .paymentMethod("MOMO")
-                    .amount(price.getFinalTotal())
-                    .status(Payment.PaymentStatus.PENDING)
-                    .build();
-            paymentRepository.save(payment);
-        } catch (Exception e) {
-            System.err.println(">>> [StarCine] ERROR khi lưu Payment PENDING: " + e.getMessage());
-        }
-
-        return momoResponse.getPayUrl();
+        CheckoutResult result = paymentStrategyFactory.getStrategy(method).checkout(request);
+        return (String) result.getPaymentResult();
     }
 
     @Override
@@ -169,7 +105,8 @@ public class CheckoutServiceImpl implements CheckoutService {
                 for (String s : seatIdStrs) {
                     try {
                         seatIds.add(Integer.parseInt(s.trim()));
-                    } catch (NumberFormatException ignored) {}
+                    } catch (NumberFormatException ignored) {
+                    }
                 }
             }
         }
@@ -192,13 +129,9 @@ public class CheckoutServiceImpl implements CheckoutService {
         }
     }
 
-    /**
-     * Demo checkout — simulates a completed payment without going through MoMo.
-     * Uses the same PostPaymentMediator as the real callback path to avoid logic duplication.
-     */
     @Override
     @Transactional
-    public Map<String, Object> processDemoCheckout(
+    public java.util.Map<String, Object> processDemoCheckout(
             Integer userId,
             Integer showtimeId,
             List<Integer> seatIds,
@@ -206,84 +139,46 @@ public class CheckoutServiceImpl implements CheckoutService {
             String promoCode,
             boolean success
     ) throws Exception {
-        // 1. Validate via Chain of Responsibility
-        CheckoutValidationContext validationCtx = CheckoutValidationContext.builder()
+        CheckoutRequest request = CheckoutRequest.builder()
                 .userId(userId)
                 .showtimeId(showtimeId)
                 .seatIds(seatIds)
+                .fnbs(fnbs)
                 .promoCode(promoCode)
+                .demoSuccess(success)
                 .build();
-        checkoutValidationChain.handle(validationCtx);
 
-        Customer customer = (Customer) validationCtx.getUser();
-        Promotion promotion = promoCode != null ? promotionRepository.findByCode(promoCode).orElse(null) : null;
+        DemoPaymentStrategy demoStrategy = paymentStrategyFactory.getStrategy(PaymentMethod.DEMO, DemoPaymentStrategy.class);
+        CheckoutResult result = demoStrategy.checkout(request);
 
-        // 2. Calculate price
-        BookingCalculationDTO calculationRequest = new BookingCalculationDTO();
-        calculationRequest.setShowtimeId(showtimeId);
-        calculationRequest.setSeatIds(seatIds);
-        calculationRequest.setFnbs(fnbs);
-        calculationRequest.setPromoCode(promoCode);
-        PriceBreakdownDTO price = bookingService.calculatePrice(calculationRequest);
+        return demoStrategy.buildDemoResult(
+                result.getBooking(),
+                (Payment) result.getPaymentResult(),
+                result.getPrice()
+        );
+    }
 
-        // 3. Create booking as PENDING — Mediator will confirm or cancel it
-        Booking booking = Booking.builder()
-                .customer(customer)
-                .promotion(promotion)
-                .status(Booking.BookingStatus.PENDING)
-                .createdAt(LocalDateTime.now())
-                .build();
-        booking = bookingRepository.save(booking);
-
-        // 4. Save F&B lines
-        if (fnbs != null && !fnbs.isEmpty()) {
-            for (BookingCalculationDTO.FnbOrderDTO fnbDto : fnbs) {
-                FnbItem fnbItem = fnbItemRepository.findById(fnbDto.getItemId())
-                        .orElseThrow(() -> new RuntimeException("Sản phẩm F&B không tồn tại: " + fnbDto.getItemId()));
-                FnBLine item = FnBLine.builder()
-                        .booking(booking)
-                        .item(fnbItem)
-                        .quantity(fnbDto.getQuantity())
-                        .unitPrice(fnbItem.getPrice())
-                        .build();
-                fnBLineRepository.save(item);
-            }
-        }
-
-        // 5. Create PENDING payment so PaymentStatusUpdater can locate and update it
-        Payment payment = Payment.builder()
-                .booking(booking)
-                .paymentMethod("MOMO")
-                .amount(price.getFinalTotal())
-                .status(Payment.PaymentStatus.PENDING)
-                .build();
-        paymentRepository.save(payment);
-
-        // 6. Build a synthetic callback context and delegate to PostPaymentMediator
-        MomoCallbackRequest fakeCallback = new MomoCallbackRequest();
-        fakeCallback.setAmount(price.getFinalTotal().longValue());
-
-        MomoCallbackContext mediatorCtx = MomoCallbackContext.builder()
-                .callback(fakeCallback)
-                .booking(booking)
-                .seatIds(seatIds)
+    @Override
+    @Transactional
+    public java.util.Map<String, Object> processStaffCashCheckout(
+            Integer customerId, Integer showtimeId, List<Integer> seatIds,
+            List<BookingCalculationDTO.FnbOrderDTO> fnbs, String promoCode) throws Exception {
+        CheckoutRequest request = CheckoutRequest.builder()
+                .userId(customerId)
                 .showtimeId(showtimeId)
-                .success(success)
+                .seatIds(seatIds)
+                .fnbs(fnbs)
+                .promoCode(promoCode)
+                .demoSuccess(true)
                 .build();
 
-        if (success) {
-            postPaymentMediator.settleSuccess(mediatorCtx);
-        } else {
-            postPaymentMediator.settleFailure(mediatorCtx);
-        }
+        CashPaymentStrategy cashStrategy = (CashPaymentStrategy) paymentStrategyFactory.getStrategy(PaymentMethod.CASH);
+        CheckoutResult result = cashStrategy.checkout(request);
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("bookingId", booking.getBookingId());
-        result.put("bookingCode", booking.getBookingCode());
-        result.put("paymentStatus", success
-                ? Payment.PaymentStatus.SUCCESS.name()
-                : Payment.PaymentStatus.FAILED.name());
-        result.put("totalAmount", price.getFinalTotal());
-        return result;
+        return cashStrategy.buildResult(
+                result.getBooking(),
+                (Payment) result.getPaymentResult(),
+                result.getPrice()
+        );
     }
 }

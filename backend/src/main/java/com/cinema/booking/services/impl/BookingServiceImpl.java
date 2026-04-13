@@ -4,26 +4,33 @@ import com.cinema.booking.dtos.BookingCalculationDTO;
 import com.cinema.booking.dtos.BookingDTO;
 import com.cinema.booking.dtos.PriceBreakdownDTO;
 import com.cinema.booking.dtos.SeatStatusDTO;
+import com.cinema.booking.domain.seat.SeatState;
+import com.cinema.booking.domain.seat.SeatStateFactory;
 import com.cinema.booking.entities.*;
 import com.cinema.booking.repositories.*;
 import com.cinema.booking.services.BookingService;
 import com.cinema.booking.services.DynamicPricingService;
+import com.cinema.booking.services.seatlock.SeatLockProvider;
+import com.cinema.booking.services.strategy_decorator.pricing.PricingContext;
+import com.cinema.booking.services.strategy_decorator.pricing.PricingEngine;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional(readOnly = true)
 public class BookingServiceImpl implements BookingService {
 
     @Autowired
-    private RedisTemplate<String, Object> redisTemplate;
+    private SeatLockProvider seatLockProvider;
 
     @Autowired
     private ShowtimeRepository showtimeRepository;
@@ -47,9 +54,8 @@ public class BookingServiceImpl implements BookingService {
     @Value("${cinema.app.redisTtlSeconds:600}")
     private long redisTtlSeconds;
 
-    private String getLockKey(Integer showtimeId, Integer seatId) {
-        return "showtime:" + showtimeId + ":seat:" + seatId + ":lock";
-    }
+    @Autowired
+    private PricingEngine pricingEngine;
 
     @Override
     public List<SeatStatusDTO> getSeatStatuses(Integer showtimeId) {
@@ -64,23 +70,15 @@ public class BookingServiceImpl implements BookingService {
                 .map(t -> t.getSeat().getSeatId())
                 .collect(Collectors.toSet());
 
-        // 3. TỐI ƯU REDIS: Lấy toàn bộ khóa lock trong 1 lần gọi duy nhất (tránh vòng lặp gọi N lần)
-        List<String> lockKeys = allSeats.stream()
-                .map(seat -> getLockKey(showtimeId, seat.getSeatId()))
-                .collect(Collectors.toList());
-        List<Object> locks = redisTemplate.opsForValue().multiGet(lockKeys);
+        List<Integer> seatIdsInOrder = allSeats.stream().map(Seat::getSeatId).collect(Collectors.toList());
+        List<Boolean> lockHeld = seatLockProvider.batchLockHeld(showtimeId, seatIdsInOrder);
 
-        return allSeats.stream().map(seat -> {
-            SeatStatusDTO.SeatStatus status = SeatStatusDTO.SeatStatus.VACANT;
-            
-            int index = allSeats.indexOf(seat);
-            boolean isLocked = locks != null && locks.get(index) != null;
-
-            if (soldSeatIds.contains(seat.getSeatId())) {
-                status = SeatStatusDTO.SeatStatus.SOLD;
-            } else if (isLocked) {
-                status = SeatStatusDTO.SeatStatus.PENDING;
-            }
+        return IntStream.range(0, allSeats.size()).mapToObj(i -> {
+            Seat seat = allSeats.get(i);
+            boolean sold = soldSeatIds.contains(seat.getSeatId());
+            boolean held = i < lockHeld.size() && Boolean.TRUE.equals(lockHeld.get(i));
+            SeatState state = SeatStateFactory.fromSnapshot(sold, held);
+            SeatStatusDTO.SeatStatus status = state.toDisplayStatus();
 
             BigDecimal totalPrice = showtime.getBasePrice()
                     .add(seat.getSeatType() != null && seat.getSeatType().getPriceSurcharge() != null
@@ -101,24 +99,38 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public boolean lockSeat(Integer showtimeId, Integer seatId, Integer userId) {
-        String key = getLockKey(showtimeId, seatId);
-        // Kiểm tra xem ghế đã bán chưa
         boolean isSold = ticketRepository.findByShowtime_ShowtimeId(showtimeId).stream()
                 .anyMatch(t -> t.getSeat().getSeatId().equals(seatId));
-        if (isSold) return false;
-
-        // Thử đặt khóa trong Redis (SETNX)
-        return Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(key, userId, redisTtlSeconds, TimeUnit.SECONDS));
+        SeatState state = SeatStateFactory.fromSnapshot(isSold, false);
+        if (!state.allowsLockAttempt()) {
+            return false;
+        }
+        return seatLockProvider.tryAcquire(showtimeId, seatId, userId, redisTtlSeconds);
     }
 
     @Override
     public void unlockSeat(Integer showtimeId, Integer seatId) {
-        redisTemplate.delete(getLockKey(showtimeId, seatId));
+        seatLockProvider.release(showtimeId, seatId);
     }
 
     @Override
     public PriceBreakdownDTO calculatePrice(BookingCalculationDTO request) {
-        return dynamicPricingService.calculatePrice(request);
+        Showtime showtime = showtimeRepository.findById(request.getShowtimeId())
+                .orElseThrow(() -> new RuntimeException("Suất chiếu không tồn tại!"));
+
+        List<Seat> seats = seatRepository.findAllById(request.getSeatIds());
+        Promotion promotion = (request.getPromoCode() != null && !request.getPromoCode().isBlank())
+                ? promotionRepository.findByCode(request.getPromoCode()).orElse(null)
+                : null;
+
+        return pricingEngine.calculateTotalPrice(
+                PricingContext.builder()
+                        .showtime(showtime)
+                        .seats(seats)
+                        .fnbs(request.getFnbs())
+                        .promotion(promotion)
+                        .build()
+        );
     }
 
     @Override
@@ -126,8 +138,46 @@ public class BookingServiceImpl implements BookingService {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Booking ID: " + bookingId));
 
-        List<Ticket> tickets = ticketRepository.findByBooking_BookingId(bookingId);
-        List<FnBLine> fnbs = fnBLineRepository.findByBooking_BookingId(bookingId);
+        return mapToDTO(booking);
+    }
+
+    @Override
+    public List<BookingDTO> searchBookings(String query) {
+        return bookingRepository.findAll(
+                com.cinema.booking.patterns.specification.BookingSpecificationBuilder.searchBookings(query)
+        ).stream().map(this::mapToDTO).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void cancelBooking(Integer bookingId) {
+        Booking booking = bookingRepository.findById(bookingId).orElseThrow(() -> new RuntimeException("Booking not found"));
+        com.cinema.booking.patterns.state.BookingContext context = new com.cinema.booking.patterns.state.BookingContext(booking);
+        context.cancel();
+        bookingRepository.save(booking);
+    }
+
+    @Override
+    @Transactional
+    public void refundBooking(Integer bookingId) {
+        Booking booking = bookingRepository.findById(bookingId).orElseThrow(() -> new RuntimeException("Booking not found"));
+        com.cinema.booking.patterns.state.BookingContext context = new com.cinema.booking.patterns.state.BookingContext(booking);
+        context.refund();
+        bookingRepository.save(booking);
+    }
+
+    @Override
+    @Transactional
+    public void printTickets(Integer bookingId) {
+        Booking booking = bookingRepository.findById(bookingId).orElseThrow(() -> new RuntimeException("Booking not found"));
+        com.cinema.booking.patterns.state.BookingContext context = new com.cinema.booking.patterns.state.BookingContext(booking);
+        context.printTickets();
+        // Maybe update DB if printing changes a specific physical flag, for now state pattern enforces rules.
+    }
+
+    private BookingDTO mapToDTO(Booking booking) {
+        List<Ticket> tickets = ticketRepository.findByBooking_BookingId(booking.getBookingId());
+        List<FnBLine> fnbs = fnBLineRepository.findByBooking_BookingId(booking.getBookingId());
 
         return BookingDTO.builder()
                 .bookingId(booking.getBookingId())

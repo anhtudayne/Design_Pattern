@@ -260,7 +260,7 @@ export default function VoucherManagement() {
                   <input className={inputCls} type="number" min="1" max="100" value={form.discountPercentage} onChange={e => setForm({ ...form, discountPercentage: e.target.value })} required />
                 </FormField>
                 <FormField label="Hạn dùng" required icon="schedule">
-                   <select className={inputCls + ' bg-white'} value={form.ttlSeconds} onChange={e => setForm({ ...form, ttlSeconds: e.target.value })} required>
+                   <select className={inputCls + ' bg-white'} value={form.ttlSeconds} onChange={e => setForm({ ...form, ttlSeconds: Number(e.target.value) })} required>
                       {TIME_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                    </select>
                 </FormField>

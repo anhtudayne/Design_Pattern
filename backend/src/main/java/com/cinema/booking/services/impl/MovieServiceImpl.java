@@ -42,7 +42,7 @@ public class MovieServiceImpl implements MovieService {
         dto.setTrailerUrl(movie.getTrailerUrl());
         dto.setStatus(movie.getStatus());
 
-        List<MovieCast> casts = movieCastRepository.findByMovie_MovieId(movie.getMovieId());
+        List<MovieCast> casts = movieCastRepository.findByMovieIdWithCastMembers(movie.getMovieId());
         dto.setCasts(casts.stream().map(mc -> {
             MovieCastDTO c = new MovieCastDTO();
             c.setId(mc.getId());

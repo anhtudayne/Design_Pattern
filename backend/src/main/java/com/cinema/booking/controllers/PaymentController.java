@@ -38,7 +38,8 @@ public class PaymentController {
                     request.getShowtimeId(),
                     request.getSeatIds(),
                     request.getFnbs(),
-                    request.getPromoCode()
+                    request.getPromoCode(),
+                    request.getPaymentMethod()
             );
             if (payUrl == null || payUrl.isBlank()) {
                 return ResponseEntity.badRequest().body("Không tạo được link thanh toán MoMo. Vui lòng kiểm tra cấu hình MoMo hoặc thử lại sau.");
@@ -126,6 +127,23 @@ public class PaymentController {
             return ResponseEntity.ok(payment);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Lỗi lấy chi tiết: " + e.getMessage());
+        }
+    }
+
+    // 7. Staff thanh toán tiền mặt tại quầy (Template Method + Strategy)
+    @Operation(summary = "Staff bán vé tiền mặt", description = "Tạo Booking CONFIRMED ngay lập tức và Payment CASH. Dành riêng cho nhân viên quầy POS. Không gọi MoMo.")
+    @PostMapping("/staff/cash-checkout")
+    public ResponseEntity<?> staffCashCheckout(@RequestBody CheckoutRequestDTO request) {
+        try {
+            return ResponseEntity.ok(checkoutService.processStaffCashCheckout(
+                    request.getUserId(),
+                    request.getShowtimeId(),
+                    request.getSeatIds(),
+                    request.getFnbs(),
+                    request.getPromoCode()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Lỗi Staff Cash Checkout: " + e.getMessage());
         }
     }
 }

@@ -1,10 +1,10 @@
-import { BASE_URL, getAuthHeaders } from '../utils/api';
+import { BASE_URL, getAuthHeaders, ApiProxy } from '../utils/api';
 
 // ── REQUIRES AUTH (JWT) ─────────────────────────────────────────────
 
 /** Fetch seat map + status for a showtime */
 export const fetchSeatStatuses = async (showtimeId) => {
-  const res = await fetch(`${BASE_URL}/booking/seats/${showtimeId}`, {
+  const res = await ApiProxy(`${BASE_URL}/booking/seats/${showtimeId}`, {
     headers: getAuthHeaders(),
   });
   if (!res.ok) throw new Error('Không thể tải sơ đồ ghế');
@@ -13,7 +13,7 @@ export const fetchSeatStatuses = async (showtimeId) => {
 
 /** Lock a seat via Redis SETNX (10-min TTL) */
 export const lockSeat = async (showtimeId, seatId, userId) => {
-  const res = await fetch(
+  const res = await ApiProxy(
     `${BASE_URL}/booking/lock?showtimeId=${showtimeId}&seatId=${seatId}&userId=${userId}`,
     { method: 'POST', headers: getAuthHeaders() }
   );
@@ -26,7 +26,7 @@ export const lockSeat = async (showtimeId, seatId, userId) => {
 
 /** Unlock a previously locked seat */
 export const unlockSeat = async (showtimeId, seatId) => {
-  const res = await fetch(
+  const res = await ApiProxy(
     `${BASE_URL}/booking/unlock?showtimeId=${showtimeId}&seatId=${seatId}`,
     { method: 'POST', headers: getAuthHeaders() }
   );
@@ -40,7 +40,7 @@ export const unlockSeat = async (showtimeId, seatId) => {
  * @returns {Promise<PriceBreakdownDTO>} { ticketTotal, fnbTotal, discountAmount, finalTotal }
  */
 export const calculatePrice = async (body) => {
-  const res = await fetch(`${BASE_URL}/booking/calculate`, {
+  const res = await ApiProxy(`${BASE_URL}/booking/calculate`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(body),
@@ -50,7 +50,7 @@ export const calculatePrice = async (body) => {
 };
 
 export const getBookingDetail = async (bookingId) => {
-  const res = await fetch(`${BASE_URL}/booking/${bookingId}`, {
+  const res = await ApiProxy(`${BASE_URL}/booking/${bookingId}`, {
     headers: getAuthHeaders(),
   });
   if (!res.ok) throw new Error('Không thể tải chi tiết booking');
@@ -70,7 +70,7 @@ export const createBooking = async (payload) => {
     promoCode: payload.promoCode || null,
   };
 
-  const res = await fetch(`${BASE_URL}/payment/checkout`, {
+  const res = await ApiProxy(`${BASE_URL}/payment/checkout`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(body),

@@ -59,6 +59,7 @@ function Modal({ title, onClose, children }) {
 export default function ShowtimeManagement() {
   const [list, setList]       = useState([]);
   const [movies, setMovies]     = useState([]);
+  const [cinemas, setCinemas]   = useState([]);
   const [rooms, setRooms]       = useState([]);
   const [loading, setLoading]   = useState(true);
   const [saving, setSaving]     = useState(false);
@@ -68,6 +69,7 @@ export default function ShowtimeManagement() {
 
   const [form, setForm] = useState({
     movieId: '',
+    cinemaId: '',
     roomId: '',
     startTime: '',
     basePrice: 50000
@@ -78,21 +80,26 @@ export default function ShowtimeManagement() {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [rShowtimes, rMovies, rRooms] = await Promise.all([
+      const [rShowtimes, rMovies, rRooms, rCinemas] = await Promise.all([
         fetch(API, { headers: getAuthHeaders() }),
         fetch(`${BASE_URL}/movies`, { headers: getAuthHeaders() }),
-        fetch(`${BASE_URL}/rooms`, { headers: getAuthHeaders() }).catch(() => fetch(`${BASE_URL}/public/rooms`, { headers: getAuthHeaders() }))
+        fetch(`${BASE_URL}/rooms`, { headers: getAuthHeaders() }).catch(() => fetch(`${BASE_URL}/public/rooms`, { headers: getAuthHeaders() })),
+        fetch(`${BASE_URL}/public/cinemas`)
       ]);
 
       if (rShowtimes.ok) setList(await rShowtimes.json());
       if (rMovies.ok) setMovies(await rMovies.json());
       
       // Attempt to get rooms (this endpoint might vary depending on project state)
-      if (rRooms && rRooms.ok) setRooms(await rRooms.json());
+      if (rRooms && rRooms.ok) {
+        const roomData = await rRooms.json();
+        setRooms(roomData);
+      }
       else {
         // Fallback or handle error - here we expect it exists
         console.warn("Failed to load rooms");
       }
+      if (rCinemas.ok) setCinemas(await rCinemas.json());
     } catch (err) {
       console.error(err);
       notify('Lỗi khi tải dữ liệu', 'error');
@@ -102,9 +109,12 @@ export default function ShowtimeManagement() {
   useEffect(() => { loadAll(); }, [loadAll]);
 
   const openAdd = () => {
+    const defaultCinemaId = rooms[0]?.cinemaId || rooms[0]?.cinema?.cinemaId || '';
+    const defaultRoom = rooms.find(r => (r.cinemaId || r.cinema?.cinemaId) === defaultCinemaId);
     setForm({
       movieId: movies[0]?.movieId || '',
-      roomId: rooms[0]?.roomId || '',
+      cinemaId: defaultCinemaId,
+      roomId: defaultRoom?.roomId || '',
       startTime: '',
       basePrice: 50000
     });
@@ -112,8 +122,10 @@ export default function ShowtimeManagement() {
   };
 
   const openEdit = (s) => {
+    const room = rooms.find(r => r.roomId === s.roomId);
     setForm({
       movieId: s.movieId,
+      cinemaId: room?.cinemaId || room?.cinema?.cinemaId || '',
       roomId: s.roomId,
       startTime: s.startTime.substring(0, 16), // Format for datetime-local
       basePrice: s.basePrice
@@ -133,7 +145,9 @@ export default function ShowtimeManagement() {
         method,
         headers: getAuthHeaders(),
         body: JSON.stringify({
-          ...form,
+          movieId: Number(form.movieId),
+          roomId: Number(form.roomId),
+          startTime: form.startTime,
           basePrice: Number(form.basePrice)
         })
       });
@@ -158,6 +172,7 @@ export default function ShowtimeManagement() {
     const movie = movies.find(m => m.movieId === s.movieId);
     return movie?.title.toLowerCase().includes(search.toLowerCase());
   });
+  const filteredRooms = rooms.filter(r => (r.cinemaId || r.cinema?.cinemaId) === Number(form.cinemaId));
 
   return (
     <div className="min-h-screen bg-[#FDFDFD] p-6 md:p-10 font-['Space_Grotesk'] antialiased">
@@ -274,17 +289,36 @@ export default function ShowtimeManagement() {
         {modal && (
           <Modal title={modal.edit ? 'Sửa lịch chiếu' : 'Tạo lịch chiếu mới'} onClose={() => setModal(null)}>
             <form onSubmit={handleSubmit} className="space-y-6">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                   <FormField label="Chọn Phim" required icon="movie">
                      <select className={selectCls} value={form.movieId} onChange={e => setForm({ ...form, movieId: Number(e.target.value) })} required>
                         <option value="">-- Chọn phim --</option>
                         {movies.map(m => <option key={m.movieId} value={m.movieId}>{m.title}</option>)}
                      </select>
                   </FormField>
+                  <FormField label="Chọn Chi nhánh" required icon="storefront">
+                     <select
+                       className={selectCls}
+                       value={form.cinemaId}
+                       onChange={e => {
+                         const selectedCinemaId = Number(e.target.value);
+                         const nextRoom = rooms.find(r => (r.cinemaId || r.cinema?.cinemaId) === selectedCinemaId);
+                         setForm({ ...form, cinemaId: selectedCinemaId, roomId: nextRoom?.roomId || '' });
+                       }}
+                       required
+                     >
+                        <option value="">-- Chọn chi nhánh --</option>
+                        {cinemas.map(c => <option key={c.cinemaId} value={c.cinemaId}>{c.name}</option>)}
+                     </select>
+                  </FormField>
                   <FormField label="Chọn Phòng" required icon="meeting_room">
                      <select className={selectCls} value={form.roomId} onChange={e => setForm({ ...form, roomId: Number(e.target.value) })} required>
                         <option value="">-- Chọn phòng --</option>
-                        {rooms.map(r => <option key={r.roomId} value={r.roomId}>{r.cinema?.name} - {r.name}</option>)}
+                        {filteredRooms.map(r => (
+                          <option key={r.roomId} value={r.roomId}>
+                            {(r.cinema?.name || r.cinemaName || 'Chi nhánh chưa rõ')} - {r.name}
+                          </option>
+                        ))}
                      </select>
                   </FormField>
                </div>

@@ -9,7 +9,8 @@ public class ConfirmedState implements BookingState {
 
     @Override
     public void cancel(BookingContext context) {
-        throw new IllegalStateException("Không thể Hủy vé theo quy trình thông thường đối với vé đã thanh toán. Vui lòng Refund hoặc kiểm tra policy.");
+        // Cho phép Hủy trực tiếp (tương đương Refund) để tối giản quy trình
+        context.setState(new CancelledState());
     }
 
     @Override
@@ -20,7 +21,7 @@ public class ConfirmedState implements BookingState {
 
     @Override
     public void refund(BookingContext context) {
-        context.setState(new RefundedState());
+        context.setState(new CancelledState());
     }
 
     @Override

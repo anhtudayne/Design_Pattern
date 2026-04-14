@@ -2,51 +2,51 @@ package com.cinema.booking.patterns.specification;
 
 import com.cinema.booking.entities.Booking;
 import org.springframework.data.jpa.domain.Specification;
-import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;
 import java.util.List;
 
 public class BookingSpecificationBuilder {
 
     public static Specification<Booking> searchBookings(String query) {
-        return (root, criteriaQuery, criteriaBuilder) -> {
+        return (root, criteriaQuery, cb) -> {
             if (query == null || query.trim().isEmpty()) {
-                return criteriaBuilder.conjunction();
+                return cb.conjunction();
             }
 
-            List<Predicate> predicates = new ArrayList<>();
-            String searchText = query.trim().toLowerCase();
+            String st = query.trim();
+            String lowerSt = st.toLowerCase();
+            List<Predicate> preds = new ArrayList<>();
 
-            // 1. Search by Booking ID
+            // 1. Tìm theo ID (Số nguyên)
+            if (st.matches("\\d+")) {
+                try {
+                    preds.add(cb.equal(root.get("bookingId"), Integer.valueOf(st)));
+                } catch (Exception ignored) {}
+            }
+
+            // 2. Tìm theo Mã Booking Code (Like)
+            preds.add(cb.like(cb.lower(root.get("bookingCode")), "%" + lowerSt + "%"));
+
+            // 3. Thông tin khách hàng (SĐT / Email)
             try {
-                if (searchText.matches("\\d+")) {
-                    Integer id = Integer.parseInt(searchText);
-                    predicates.add(criteriaBuilder.equal(root.get("bookingId"), id));
+                var customerJoin = root.join("customer", JoinType.LEFT);
+                
+                // Tìm theo Số điện thoại
+                preds.add(cb.like(customerJoin.get("phone"), "%" + st + "%"));
+
+                // Tìm theo Email (Chỉ join UserAccount nếu từ khóa có khả năng là email hoặc không phải số đơn thuần)
+                if (st.contains("@") || !st.matches("\\d+")) {
+                    var accountJoin = customerJoin.join("userAccount", JoinType.LEFT);
+                    preds.add(cb.like(cb.lower(accountJoin.get("email")), "%" + lowerSt + "%"));
                 }
-            } catch (NumberFormatException ignored) {}
-
-            // Use LEFT JOIN to avoid filtering out Bookings without registered Customer/UserAccount (e.g., Guest checkout)
-            var customerJoin = root.join("customer", JoinType.LEFT);
-            var accountJoin = customerJoin.join("userAccount", JoinType.LEFT);
-
-            // 2. Search by Email
-            if (searchText.contains("@")) {
-                predicates.add(criteriaBuilder.like(criteriaBuilder.lower(accountJoin.get("email")), "%" + searchText + "%"));
-            } 
-            
-            // 3. Search by Phone
-            if (searchText.matches("\\d{9,11}")) {
-                predicates.add(criteriaBuilder.like(customerJoin.get("phone"), "%" + searchText + "%"));
+            } catch (Exception e) {
+                // Log cảnh báo nếu có lỗi join nhưng không làm sập luồng tìm kiếm ID/Code
+                System.err.println("Booking search specification warning: " + e.getMessage());
             }
 
-            // 4. Fallback: search both fields if not specific
-            if (!searchText.contains("@") && !searchText.matches("\\d+")) {
-                 predicates.add(criteriaBuilder.like(criteriaBuilder.lower(accountJoin.get("email")), "%" + searchText + "%"));
-                 predicates.add(criteriaBuilder.like(customerJoin.get("phone"), "%" + searchText + "%"));
-            }
-            
-            return criteriaBuilder.or(predicates.toArray(new Predicate[0]));
+            return cb.or(preds.toArray(new Predicate[0]));
         };
     }
 }

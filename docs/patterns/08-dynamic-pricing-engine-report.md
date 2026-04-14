@@ -207,7 +207,7 @@ Mỗi strategy có thể được kiểm thử hoàn toàn độc lập với in
 
 ### Vấn đề cụ thể
 
-Hệ thống có hai loại giảm giá có thể áp dụng đồng thời và độc lập: giảm theo hạng thành viên (tính trên subtotal) và giảm theo mã khuyến mãi (FIXED hoặc PERCENT). Số lượng và thứ tự áp dụng phụ thuộc hoàn toàn vào dữ liệu runtime — khách có tier hay không, có nhập promo hay không. Trong MVP, phần giảm theo hạng thành viên hoàn toàn bị bỏ quên, và logic giảm giá bị viết lẫn lộn với logic validate.
+Hệ thống có hai loại giảm giá có thể áp dụng đồng thời và độc lập: giảm theo mã khuyến mãi (FIXED hoặc PERCENT) và giảm theo hạng thành viên. Số lượng và thứ tự áp dụng phụ thuộc hoàn toàn vào dữ liệu runtime — khách có tier hay không, có nhập promo hay không. Trong MVP, phần giảm theo hạng thành viên hoàn toàn bị bỏ quên, và logic giảm giá bị viết lẫn lộn với logic validate.
 
 ### Tại sao chọn Decorator
 
@@ -219,11 +219,11 @@ Chain giảm giá được xây dựng tại runtime trong `PricingEngine` dựa
 
 Nếu context chứa một đối tượng Promotion hợp lệ (đã được validate bởi `PromoValidHandler` ở tầng CoR từ trước), `PromotionDiscountDecorator` được wrap bên ngoài `NoDiscount`. Decorator này tính khoản giảm theo quy tắc của promo rồi cộng vào kết quả từ tầng bên trong.
 
-Nếu khách hàng có hạng thành viên với tỷ lệ giảm giá lớn hơn 0, `MemberDiscountDecorator` được wrap thêm bên ngoài. Decorator này tính khoản giảm theo tier của khách rồi cộng vào kết quả tích lũy từ các tầng bên trong.
+Nếu khách hàng có hạng thành viên với tỷ lệ giảm giá lớn hơn 0, `MemberDiscountDecorator` được wrap thêm bên ngoài. Decorator này tính khoản giảm theo tier của khách trên **phần tiền còn lại sau các discount đã áp trước đó** (điển hình là promo), rồi cộng vào kết quả tích lũy từ các tầng bên trong.
 
 Điểm quan trọng cần nhấn mạnh: tầng Decorator chỉ **tính toán thuần túy** — nó không hề validate promo còn hạn không hay tier có hợp lệ không. Toàn bộ việc validate đó đã được thực hiện ở tầng Chain of Responsibility từ bước đầu. Sự phân tách rõ ràng giữa validate và tính toán là một trong những điểm thiết kế quan trọng nhất của hệ thống này.
 
-Ngoài tổng giảm giá, `PricingEngine` còn tính riêng khoản giảm theo membership để hiển thị trong `PriceBreakdownDTO` — giúp khách hàng thấy rõ mình được hưởng bao nhiêu từ hạng thành viên và bao nhiêu từ mã promo.
+Thứ tự runtime hiện tại của chain là: `NoDiscount -> PromotionDiscountDecorator -> MemberDiscountDecorator`. Nghĩa là promo áp trước trên `subtotal`, member áp sau trên phần còn lại. `PricingEngine` dùng kết quả chain để điền `discountAmount` (tổng giảm) và `membershipDiscount` (mức giảm member thực tế) trong `PriceBreakdownDTO`.
 
 ### Ưu điểm đạt được
 

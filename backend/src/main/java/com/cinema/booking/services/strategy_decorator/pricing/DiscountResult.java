@@ -9,4 +9,6 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class DiscountResult {
     private BigDecimal totalDiscount;
+    private BigDecimal promotionDiscount;
+    private BigDecimal membershipDiscount;
 }

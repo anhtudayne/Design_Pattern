@@ -6,7 +6,6 @@ import com.cinema.booking.entities.MembershipTier;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -53,13 +52,13 @@ public class PricingEngine implements IPricingEngine {
         DiscountComponent discountChain = buildDiscountChain(context);
         DiscountResult discountResult = discountChain.applyDiscount(subtotal, context);
 
-        BigDecimal membershipDiscount = calculateMembershipDiscount(subtotal, context);
-
         BigDecimal totalDiscount = discountResult.getTotalDiscount();
+        BigDecimal membershipDiscount = discountResult.getMembershipDiscount();
         BigDecimal finalTotal = subtotal.subtract(totalDiscount);
         if (finalTotal.compareTo(BigDecimal.ZERO) < 0) {
             finalTotal = BigDecimal.ZERO;
             totalDiscount = subtotal;
+            membershipDiscount = BigDecimal.ZERO;
         }
 
         String appliedStrategy = buildAppliedStrategyLabel(context, timeBasedSurcharge);
@@ -97,19 +96,6 @@ public class PricingEngine implements IPricingEngine {
                 && tier.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0;
     }
 
-    private BigDecimal calculateMembershipDiscount(BigDecimal subtotal, PricingContext context) {
-        Customer customer = context.getCustomer();
-        if (customer == null) return BigDecimal.ZERO;
-        MembershipTier tier = customer.getTier();
-        if (tier == null || tier.getDiscountPercent() == null
-                || tier.getDiscountPercent().compareTo(BigDecimal.ZERO) <= 0) {
-            return BigDecimal.ZERO;
-        }
-        return subtotal
-                .multiply(tier.getDiscountPercent())
-                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-    }
-
     private String buildAppliedStrategyLabel(PricingContext context, BigDecimal timeBasedSurcharge) {
         List<String> parts = new ArrayList<>();
         parts.add("TICKET");
@@ -119,11 +105,11 @@ public class PricingEngine implements IPricingEngine {
         if (timeBasedSurcharge.compareTo(BigDecimal.ZERO) > 0) {
             parts.add("TIME_BASED");
         }
-        if (hasMemberDiscount(context)) {
-            parts.add("MEMBER_DISCOUNT");
-        }
         if (context.getPromotion() != null) {
             parts.add("PROMO");
+        }
+        if (hasMemberDiscount(context)) {
+            parts.add("MEMBER_DISCOUNT");
         }
         return String.join("+", parts);
     }

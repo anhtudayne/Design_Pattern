@@ -9,6 +9,6 @@ import java.math.BigDecimal;
 public class NoDiscount implements DiscountComponent {
     @Override
     public DiscountResult applyDiscount(BigDecimal subtotal, PricingContext context) {
-        return new DiscountResult(BigDecimal.ZERO);
+        return new DiscountResult(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
     }
 }

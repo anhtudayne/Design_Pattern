@@ -21,6 +21,8 @@ public class PromotionDiscountDecorator extends BaseDiscountDecorator {
     public DiscountResult applyDiscount(BigDecimal subtotal, PricingContext context) {
         DiscountResult previousResult = super.applyDiscount(subtotal, context);
         BigDecimal currentDiscount = previousResult.getTotalDiscount();
+        BigDecimal promotionDiscount = previousResult.getPromotionDiscount();
+        BigDecimal membershipDiscount = previousResult.getMembershipDiscount();
 
         Promotion promotion = context.getPromotion();
         if (promotion != null) {
@@ -32,9 +34,17 @@ public class PromotionDiscountDecorator extends BaseDiscountDecorator {
             } else {
                 additionalDiscount = promotion.getDiscountValue();
             }
+            BigDecimal remaining = subtotal.subtract(currentDiscount);
+            if (remaining.compareTo(BigDecimal.ZERO) < 0) {
+                remaining = BigDecimal.ZERO;
+            }
+            if (additionalDiscount.compareTo(remaining) > 0) {
+                additionalDiscount = remaining;
+            }
             currentDiscount = currentDiscount.add(additionalDiscount);
+            promotionDiscount = promotionDiscount.add(additionalDiscount);
         }
 
-        return new DiscountResult(currentDiscount);
+        return new DiscountResult(currentDiscount, promotionDiscount, membershipDiscount);
     }
 }

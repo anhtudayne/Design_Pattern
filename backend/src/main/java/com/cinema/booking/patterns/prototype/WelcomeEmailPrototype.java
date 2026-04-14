@@ -19,7 +19,10 @@ public class WelcomeEmailPrototype implements EmailTemplate {
 
     @Override
     public EmailTemplate copy() {
-        return new WelcomeEmailPrototype();
+        WelcomeEmailPrototype clone = new WelcomeEmailPrototype();
+        clone.to = this.to;
+        clone.fullname = this.fullname;
+        return clone;
     }
 
     @Override

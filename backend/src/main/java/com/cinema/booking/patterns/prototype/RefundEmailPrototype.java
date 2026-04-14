@@ -26,7 +26,12 @@ public class RefundEmailPrototype implements EmailTemplate {
 
     @Override
     public EmailTemplate copy() {
-        return new RefundEmailPrototype();
+        RefundEmailPrototype clone = new RefundEmailPrototype();
+        clone.to = this.to;
+        clone.customerName = this.customerName;
+        clone.bookingId = this.bookingId;
+        clone.refundAmount = this.refundAmount;
+        return clone;
     }
 
     @Override

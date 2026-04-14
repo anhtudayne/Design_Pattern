@@ -9,11 +9,13 @@ import com.cinema.booking.domain.seat.SeatStateFactory;
 import com.cinema.booking.entities.*;
 import com.cinema.booking.repositories.*;
 import com.cinema.booking.services.BookingService;
-import com.cinema.booking.services.DynamicPricingService;
 import com.cinema.booking.services.seatlock.SeatLockProvider;
-import com.cinema.booking.services.strategy_decorator.pricing.PricingContext;
-import com.cinema.booking.services.strategy_decorator.pricing.PricingEngine;
+import com.cinema.booking.services.strategy_decorator.pricing.IPricingEngine;
+import com.cinema.booking.services.strategy_decorator.pricing.PricingContextBuilder;
+import com.cinema.booking.services.strategy_decorator.pricing.validation.PricingValidationContext;
+import com.cinema.booking.services.strategy_decorator.pricing.validation.PricingValidationHandler;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -41,10 +43,6 @@ public class BookingServiceImpl implements BookingService {
     @Autowired
     private TicketRepository ticketRepository;
 
-    /** @Primary → Spring inject CachingDynamicPricingProxy tự động */
-    @Autowired
-    private DynamicPricingService dynamicPricingService;
-
     @Autowired
     private BookingRepository bookingRepository;
 
@@ -55,7 +53,15 @@ public class BookingServiceImpl implements BookingService {
     private long redisTtlSeconds;
 
     @Autowired
-    private PricingEngine pricingEngine;
+    @Qualifier("cachingPricingEngineProxy")
+    private IPricingEngine pricingEngine;
+
+    @Autowired
+    @Qualifier("pricingValidationChain")
+    private PricingValidationHandler pricingValidationChain;
+
+    @Autowired
+    private PricingContextBuilder pricingContextBuilder;
 
     @Override
     public List<SeatStatusDTO> getSeatStatuses(Integer showtimeId) {
@@ -115,23 +121,16 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public PriceBreakdownDTO calculatePrice(BookingCalculationDTO request) {
-        Showtime showtime = showtimeRepository.findById(request.getShowtimeId())
-                .orElseThrow(() -> new RuntimeException("Suất chiếu không tồn tại!"));
-
-        List<Seat> seats = seatRepository.findAllById(request.getSeatIds());
-        Promotion promotion = (request.getPromoCode() != null && !request.getPromoCode().isBlank())
-                ? promotionRepository.findByCode(request.getPromoCode()).orElse(null)
-                : null;
-
+        // [CoR] Validate: showtime future, seats available, promo valid
+        // Context được populate bởi chain: showtime và promotion để tái dùng
+        PricingValidationContext validationCtx = PricingValidationContext.builder()
+                .request(request)
+                .build();
+        pricingValidationChain.validate(validationCtx);
         return pricingEngine.calculateTotalPrice(
-                PricingContext.builder()
-                        .showtime(showtime)
-                        .seats(seats)
-                        .fnbs(request.getFnbs())
-                        .promotion(promotion)
-                        .build()
-        );
+                pricingContextBuilder.build(validationCtx, request));
     }
+
 
     @Override
     public BookingDTO getBookingDetail(Integer bookingId) {

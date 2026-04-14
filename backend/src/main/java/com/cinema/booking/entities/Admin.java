@@ -10,4 +10,9 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 public class Admin extends User {
+
+    @Override
+    public String getSpringSecurityRole() {
+        return "ADMIN";
+    }
 }

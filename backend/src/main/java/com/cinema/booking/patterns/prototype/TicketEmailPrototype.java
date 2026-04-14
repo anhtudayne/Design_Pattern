@@ -31,7 +31,14 @@ public class TicketEmailPrototype implements EmailTemplate {
 
     @Override
     public EmailTemplate copy() {
-        return new TicketEmailPrototype();
+        TicketEmailPrototype clone = new TicketEmailPrototype();
+        clone.to = this.to;
+        clone.bookingId = this.bookingId;
+        clone.customerName = this.customerName;
+        clone.movieTitle = this.movieTitle;
+        clone.showtime = this.showtime;
+        clone.totalAmount = this.totalAmount;
+        return clone;
     }
 
     @Override

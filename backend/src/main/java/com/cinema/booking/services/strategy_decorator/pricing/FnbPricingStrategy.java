@@ -1,32 +1,30 @@
 package com.cinema.booking.services.strategy_decorator.pricing;
 
-import com.cinema.booking.dtos.BookingCalculationDTO;
-import com.cinema.booking.entities.FnbItem;
-import com.cinema.booking.repositories.FnbItemRepository;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 
+/**
+ * Tính tổng tiền F&B từ danh sách ResolvedFnbItem đã được load giá từ DB
+ * tại tầng service trước khi vào engine. Không truy cập DB trực tiếp.
+ */
 @Component
 public class FnbPricingStrategy implements PricingStrategy {
 
-    private final FnbItemRepository fnbItemRepository;
-
-    public FnbPricingStrategy(FnbItemRepository fnbItemRepository) {
-        this.fnbItemRepository = fnbItemRepository;
+    @Override
+    public PricingLineType lineType() {
+        return PricingLineType.FNB;
     }
 
     @Override
     public BigDecimal calculate(PricingContext context) {
-        if (context.getFnbs() == null || context.getFnbs().isEmpty()) {
+        if (context.getResolvedFnbs() == null || context.getResolvedFnbs().isEmpty()) {
             return BigDecimal.ZERO;
         }
 
         BigDecimal fnbTotal = BigDecimal.ZERO;
-        for (BookingCalculationDTO.FnbOrderDTO fnbOrder : context.getFnbs()) {
-            FnbItem item = fnbItemRepository.findById(fnbOrder.getItemId())
-                    .orElseThrow(() -> new RuntimeException("Sản phẩm F&B không tồn tại!"));
-            BigDecimal line = item.getPrice().multiply(BigDecimal.valueOf(fnbOrder.getQuantity()));
+        for (PricingContext.ResolvedFnbItem item : context.getResolvedFnbs()) {
+            BigDecimal line = item.price().multiply(BigDecimal.valueOf(item.quantity()));
             fnbTotal = fnbTotal.add(line);
         }
         return fnbTotal;

@@ -7,6 +7,12 @@ import java.math.BigDecimal;
 
 @Component
 public class TicketPricingStrategy implements PricingStrategy {
+
+    @Override
+    public PricingLineType lineType() {
+        return PricingLineType.TICKET;
+    }
+
     @Override
     public BigDecimal calculate(PricingContext context) {
         if (context.getSeats() == null || context.getShowtime() == null) {

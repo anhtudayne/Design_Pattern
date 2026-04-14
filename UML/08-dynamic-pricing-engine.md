@@ -1,16 +1,18 @@
 # UML — Dynamic Pricing Engine (domain subset + 5 patterns)
 
-> **classdiagram.md** (tham chiếu domain gốc) + **docs/patterns/08-dynamic-pricing-engine.md** — Specification, Strategy, Decorator, Chain of Responsibility (validation), Proxy (Redis cache).
+> **classdiagram.md** (tham chiếu domain gốc) + **docs/patterns/08-dynamic-pricing-engine.md**
 
 Tham chiếu domain đầy đủ: [classdiagram.md](../classdiagram.md).  
 Tài liệu giải thích: [08-dynamic-pricing-engine.md](../docs/patterns/08-dynamic-pricing-engine.md).
+
+
 
 ```mermaid
 classDiagram
     direction TB
 
     %% ═══════════════════════════════════════════════════════════════════
-    %% DOMAIN ENTITIES (relevant subset — từ classdiagram.md gốc)
+    %% DOMAIN ENTITIES
     %% ═══════════════════════════════════════════════════════════════════
 
     class Showtime {
@@ -29,29 +31,34 @@ classDiagram
         +BigDecimal priceSurcharge
     }
     class Customer {
-        +Integer customerId
-        +String fullName
+        +Integer userId
+        +String fullname
         +MembershipTier tier
     }
     class MembershipTier {
-        +String tierName
-        +int discountPercent
+        +String name
+        +BigDecimal discountPercent
     }
     class Promotion {
         +String code
         +String discountType
         +BigDecimal discountValue
-        +LocalDate validTo
+        +Integer quantity
+        +LocalDateTime validTo
+    }
+    class FnbItem {
+        +Integer itemId
+        +String name
+        +BigDecimal price
     }
     class BookingCalculationDTO {
         +Integer showtimeId
         +List~Integer~ seatIds
-        +List~FnbItemQtyDTO~ fnbItems
         +String promoCode
     }
     class PriceBreakdownDTO {
         +BigDecimal ticketTotal
-        +BigDecimal occupancySurcharge
+        +BigDecimal timeBasedSurcharge
         +BigDecimal fnbTotal
         +BigDecimal membershipDiscount
         +BigDecimal discountAmount
@@ -60,10 +67,70 @@ classDiagram
     }
 
     %% ═══════════════════════════════════════════════════════════════════
-    %% PHASE 0 — Context & Specification
+    %% CHAIN OF RESPONSIBILITY — pricing validation
+    %% package: services.strategy_decorator.pricing.validation
     %% ═══════════════════════════════════════════════════════════════════
 
-    class PricingContext {
+    class PricingValidationHandler {
+        <<interface>>
+        +setNext(next) void
+        +validate(ctx) void
+    }
+
+    class AbstractPricingValidationHandler {
+        <<abstract>>
+        -next: PricingValidationHandler
+        +validate(ctx) void
+        #doValidate(ctx) void
+    }
+
+    class PricingValidationContext {
+        +BookingCalculationDTO request
+        +Showtime showtime
+        +Promotion promotion
+        %% showtime: ShowtimeFutureHandler MUST run first (builder reuses it, avoids second DB load)
+        %% promotion: PromoValidHandler sets from request.promoCode only (does not read showtime from ctx)
+    }
+
+    class ShowtimeFutureHandler {
+        +doValidate(ctx) void
+    }
+
+    class SeatsAvailableHandler {
+        +doValidate(ctx) void
+    }
+
+    class PromoValidHandler {
+        +doValidate(ctx) void
+    }
+
+    %% ═══════════════════════════════════════════════════════════════════
+    %% PROXY — Redis cache
+    %% package: services.strategy_decorator.pricing
+    %% ═══════════════════════════════════════════════════════════════════
+
+    class IPricingEngine {
+        <<interface>>
+        +calculateTotalPrice(ctx) PriceBreakdownDTO
+    }
+
+    class CachingPricingEngineProxy {
+        <<Primary>>
+        -delegate: IPricingEngine
+        -redisTemplate: RedisTemplate
+        -ttlSeconds: long
+        +calculateTotalPrice(ctx) PriceBreakdownDTO
+        -buildCacheKey(ctx) String
+        %% Cache key = pricing:{showtimeId}:seats:{sortedIds}:fnb:{sorted itemId:qty}:promo:{code}:cust:{id}
+    }
+
+    %% ═══════════════════════════════════════════════════════════════════
+    %% SPECIFICATION — PricingConditions
+    %% package: patterns.specification
+    %% ═══════════════════════════════════════════════════════════════════
+
+    class PricingSpecificationContext {
+        <<patterns.specification>>
         +Showtime showtime
         +List~Seat~ seats
         +Customer customer
@@ -74,254 +141,209 @@ classDiagram
         +LocalDateTime bookingTime
     }
 
-    class PricingContextFactory {
-        <<component>>
-        +build(BookingCalculationDTO) PricingContext
-        +build(BookingCalculationDTO, Long userId) PricingContext
-    }
-
     class PricingConditions {
         <<utility>>
         +isWeekend()$ Predicate
         +isHoliday()$ Predicate
         +isEarlyBird()$ Predicate
-        +isHighOccupancy()$ Predicate
+        +isHighOccupancy(pct)$ Predicate
     }
 
     %% ═══════════════════════════════════════════════════════════════════
-    %% PHASE 1 — Strategy Pattern
+    %% ENGINE CONTEXT
+    %% package: services.strategy_decorator.pricing
     %% ═══════════════════════════════════════════════════════════════════
+
+    class PricingContext {
+        <<Builder>>
+        +Showtime showtime
+        +List~Seat~ seats
+        +List~ResolvedFnbItem~ resolvedFnbs
+        +Promotion promotion
+        +Customer customer
+        +LocalDateTime bookingTime
+        +int bookedSeatsCount
+        +int totalSeatsCount
+    }
+
+    class ResolvedFnbItem {
+        <<record>>
+        +Integer itemId
+        +String name
+        +BigDecimal price
+        +int quantity
+    }
+
+    %% ═══════════════════════════════════════════════════════════════════
+    %% STRATEGY — pricing
+    %% ═══════════════════════════════════════════════════════════════════
+
+    class PricingLineType {
+        <<enumeration>>
+        TICKET
+        FNB
+        TIME_BASED_SURCHARGE
+    }
 
     class PricingStrategy {
         <<interface>>
-        +adjustBasePrice(BigDecimal, PricingContext) BigDecimal
-        +isApplicable(PricingContext) boolean
-        +priority() int
-        +name() String
+        +lineType() PricingLineType
+        +calculate(ctx) BigDecimal
     }
 
-    class StandardPricingStrategy {
-        +priority() int
-        +name() String
+    class TicketPricingStrategy {
+        +lineType() PricingLineType
+        +calculate(ctx) BigDecimal
     }
 
-    class WeekendPricingStrategy {
-        -int weekendSurchargePct
-        +priority() int
-        +name() String
+    class FnbPricingStrategy {
+        +lineType() PricingLineType
+        +calculate(ctx) BigDecimal
     }
 
-    class HolidayPricingStrategy {
-        -int holidaySurchargePct
-        +priority() int
-        +name() String
-    }
-
-    class EarlyBirdPricingStrategy {
-        -int earlyBirdDiscountPct
-        +priority() int
-        +name() String
-    }
-
-    class PricingStrategySelector {
-        <<component>>
-        -List~PricingStrategy~ strategies
-        +select(PricingContext) PricingStrategy
-    }
+    class TimeBasedPricingStrategy {
+        -weekendSurchargePct: BigDecimal
+        -holidaySurchargePct: BigDecimal
+        +lineType() PricingLineType
+        +calculate(ctx) BigDecimal
+        %% Returns timeBasedSurcharge = ticketSubtotal × rate (weekend / holiday)
+        -toSpecContext(ctx) PricingSpecificationContext
 
     %% ═══════════════════════════════════════════════════════════════════
-    %% PHASE 2 — Decorator Pattern
+    %% DECORATOR — discount chain
     %% ═══════════════════════════════════════════════════════════════════
 
-    class PriceCalculator {
+    class DiscountComponent {
         <<interface>>
-        +calculate(PricingContext) PricingAccumulator
+        +applyDiscount(subtotal, ctx) DiscountResult
     }
 
-    class PricingAccumulator {
-        +BigDecimal ticketTotal
-        +BigDecimal occupancySurcharge
-        +BigDecimal fnbTotal
-        +BigDecimal membershipDiscount
-        +BigDecimal voucherDiscount
-        +String appliedStrategy
-        +subtotal() BigDecimal
-        +totalDiscount() BigDecimal
-        +finalTotal() BigDecimal
-        +toDTO() PriceBreakdownDTO
-    }
-
-    class BasePriceCalculator {
-        <<component>>
-        -PricingStrategySelector selector
-        +calculate(PricingContext) PricingAccumulator
-    }
-
-    class AbstractPriceCalculatorDecorator {
+    class BaseDiscountDecorator {
         <<abstract>>
-        -PriceCalculator inner
-        +calculate(PricingContext) PricingAccumulator
-        #decorate(PricingAccumulator, PricingContext)*
+        #wrapped: DiscountComponent
+        +applyDiscount(subtotal, ctx) DiscountResult
     }
 
-    class OccupancyDecorator {
-        -int occupancySurchargePct
-        #decorate(PricingAccumulator, PricingContext)
+    class NoDiscount {
+        +applyDiscount(subtotal, ctx) DiscountResult
     }
 
-    class FnbDecorator {
-        #decorate(PricingAccumulator, PricingContext)
+    class PromotionDiscountDecorator {
+        +applyDiscount(subtotal, ctx) DiscountResult
     }
 
     class MemberDiscountDecorator {
-        #decorate(PricingAccumulator, PricingContext)
+        +applyDiscount(subtotal, ctx) DiscountResult
     }
 
-    class VoucherDecorator {
-        #decorate(PricingAccumulator, PricingContext)
-    }
-
-    class PriceCalculatorChainFactory {
-        <<component>>
-        +build() PriceCalculator
-    }
-
-    %% ═══════════════════════════════════════════════════════════════════
-    %% PHASE 3 — Chain of Responsibility (Validation)
-    %% ═══════════════════════════════════════════════════════════════════
-
-    class PriceValidationHandler {
-        <<interface>>
-        +setNext(PriceValidationHandler)
-        +validate(PriceValidationContext)
-    }
-
-    class AbstractPriceValidationHandler {
-        <<abstract>>
-        -PriceValidationHandler next
-        +validate(PriceValidationContext)
-        #doValidate(PriceValidationContext)*
-    }
-
-    class MinPriceHandler {
-        #doValidate(PriceValidationContext)
-    }
-
-    class MaxDiscountHandler {
-        #doValidate(PriceValidationContext)
-    }
-
-    class FraudDetectionHandler {
-        -BigDecimal MIN_PRICE_PER_SEAT
-        #doValidate(PriceValidationContext)
-    }
-
-    class PriceValidationContext {
-        +BigDecimal subtotal
+    class DiscountResult {
         +BigDecimal totalDiscount
-        +BigDecimal finalTotal
-        +int seatCount
-    }
-
-    class PriceValidationChainConfig {
-        <<configuration>>
-        +priceValidationChain() PriceValidationHandler
     }
 
     %% ═══════════════════════════════════════════════════════════════════
-    %% PHASE 4-5 — Service & Proxy
+    %% ORCHESTRATOR
     %% ═══════════════════════════════════════════════════════════════════
 
-    class DynamicPricingService {
-        <<interface>>
-        +calculatePrice(BookingCalculationDTO) PriceBreakdownDTO
+    class PricingEngine {
+        <<component pricingEngine>>
+        -strategiesByLine: EnumMap~PricingLineType,PricingStrategy~
+        %% Built from injected List~PricingStrategy~ unique lineType per enum value
+        -noDiscount: NoDiscount
+        +calculateTotalPrice(ctx) PriceBreakdownDTO
+        -buildDiscountChain(ctx) DiscountComponent
     }
 
-    class DynamicPricingServiceImpl {
-        <<service>>
-        -PricingContextFactory contextFactory
-        -PriceCalculatorChainFactory chainFactory
-        -PriceValidationHandler validationChain
-        +calculatePrice(BookingCalculationDTO) PriceBreakdownDTO
-    }
-
-    class CachingDynamicPricingProxy {
-        <<proxy-primary>>
-        -DynamicPricingService delegate
-        -RedisTemplate redisTemplate
-        +calculatePrice(BookingCalculationDTO) PriceBreakdownDTO
-        #cacheGet(String) Object
-        #cachePut(String, PriceBreakdownDTO)
-        -buildCacheKey(BookingCalculationDTO) String
-        -resolveUserId() String
+    class PricingContextBuilder {
+        <<Component>>
+        +build(validationCtx, request) PricingContext
+        %% After CoR: loads seats, FnB prices, customer, occupancy → PricingContext
     }
 
     class BookingServiceImpl {
         <<service>>
-        -DynamicPricingService dynamicPricingService
-        +calculatePrice(BookingCalculationDTO) PriceBreakdownDTO
+        -pricingEngine: IPricingEngine
+        -pricingValidationChain: PricingValidationHandler
+        -pricingContextBuilder: PricingContextBuilder
+        +calculatePrice(dto) PriceBreakdownDTO
     }
 
     %% ═══════════════════════════════════════════════════════════════════
     %% RELATIONSHIPS
     %% ═══════════════════════════════════════════════════════════════════
 
-    %% Domain relationships
-    Seat --> SeatType
-    Customer --> MembershipTier
+    %% Domain
+    Seat --> SeatType : has
+    Customer --> MembershipTier : has
+    PricingContext o-- ResolvedFnbItem : contains
+    PricingContext --> Showtime : uses
+    PricingContext --> Seat : uses
+    PricingContext --> Customer : uses
+    PricingContext --> Promotion : uses
+    ResolvedFnbItem ..> FnbItem : resolved from
 
-    %% Context relationships
-    PricingContext o-- Showtime : contains
-    PricingContext o-- Seat : contains list
-    PricingContext o-- Customer : nullable
-    PricingContext o-- Promotion : nullable
-    PricingContextFactory --> PricingContext : builds
-    PricingContextFactory ..> BookingCalculationDTO : reads
+    %% Input / Output
+    BookingServiceImpl ..> BookingCalculationDTO : receives
+    BookingServiceImpl ..> PriceBreakdownDTO : returns
+    PricingValidationContext --> BookingCalculationDTO : wraps
+    PricingValidationContext --> Showtime : populated by handler
+    PricingValidationContext --> Promotion : populated by handler
 
-    %% Specification usage
-    PricingConditions ..> PricingContext : evaluates
+    %% CoR chain
+    PricingValidationHandler <|.. AbstractPricingValidationHandler
+    AbstractPricingValidationHandler <|-- ShowtimeFutureHandler
+    AbstractPricingValidationHandler <|-- SeatsAvailableHandler
+    AbstractPricingValidationHandler <|-- PromoValidHandler
+    AbstractPricingValidationHandler o-- PricingValidationHandler : next
+    ShowtimeFutureHandler ..> PricingValidationContext : populates showtime
+    PromoValidHandler ..> PricingValidationContext : populates promotion
 
-    %% Strategy relationships
-    PricingStrategy <|.. StandardPricingStrategy
-    PricingStrategy <|.. WeekendPricingStrategy
-    PricingStrategy <|.. HolidayPricingStrategy
-    PricingStrategy <|.. EarlyBirdPricingStrategy
-    PricingStrategySelector o-- PricingStrategy : selects from list
-    WeekendPricingStrategy ..> PricingConditions : uses isWeekend
-    HolidayPricingStrategy ..> PricingConditions : uses isHoliday
-    EarlyBirdPricingStrategy ..> PricingConditions : uses isEarlyBird
+    %% Proxy
+    IPricingEngine <|.. PricingEngine
+    IPricingEngine <|.. CachingPricingEngineProxy
+    CachingPricingEngineProxy o-- IPricingEngine : delegate
 
-    %% Decorator relationships
-    PriceCalculator <|.. BasePriceCalculator
-    PriceCalculator <|.. AbstractPriceCalculatorDecorator
-    AbstractPriceCalculatorDecorator <|-- OccupancyDecorator
-    AbstractPriceCalculatorDecorator <|-- FnbDecorator
-    AbstractPriceCalculatorDecorator <|-- MemberDiscountDecorator
-    AbstractPriceCalculatorDecorator <|-- VoucherDecorator
-    AbstractPriceCalculatorDecorator o-- PriceCalculator : inner
-    BasePriceCalculator --> PricingStrategySelector : uses
-    BasePriceCalculator --> PricingAccumulator : creates
-    PricingAccumulator --> PriceBreakdownDTO : toDTO
-    PriceCalculatorChainFactory --> PriceCalculator : builds chain
-    OccupancyDecorator ..> PricingConditions : uses isHighOccupancy
-    MemberDiscountDecorator ..> MembershipTier : reads discountPercent
-    VoucherDecorator ..> Promotion : reads discountType + value
+    %% Specification
+    TimeBasedPricingStrategy ..> PricingConditions : evaluates via
+    TimeBasedPricingStrategy ..> PricingSpecificationContext : converts to
+    PricingConditions ..> PricingSpecificationContext : tests
+    PricingSpecificationContext --> Showtime : references
+    PricingSpecificationContext --> Customer : references
+    PricingSpecificationContext --> Promotion : references
 
-    %% CoR Validation relationships
-    PriceValidationHandler <|.. AbstractPriceValidationHandler
-    AbstractPriceValidationHandler <|-- MinPriceHandler
-    AbstractPriceValidationHandler <|-- MaxDiscountHandler
-    AbstractPriceValidationHandler <|-- FraudDetectionHandler
-    AbstractPriceValidationHandler o-- PriceValidationHandler : next
-    PriceValidationChainConfig --> PriceValidationHandler : assembles chain
+    %% Strategy
+    PricingStrategy <|.. TicketPricingStrategy
+    PricingStrategy <|.. FnbPricingStrategy
+    PricingStrategy <|.. TimeBasedPricingStrategy
+    TicketPricingStrategy ..> PricingLineType : TICKET
+    FnbPricingStrategy ..> PricingLineType : FNB
+    TimeBasedPricingStrategy ..> PricingLineType : TIME_BASED_SURCHARGE
+    PricingEngine o-- PricingStrategy : strategiesByLine
+    TicketPricingStrategy ..> PricingContext : reads
+    FnbPricingStrategy ..> PricingContext : reads
+    TimeBasedPricingStrategy ..> PricingContext : reads
 
-    %% Service & Proxy relationships
-    DynamicPricingService <|.. DynamicPricingServiceImpl
-    DynamicPricingService <|.. CachingDynamicPricingProxy
-    CachingDynamicPricingProxy --> DynamicPricingService : delegates to impl
-    DynamicPricingServiceImpl --> PricingContextFactory : uses
-    DynamicPricingServiceImpl --> PriceCalculatorChainFactory : uses
-    DynamicPricingServiceImpl --> PriceValidationHandler : uses
-    DynamicPricingServiceImpl --> PriceValidationContext : creates
-    BookingServiceImpl --> DynamicPricingService : injects via @Primary
+    %% Decorator
+    DiscountComponent <|.. NoDiscount
+    DiscountComponent <|.. BaseDiscountDecorator
+    BaseDiscountDecorator <|-- PromotionDiscountDecorator
+    BaseDiscountDecorator <|-- MemberDiscountDecorator
+    BaseDiscountDecorator o-- DiscountComponent : wraps
+    DiscountComponent ..> DiscountResult : returns
+    DiscountComponent ..> PricingContext : reads context
+    PricingEngine ..> DiscountComponent : builds chain
+
+    %% Orchestrator flow
+    BookingServiceImpl --> PricingValidationHandler : 1. validate
+    BookingServiceImpl --> PricingContextBuilder : injects & uses
+    PricingContextBuilder ..> PricingValidationContext : reads showtime & promotion
+    PricingContextBuilder ..> PricingContext : produces
+    BookingServiceImpl --> IPricingEngine : 3. calculate
+    CachingPricingEngineProxy --> PricingEngine : cache miss delegate
+    PricingEngine ..> PricingContext : uses
+    PricingEngine ..> PriceBreakdownDTO : returns
+    BookingServiceImpl ..> PricingValidationContext : builds
+    PricingContextBuilder ..> FnbItem : loads prices via repo
 ```
+
+
+

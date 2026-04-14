@@ -19,23 +19,28 @@ StarCine là hệ thống đặt vé xem phim trực tuyến được xây dựn
 backend/src/main/java/com/cinema/booking/
 ├── controllers/        REST API endpoints
 ├── services/           Business logic layer
-│   └── impl/
+│   ├── impl/
+│   ├── factory/                 Pattern: Factory Method (BookingFactory)
+│   ├── seatlock/                Pattern: Adapter (SeatLockProvider ← RedisSeatLockAdapter)
+│   ├── strategy_decorator/
+│   │   └── pricing/             Pattern: Strategy + Decorator (PricingEngine)
+│   ├── template_method/
+│   │   └── checkout/            Pattern: Template Method (AbstractCheckoutTemplate)
+│   └── payment/                 Pattern: Strategy + Factory (PaymentStrategy)
+├── domain/
+│   └── seat/                    Pattern: State (SeatState, VacantSeatState, ...)
 ├── repositories/       Data access (Spring Data JPA)
 ├── entities/           Domain model (JPA entities)
 ├── dtos/               Data Transfer Objects
 ├── config/             Spring configuration
-└── patterns/           Design Pattern implementations
+└── patterns/           Design Pattern implementations (patterns 01–07)
     ├── chainofresponsibility/   Pattern 01
     ├── mediator/                Pattern 02
-    ├── proxy/                   Pattern 03 + 08 (Proxy Cache)
-    ├── specification/           Pattern 04 + 08 (PricingConditions)
+    ├── proxy/                   Pattern 03 (CachingMovieServiceProxy)
+    ├── specification/           Pattern 04 (BookingSpecificationBuilder)
     ├── composite/               Pattern 05
     ├── prototype/               Pattern 07
-    └── pricing/                 Pattern 08 (Dynamic Pricing Engine)
-        ├── context/
-        ├── strategy/
-        ├── decorator/
-        └── validation/
+    └── state/                   Pattern: State (BookingContext, BookingState, ...)
 ```
 
 ### 1.3 Công nghệ sử dụng
@@ -62,7 +67,7 @@ backend/src/main/java/com/cinema/booking/
 | 05 | **Composite** | Structural | Tổng hợp số liệu dashboard từ nhiều nguồn | `patterns.composite` |
 | 06 | **Singleton** | Creational | Chia sẻ `RestTemplate` bean qua Spring IoC | `config` |
 | 07 | **Prototype** | Creational | Tạo email template theo từng loại giao tiếp | `patterns.prototype` |
-| 08 | **Dynamic Pricing Engine** | Tổng hợp 5 pattern | Tính giá vé thông minh đa yếu tố | `patterns.pricing` |
+| 08 | **Dynamic Pricing Engine** | Tổng hợp 5 pattern | Tính giá vé: CoR validation + Proxy cache + Strategy + Decorator + Specification | `services.strategy_decorator.pricing` + `patterns.specification` |
 
 ---
 
@@ -71,11 +76,11 @@ backend/src/main/java/com/cinema/booking/
 ### 3.1 Tổng hợp kết quả
 
 ```
-Tổng số test (pattern unit test): 67 tests
-✅ PASS: 67 / 67
+Tổng số test (pattern unit test): 9 tests (PricingConditionsTest)
+✅ PASS: 9 / 9
 ❌ FAIL: 0
 ⚠️  SKIP: 0
-Thời gian chạy: ~6 giây (không cần DB/Redis)
+Thời gian chạy: ~1 giây (không cần DB/Redis)
 ```
 
 > Ghi chú: `FilmBookingBackendApplicationTests` (Spring full context) không được tính vào đây vì yêu cầu kết nối DB/Redis thật. Các test pattern đều chạy hoàn toàn độc lập, không cần infrastructure.
@@ -84,13 +89,8 @@ Thời gian chạy: ~6 giây (không cần DB/Redis)
 
 | Pattern | Test Class | Số test | Kết quả |
 |---------|-----------|---------|---------|
-| Specification (Pricing) | `PricingConditionsTest` | 9 | ✅ ALL PASS |
-| Strategy | `PricingStrategyTest` | 21 | ✅ ALL PASS |
-| Decorator | `DecoratorTest` | 9 | ✅ ALL PASS |
-| CoR Validation | `PriceValidationChainTest` | 10 | ✅ ALL PASS |
-| Proxy Cache | `CachingDynamicPricingProxyTest` | 9 | ✅ ALL PASS |
-| Service (E2E) | `DynamicPricingServiceImplTest` | 9 | ✅ ALL PASS |
-| **TỔNG** | | **67** | **✅ 100%** |
+| Specification (PricingConditions) | `PricingConditionsTest` | 9 | ✅ ALL PASS |
+| **TỔNG** | | **9** | **✅ 100%** |
 
 ---
 
@@ -100,8 +100,8 @@ Thời gian chạy: ~6 giây (không cần DB/Redis)
 |------------|---------------------|
 | **S** — Single Responsibility | Mỗi Handler (CoR) 1 rule; mỗi Decorator 1 khoản tiền; mỗi Strategy 1 công thức |
 | **O** — Open/Closed | Thêm Decorator/Handler/Strategy mới = thêm class mới, không sửa class cũ |
-| **L** — Liskov Substitution | Proxy thay thế MovieServiceImpl hoàn toàn; Decorator thay thế PriceCalculator |
-| **I** — Interface Segregation | `PriceCalculator` (1 method), `PricingStrategy` (4 method hẹp), `StatsComponent` (1 method) |
+| **L** — Liskov Substitution | Proxy thay thế MovieServiceImpl hoàn toàn; DiscountComponent decorator thay thế nhau linh hoạt |
+| **I** — Interface Segregation | `DiscountComponent` (1 method), `PricingStrategy` (1 method), `StatsComponent` (1 method) |
 | **D** — Dependency Inversion | Tất cả service inject abstraction; Spring IoC quản lý concrete impl |
 
 ---
@@ -113,7 +113,7 @@ Thời gian chạy: ~6 giây (không cần DB/Redis)
 | File | Nội dung |
 |------|---------|
 | [`docs/bao-cao-pattern-1-7.md`](bao-cao-pattern-1-7.md) | Chi tiết 7 pattern (01-07): bài toán, thiết kế, code, test |
-| [`docs/bao-cao-dynamic-pricing.md`](bao-cao-dynamic-pricing.md) | Dynamic Pricing Engine (08): 5 pattern kết hợp, 67 test |
+| [`docs/bao-cao-dynamic-pricing.md`](bao-cao-dynamic-pricing.md) | Dynamic Pricing Engine (08): 5 pattern kết hợp, 9 test |
 | [`UML/08-dynamic-pricing-engine.md`](../UML/08-dynamic-pricing-engine.md) | UML Class Diagram đầy đủ (Mermaid) |
 | [`docs/patterns/08-dynamic-pricing-engine.md`](patterns/08-dynamic-pricing-engine.md) | Tài liệu kỹ thuật chi tiết |
 
@@ -123,21 +123,25 @@ Thời gian chạy: ~6 giây (không cần DB/Redis)
 
 ### 6.1 Dynamic Pricing Engine (tính năng nâng cao)
 
-Tính năng cộng điểm — kết hợp **5 design pattern** để giải quyết bài toán tính giá vé phức tạp:
+Kết hợp **5 GoF design pattern** hoạt động thực sự trong production path:
 
-- **Specification**: 4 predicate điều kiện (weekend, holiday, early bird, occupancy)
-- **Strategy**: 4 chiến lược giá theo thứ tự ưu tiên (OCP — thêm mới không sửa cũ)
-- **Decorator**: 4 lớp cộng/trừ tiền độc lập, xếp chồng linh hoạt
-- **Chain of Responsibility**: 3 rule validation (an toàn, chống gian lận)
-- **Proxy**: Redis cache 5 phút (giảm tải DB/CPU)
+- **Chain of Responsibility** (`ShowtimeFutureHandler → SeatsAvailableHandler → PromoValidHandler`): validate trước khi tính giá, populate data tái dùng
+- **Proxy** (`CachingPricingEngineProxy`): Redis cache transparent qua `@Primary` + `IPricingEngine` interface — TTL 600s
+- **Specification** (`PricingConditions`): 4 predicate điều kiện — tích hợp thực sự qua `TimeBasedPricingStrategy`
+- **Strategy** (`TicketPricingStrategy`, `FnbPricingStrategy`, `TimeBasedPricingStrategy`): tách biệt từng loại tính giá, không gọi DB trong engine
+- **Decorator** (`DiscountComponent` chain): `NoDiscount` → `PromotionDiscountDecorator` → `MemberDiscountDecorator` — validation ở đúng tầng CoR
+
+**Orchestrator thực tế:** `BookingServiceImpl → CoR chain → CachingPricingEngineProxy → PricingEngine`.
+
+**`PriceBreakdownDTO` 7 trường:** `ticketTotal`, `timeBasedSurcharge`, `fnbTotal`, `membershipDiscount`, `discountAmount`, `appliedStrategy`, `finalTotal`.
 
 ### 6.2 Không cần Spring context để test
 
-Toàn bộ 67 test unit đều chạy trong **dưới 6 giây** mà không cần kết nối DB hay Redis. Điều này thể hiện thiết kế clean: logic nghiệp vụ hoàn toàn tách biệt khỏi infrastructure.
+Test unit `PricingConditionsTest` (9 test) chạy trong **dưới 1 giây** mà không cần kết nối DB hay Redis. Logic nghiệp vụ hoàn toàn tách biệt khỏi infrastructure.
 
 ### 6.3 Backward Compatible API
 
-`PriceBreakdownDTO` được mở rộng với các field mới (`occupancySurcharge`, `membershipDiscount`, `appliedStrategy`) nhưng giữ nguyên 4 field cũ → Frontend/Mobile không bị lỗi khi Backend cập nhật.
+`PriceBreakdownDTO` trả về 4 field cốt lõi (`ticketTotal`, `fnbTotal`, `discountAmount`, `finalTotal`) — Frontend/Mobile không bị lỗi khi Backend cập nhật.
 
 ---
 

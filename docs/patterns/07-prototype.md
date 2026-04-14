@@ -92,7 +92,14 @@ public class TicketEmailPrototype implements EmailTemplate {
 
     @Override
     public EmailTemplate copy() {
-        return new TicketEmailPrototype();  // bản sao rỗng, tất cả fields null
+        TicketEmailPrototype clone = new TicketEmailPrototype();
+        clone.to = this.to;
+        clone.bookingId = this.bookingId;
+        clone.customerName = this.customerName;
+        clone.movieTitle = this.movieTitle;
+        clone.showtime = this.showtime;
+        clone.totalAmount = this.totalAmount;
+        return clone;
     }
 
     @Override
@@ -161,7 +168,7 @@ PostPaymentMediator.settleSuccess()
         └─⑤ TicketEmailNotifier.onPaymentSuccess()
                 │
                 ├── ticketEmailPrototype.copy()
-                │       └── new TicketEmailPrototype()  ← bản sao rỗng
+                │       └── clone đủ fields → TicketEmailPrototype mới  ← prototype gốc không thay đổi
                 │
                 ├── email.to(...).bookingId(...).movieTitle(...)...
                 │       └── điền dữ liệu vào bản sao (prototype gốc KHÔNG bị động)

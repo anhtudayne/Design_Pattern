@@ -5,69 +5,57 @@ classDiagram
         -id: int
         -fullname: String
         -phone: String
-        +updateProfile()
+        -created_at: DateTime
     }
 
     class Customer {
-        +bookTicket()
-        +writeReview()
+        -total_spending: decimal
+        -loyalty_points: int
     }
 
-    class Admin {
-        +manageUsers()
-        +manageCinemas()
-        +viewSystemReports()
-        +viewDashboard()
+    class MembershipTier {
+        -id: int
+        -name: String
+        -min_spending: decimal
+        -discount_percent: decimal
     }
 
-    class Staff {
-        +sellTicketOffline()
-        +manageFnbOrders()
-    }
+    class Admin
+    class Staff
 
     class UserAccount {
         -id: int
         -email: String
         -password_hash: String
-        -created_at: Date
-        +login()
-        +changePassword()
-        +resetPassword()
     }
 
     class Notification {
         -id: int
         -title: String
         -message: String
-        -created_at: Date
-        +markAsRead()
+        -is_read: boolean
     }
 
     class Location {
         -id: int
         -name: String
-        +getLocations()
     }
 
     class Cinema {
         -id: int
         -name: String
         -address: String
-        -hotline: String
-        +getDetails()
     }
 
     class Room {
         -id: int
         -name: String
         -screen_type: String
-        +getCapacity()
     }
 
     class Seat {
         -id: int
         -seat_code: String
-        -is_active: boolean
     }
 
     class SeatType {
@@ -83,10 +71,10 @@ classDiagram
         -duration_minutes: int
         -release_date: Date
         -language: String
+        -age_rating: String
         -poster_url: String
         -trailer_url: String
         -status: String
-        +getDetails()
     }
 
     class Genre {
@@ -110,42 +98,35 @@ classDiagram
 
     class Review {
         -id: int
-        -rating_stars: int
+        -rating: int
         -comment: String
-        -created_at: Date
     }
 
     class Showtime {
         -id: int
-        -start_time: Date
-        -end_time: Date
-        +getAvailableTickets()
+        -start_time: DateTime
+        -end_time: DateTime
+        -base_price: decimal
     }
 
     class Ticket {
         -id: int
-        -unit_price: float
-        -status: String
-        -hold_expires_at: Date
-        +printTicket()
+        -price: decimal
     }
 
     class Booking {
         -id: int
         -booking_code: String
         -status: String
-        -created_at: Date
-        +calculateTotals()
-        +applyPromotion()
+        -created_at: DateTime
     }
 
     class Payment {
         -id: int
-        -payment_method: String
-        -amount: float
+        -method: String
+        -amount: decimal
         -status: String
-        -paid_at: Date
-        +processPayment()
+        -paid_at: DateTime
     }
 
     class FnbItem {
@@ -153,31 +134,34 @@ classDiagram
         -name: String
         -description: String
         -price: float
-        -stock_quantity: int
         -image_url: String
         -is_active: boolean
     }
 
+    class FnbItemInventory {
+        -id: int
+        -quantity: int
+        -version: long
+    }
+
     class FnbLine {
         -id: int
-        -unit_price: int
+        -unit_price: decimal
         -quantity: int
-        +calculateLineTotal()
     }
 
     class Promotion {
         -id: int
         -code: String
         -discount_type: String
-        -discount_value: float
-        -valid_to: Date
-        +deductQuantity()
+        -discount_value: decimal
+        -valid_to: DateTime
     }
 
     class PromotionInventory {
         -id: int
         -quantity: int
-        +checkAvailable()
+        -version: long
     }
 
     %% Relationships
@@ -185,6 +169,7 @@ classDiagram
     User <|-- Admin : Extends
     User <|-- Staff : Extends
     UserAccount "1" -- "1" User
+    Customer "*" --> "0..1" MembershipTier
     User "1" --> "*" Notification
     
     Location "1" -- "*" Cinema
@@ -207,10 +192,11 @@ classDiagram
     Booking "1" o-- "*" Ticket
     Booking "1" -- "1" Payment
     Booking "1" -- "*" FnbLine
-    FnbLine "*" --o "1" FnbItem
+    FnbLine "*" --> "1" FnbItem
+    FnbItem "1" -- "1" FnbItemInventory
     
-    Booking "*" -- "0..1" Promotion
-    Promotion "1" -- "*" PromotionInventory
+    Booking "*" --> "0..1" Promotion
+    Promotion "1" -- "1" PromotionInventory
 ```
 
 UML tung design pattern (GoF) **khong** gop vao file nay — moi pattern co `classDiagram` rieng trong [plans/01](plans/01-chain-of-responsibility-checkout-validation.md) … [plans/07](plans/07-prototype-email-templates.md) va quy uoc [plans/00](plans/00-patterns-conventions.md).

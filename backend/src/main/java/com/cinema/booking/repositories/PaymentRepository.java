@@ -12,6 +12,7 @@ import java.util.List;
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, Integer> {
     List<Payment> findByBookingAndPaymentMethodAndStatus(Booking booking, String paymentMethod, Payment.PaymentStatus status);
+    boolean existsByBookingAndStatus(Booking booking, Payment.PaymentStatus status);
 
     List<Payment> findByStatus(Payment.PaymentStatus status);
 

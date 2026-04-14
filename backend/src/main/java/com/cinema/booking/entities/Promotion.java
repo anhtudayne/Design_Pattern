@@ -27,12 +27,11 @@ public class Promotion {
     @Column(name = "discount_value", nullable = false, precision = 10, scale = 2)
     private BigDecimal discountValue;
 
-    @Column(name = "quantity")
-    @Builder.Default
-    private Integer quantity = 0;
-
     @Column(name = "valid_to", nullable = false)
     private LocalDateTime validTo;
+
+    @OneToOne(mappedBy = "promotion", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private PromotionInventory inventory;
 
     public enum DiscountType {
         PERCENT,

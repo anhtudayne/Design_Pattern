@@ -97,18 +97,30 @@ INSERT INTO showtimes (id, movie_id, room_id, start_time, end_time, base_price) 
 (5, 1, 4, '2026-04-12 10:30:00', '2026-04-12 12:04:00', 70000.00);
 
 -- 12. Dữ liệu khuyến mãi
-INSERT INTO promotions (id, code, discount_type, discount_value, quantity, valid_to) VALUES
-(1, 'WELCOME10', 'PERCENT', 10.00, 100, '2026-12-31 23:59:59'),
-(2, 'GIAM30K', 'FIXED', 30000.00, 50, '2026-12-31 23:59:59'),
-(3, 'HET_HAN', 'PERCENT', 20.00, 0, '2025-01-01 00:00:00');
+INSERT INTO promotions (id, code, discount_type, discount_value, valid_to) VALUES
+(1, 'WELCOME10', 'PERCENT', 10.00, '2026-12-31 23:59:59'),
+(2, 'GIAM30K', 'FIXED', 30000.00, '2026-12-31 23:59:59'),
+(3, 'HET_HAN', 'PERCENT', 20.00, '2025-01-01 00:00:00');
+
+INSERT INTO promotion_inventory (promotion_id, quantity) VALUES
+(1, 100),
+(2, 50),
+(3, 0);
 
 -- 13. Dữ liệu F&B
-INSERT INTO fnb_items (id, name, description, price, stock_quantity, is_active, image_url) VALUES
-(1, 'Combo 1', '1 bap ngot + 1 pepsi lon', 89000.00, 100, TRUE, 'https://picsum.photos/seed/starcine-fnb-combo/480/480'),
-(2, 'Bap caramel', 'Bap vi caramel size vua', 55000.00, 80, TRUE, 'https://picsum.photos/seed/starcine-fnb-popcorn/480/480'),
-(3, 'Pepsi lon', 'Nuoc ngot pepsi 330ml', 25000.00, 200, TRUE, 'https://picsum.photos/seed/starcine-fnb-soda/480/480'),
-(4, 'Nachos phomai', 'Banh nachos kem sot phomai', 65000.00, 40, TRUE, 'https://picsum.photos/seed/starcine-fnb-nachos/480/480'),
-(5, 'Tra dao', 'Tra dao mat lanh', 30000.00, 0, FALSE, 'https://picsum.photos/seed/starcine-fnb-tea/480/480');
+INSERT INTO fnb_items (id, name, description, price, is_active, image_url) VALUES
+(1, 'Combo 1', '1 bap ngot + 1 pepsi lon', 89000.00, TRUE, 'https://picsum.photos/seed/starcine-fnb-combo/480/480'),
+(2, 'Bap caramel', 'Bap vi caramel size vua', 55000.00, TRUE, 'https://picsum.photos/seed/starcine-fnb-popcorn/480/480'),
+(3, 'Pepsi lon', 'Nuoc ngot pepsi 330ml', 25000.00, TRUE, 'https://picsum.photos/seed/starcine-fnb-soda/480/480'),
+(4, 'Nachos phomai', 'Banh nachos kem sot phomai', 65000.00, TRUE, 'https://picsum.photos/seed/starcine-fnb-nachos/480/480'),
+(5, 'Tra dao', 'Tra dao mat lanh', 30000.00, FALSE, 'https://picsum.photos/seed/starcine-fnb-tea/480/480');
+
+INSERT INTO fnb_item_inventory (item_id, quantity) VALUES
+(1, 100),
+(2, 80),
+(3, 200),
+(4, 40),
+(5, 0);
 
 -- 14. Dữ liệu booking / ticket / fnb_lines / payment
 INSERT INTO bookings (id, booking_code, customer_id, promotion_id, status, created_at) VALUES

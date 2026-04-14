@@ -8,6 +8,7 @@ import com.cinema.booking.repositories.BookingRepository;
 import com.cinema.booking.repositories.FnbItemRepository;
 import com.cinema.booking.repositories.FnBLineRepository;
 import com.cinema.booking.services.BookingFnbService;
+import com.cinema.booking.services.FnbItemInventoryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,9 @@ public class BookingFnbServiceImpl implements BookingFnbService {
     @Autowired
     private FnBLineRepository fnBLineRepository;
 
+    @Autowired
+    private FnbItemInventoryService fnbItemInventoryService;
+
     @Override
     public List<FnBLine> getAllBookingFnbItems() {
         return fnBLineRepository.findAll();
@@ -42,6 +46,15 @@ public class BookingFnbServiceImpl implements BookingFnbService {
     public List<FnBLine> createBookingFnbItems(BookingFnbCreateDTO createDTO) {
         Booking booking = bookingRepository.findById(createDTO.getBookingId())
                 .orElseThrow(() -> new RuntimeException("Đặt vé không tồn tại với mã: " + createDTO.getBookingId()));
+
+        List<com.cinema.booking.dtos.BookingCalculationDTO.FnbOrderDTO> orders = createDTO.getItems().stream()
+                .map(itemDTO -> {
+                    com.cinema.booking.dtos.BookingCalculationDTO.FnbOrderDTO dto = new com.cinema.booking.dtos.BookingCalculationDTO.FnbOrderDTO();
+                    dto.setItemId(itemDTO.getItemId());
+                    dto.setQuantity(itemDTO.getQuantity());
+                    return dto;
+                }).toList();
+        fnbItemInventoryService.reserveItemsOrThrow(orders);
 
         return createDTO.getItems().stream().map(itemDTO -> {
             FnbItem fnbItem = fnbItemRepository.findById(itemDTO.getItemId())
@@ -60,6 +73,7 @@ public class BookingFnbServiceImpl implements BookingFnbService {
     @Override
     @Transactional
     public void deleteBookingFnbItemsByBookingId(Integer bookingId) {
+        fnbItemInventoryService.releaseItemsForBooking(bookingId);
         List<FnBLine> items = fnBLineRepository.findByBooking_BookingId(bookingId);
         fnBLineRepository.deleteAll(items);
     }

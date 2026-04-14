@@ -131,7 +131,7 @@ function ItemTab({ categories, notify }) {
   const [loading, setLoading]   = useState(true);
   const [saving, setSaving]     = useState(false);
   const [modal, setModal]       = useState(null);
-  const [form, setForm]         = useState({ name: '', description: '', price: 0, categoryId: '', imageUrl: '', isActive: true });
+  const [form, setForm]         = useState({ name: '', description: '', price: 0, stockQuantity: 0, categoryId: '', imageUrl: '', isActive: true });
   const [search, setSearch]     = useState('');
 
   const load = useCallback(async () => {
@@ -145,7 +145,7 @@ function ItemTab({ categories, notify }) {
   useEffect(() => { load(); }, [load]);
 
   const openAdd = () => {
-    setForm({ name: '', description: '', price: 0, categoryId: categories[0]?.categoryId || '', imageUrl: '', isActive: true });
+    setForm({ name: '', description: '', price: 0, stockQuantity: 0, categoryId: categories[0]?.categoryId || '', imageUrl: '', isActive: true });
     setModal('add');
   };
 
@@ -154,6 +154,7 @@ function ItemTab({ categories, notify }) {
       name: item.name,
       description: item.description || '',
       price: item.price,
+      stockQuantity: Number(item.stockQuantity || 0),
       categoryId: item.category?.categoryId || '',
       imageUrl: item.imageUrl || '',
       isActive: item.isActive
@@ -173,6 +174,7 @@ function ItemTab({ categories, notify }) {
         body: JSON.stringify({
           ...form,
           price: Number(form.price),
+          stockQuantity: Number(form.stockQuantity),
           categoryId: Number(form.categoryId)
         })
       });
@@ -250,7 +252,12 @@ function ItemTab({ categories, notify }) {
                 <p className="text-[11px] text-slate-400 line-clamp-2 min-h-[32px] font-medium leading-relaxed">{item.description || 'Chưa có mô tả cho sản phẩm này.'}</p>
                 <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between">
                    <p className="font-black text-orange-500">{item.price.toLocaleString('vi-VN')}đ</p>
-                   {item.isActive && <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /><span className="text-[10px] font-bold text-green-600 uppercase tracking-widest">Sẵn có</span></div>}
+                   <div className="flex flex-col items-end gap-1">
+                     <span className={`text-[10px] font-black uppercase tracking-widest ${(item.stockQuantity || 0) > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                       {(item.stockQuantity || 0) > 0 ? `Còn ${item.stockQuantity}` : 'Hết hàng'}
+                     </span>
+                     {item.isActive && <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /><span className="text-[10px] font-bold text-green-600 uppercase tracking-widest">Sẵn có</span></div>}
+                   </div>
                 </div>
               </div>
             </div>
@@ -269,6 +276,11 @@ function ItemTab({ categories, notify }) {
               <FormField label="Giá bán (VNĐ)" required>
                 <input className={inputCls} type="number" value={form.price} onChange={e => setForm({ ...form, price: Number(e.target.value) })} required />
               </FormField>
+              <FormField label="Tồn kho" required>
+                <input className={inputCls} type="number" min="0" value={form.stockQuantity} onChange={e => setForm({ ...form, stockQuantity: Number(e.target.value) })} required />
+              </FormField>
+            </div>
+            <div className="grid grid-cols-1 gap-3">
               <FormField label="Danh mục" required>
                 <select className={selectCls} value={form.categoryId} onChange={e => setForm({ ...form, categoryId: e.target.value })} required>
                   <option value="">-- Chọn danh mục --</option>

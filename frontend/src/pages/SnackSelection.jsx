@@ -68,10 +68,14 @@ export default function SnackSelection() {
   }, []);
 
   const updateQuantity = (itemId, delta) => {
-    setSelectedFnB(prev => ({
-      ...prev,
-      [itemId]: Math.max(0, (prev[itemId] || 0) + delta),
-    }));
+    setSelectedFnB(prev => {
+      const item = fnbItems.find(i => i.itemId === itemId);
+      const stock = Math.max(0, Number(item?.stockQuantity ?? 0));
+      const current = prev[itemId] || 0;
+      const next = Math.max(0, current + delta);
+      const capped = Math.min(next, stock);
+      return { ...prev, [itemId]: capped };
+    });
   };
 
   // Use totalPrice from backend (already calculated in SeatSelection)
@@ -151,13 +155,20 @@ export default function SnackSelection() {
                         <div>
                           <h3 className="font-black text-xl text-slate-800 dark:text-white mb-1">{item.name}</h3>
                           <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">{item.description}</p>
+                          <p className={`text-xs font-bold mt-2 ${(item.stockQuantity || 0) > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                            {(item.stockQuantity || 0) > 0 ? `Còn ${item.stockQuantity}` : 'Hết hàng'}
+                          </p>
                         </div>
                         <div className="flex items-center justify-between mt-4">
                           <span className="font-black text-orange-500 text-lg">{Number(item.price).toLocaleString('vi-VN')}đ</span>
                           <div className="flex items-center bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-1">
                             <button onClick={() => updateQuantity(item.itemId, -1)} className="w-8 h-8 flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-colors"><span className="material-symbols-outlined text-sm text-slate-500">remove</span></button>
                             <span className="w-10 text-center font-black text-slate-800 dark:text-white">{selectedFnB[item.itemId] || 0}</span>
-                            <button onClick={() => updateQuantity(item.itemId, 1)} className="w-8 h-8 flex items-center justify-center bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg shadow-sm"><span className="material-symbols-outlined text-sm">add</span></button>
+                            <button
+                              onClick={() => updateQuantity(item.itemId, 1)}
+                              disabled={(selectedFnB[item.itemId] || 0) >= (item.stockQuantity || 0)}
+                              className="w-8 h-8 flex items-center justify-center bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                            ><span className="material-symbols-outlined text-sm">add</span></button>
                           </div>
                         </div>
                       </div>
@@ -182,16 +193,27 @@ export default function SnackSelection() {
                         />
                       </div>
                       <h4 className="font-black text-lg text-slate-800 dark:text-white mb-2 line-clamp-1">{item.name}</h4>
+                      <p className={`text-xs font-bold mb-2 ${(item.stockQuantity || 0) > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                        {(item.stockQuantity || 0) > 0 ? `Còn ${item.stockQuantity}` : 'Hết hàng'}
+                      </p>
                       <div className="flex items-center justify-between">
                         <span className="font-black text-orange-500">{Number(item.price).toLocaleString('vi-VN')}đ</span>
                         {(selectedFnB[item.itemId] || 0) > 0 ? (
                           <div className="flex items-center bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-1">
                             <button onClick={() => updateQuantity(item.itemId, -1)} className="w-7 h-7 flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-colors"><span className="material-symbols-outlined text-sm text-slate-500">remove</span></button>
                             <span className="w-7 text-center font-black text-sm text-slate-800 dark:text-white">{selectedFnB[item.itemId]}</span>
-                            <button onClick={() => updateQuantity(item.itemId, 1)} className="w-7 h-7 flex items-center justify-center bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg shadow-sm"><span className="material-symbols-outlined text-sm">add</span></button>
+                            <button
+                              onClick={() => updateQuantity(item.itemId, 1)}
+                              disabled={(selectedFnB[item.itemId] || 0) >= (item.stockQuantity || 0)}
+                              className="w-7 h-7 flex items-center justify-center bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                            ><span className="material-symbols-outlined text-sm">add</span></button>
                           </div>
                         ) : (
-                          <button onClick={() => updateQuantity(item.itemId, 1)} className="w-9 h-9 flex items-center justify-center bg-slate-50 dark:bg-slate-800 text-slate-500 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:border-orange-500 hover:text-orange-500 transition-all">
+                          <button
+                            onClick={() => updateQuantity(item.itemId, 1)}
+                            disabled={(item.stockQuantity || 0) <= 0}
+                            className="w-9 h-9 flex items-center justify-center bg-slate-50 dark:bg-slate-800 text-slate-500 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:border-orange-500 hover:text-orange-500 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
                             <span className="material-symbols-outlined text-base">add</span>
                           </button>
                         )}

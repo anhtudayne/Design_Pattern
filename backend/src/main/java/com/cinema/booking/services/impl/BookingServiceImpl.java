@@ -9,6 +9,8 @@ import com.cinema.booking.domain.seat.SeatStateFactory;
 import com.cinema.booking.entities.*;
 import com.cinema.booking.repositories.*;
 import com.cinema.booking.services.BookingService;
+import com.cinema.booking.services.FnbItemInventoryService;
+import com.cinema.booking.services.PromotionInventoryService;
 import com.cinema.booking.services.seatlock.SeatLockProvider;
 import com.cinema.booking.services.strategy_decorator.pricing.PricingContext;
 import com.cinema.booking.services.strategy_decorator.pricing.PricingEngine;
@@ -41,16 +43,19 @@ public class BookingServiceImpl implements BookingService {
     private TicketRepository ticketRepository;
 
     @Autowired
-    private FnbItemRepository fnbItemRepository;
-
-    @Autowired
-    private PromotionRepository promotionRepository;
+    private PromotionInventoryService promotionInventoryService;
 
     @Autowired
     private BookingRepository bookingRepository;
 
     @Autowired
     private FnBLineRepository fnBLineRepository;
+
+    @Autowired
+    private PaymentRepository paymentRepository;
+
+    @Autowired
+    private FnbItemInventoryService fnbItemInventoryService;
 
     @Value("${cinema.app.redisTtlSeconds:600}")
     private long redisTtlSeconds;
@@ -120,9 +125,7 @@ public class BookingServiceImpl implements BookingService {
                 .orElseThrow(() -> new RuntimeException("Suất chiếu không tồn tại!"));
 
         List<Seat> seats = seatRepository.findAllById(request.getSeatIds());
-        Promotion promotion = (request.getPromoCode() != null && !request.getPromoCode().isBlank())
-                ? promotionRepository.findByCode(request.getPromoCode()).orElse(null)
-                : null;
+        Promotion promotion = promotionInventoryService.resolvePromotionForPricing(request.getPromoCode());
 
         return pricingEngine.calculateTotalPrice(
                 PricingContext.builder()
@@ -156,6 +159,12 @@ public class BookingServiceImpl implements BookingService {
         com.cinema.booking.patterns.state.BookingContext context = new com.cinema.booking.patterns.state.BookingContext(booking);
         context.cancel();
         bookingRepository.save(booking);
+
+        // Release reserved resources only when booking has never been settled successfully.
+        if (!paymentRepository.existsByBookingAndStatus(booking, Payment.PaymentStatus.SUCCESS)) {
+            promotionInventoryService.releasePromotionForBooking(bookingId);
+            fnbItemInventoryService.releaseItemsForBooking(bookingId);
+        }
     }
 
     @Override

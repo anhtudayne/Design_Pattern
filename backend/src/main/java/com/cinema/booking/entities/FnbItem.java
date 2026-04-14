@@ -25,9 +25,6 @@ public class FnbItem {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
-    @Column(name = "stock_quantity")
-    private Integer stockQuantity;
-
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;

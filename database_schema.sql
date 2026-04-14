@@ -168,8 +168,15 @@ CREATE TABLE promotions (
     code VARCHAR(50) UNIQUE NOT NULL,
     discount_type ENUM('PERCENT', 'FIXED') NOT NULL,
     discount_value DECIMAL(10, 2) NOT NULL,
-    quantity INT DEFAULT 0,
     valid_to DATETIME NOT NULL
+);
+
+CREATE TABLE promotion_inventory (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    promotion_id INT NOT NULL UNIQUE,
+    quantity INT NOT NULL DEFAULT 0,
+    version BIGINT NOT NULL DEFAULT 0,
+    FOREIGN KEY (promotion_id) REFERENCES promotions(id) ON DELETE CASCADE
 );
 
 -- ==========================================
@@ -203,9 +210,16 @@ CREATE TABLE fnb_items (
     name VARCHAR(150) NOT NULL,
     description TEXT,
     price DECIMAL(10, 2) NOT NULL,
-    stock_quantity INT DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
     image_url VARCHAR(1024) NULL
+);
+
+CREATE TABLE fnb_item_inventory (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    item_id INT NOT NULL UNIQUE,
+    quantity INT NOT NULL DEFAULT 0,
+    version BIGINT NOT NULL DEFAULT 0,
+    FOREIGN KEY (item_id) REFERENCES fnb_items(id) ON DELETE CASCADE
 );
 
 -- Chi tiết FnB trong đơn hàng (FnBLine)

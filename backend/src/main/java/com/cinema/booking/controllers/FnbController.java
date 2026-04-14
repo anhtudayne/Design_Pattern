@@ -6,6 +6,7 @@ import com.cinema.booking.entities.FnbItem;
 import com.cinema.booking.entities.FnbCategory;
 import com.cinema.booking.repositories.FnbItemRepository;
 import com.cinema.booking.repositories.FnbCategoryRepository;
+import com.cinema.booking.services.FnbItemInventoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,12 +28,19 @@ public class FnbController {
     @Autowired
     private FnbCategoryRepository categoryRepository;
 
+    @Autowired
+    private FnbItemInventoryService fnbItemInventoryService;
+
     // --- ITEM CRUD ---
 
     @Operation(summary = "Lấy danh sách tất cả sản phẩm F&B", description = "Trả về toàn bộ danh sách bắp nước kèm thông tin giá và danh mục")
     @GetMapping("/items")
     public List<FnbItemDTO> getAllItems() {
-        return itemRepository.findAll().stream().map(this::toDto).toList();
+        List<FnbItem> items = itemRepository.findAll();
+        Map<Integer, Integer> quantityMap = fnbItemInventoryService.getQuantityMap(
+                items.stream().map(FnbItem::getItemId).toList()
+        );
+        return items.stream().map(item -> toDto(item, quantityMap)).toList();
     }
 
     @Operation(summary = "Tạo sản phẩm F&B mới", description = "Thêm một món ăn/nước uống mới theo schema hiện tại.")
@@ -47,13 +55,14 @@ public class FnbController {
                 .name(dto.getName())
                 .description(dto.getDescription())
                 .price(dto.getPrice())
-                .stockQuantity(dto.getStockQuantity())
                 .isActive(dto.getIsActive() != null ? dto.getIsActive() : true)
                 .imageUrl(dto.getImageUrl())
                 .category(category)
                 .build();
-        
-        return ResponseEntity.ok(toDto(itemRepository.save(item)));
+
+        FnbItem saved = itemRepository.save(item);
+        fnbItemInventoryService.upsertQuantity(saved, dto.getStockQuantity());
+        return ResponseEntity.ok(toDto(saved, Map.of(saved.getItemId(), fnbItemInventoryService.getQuantity(saved.getItemId()))));
     }
 
     @Operation(summary = "Cập nhật sản phẩm F&B", description = "Chỉnh sửa thông tin tên, giá, tồn kho và trạng thái sản phẩm.")
@@ -73,11 +82,12 @@ public class FnbController {
         item.setName(dto.getName());
         item.setDescription(dto.getDescription());
         item.setPrice(dto.getPrice());
-        item.setStockQuantity(dto.getStockQuantity());
         item.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : item.getIsActive());
         item.setImageUrl(dto.getImageUrl());
-        
-        return ResponseEntity.ok(toDto(itemRepository.save(item)));
+
+        FnbItem saved = itemRepository.save(item);
+        fnbItemInventoryService.upsertQuantity(saved, dto.getStockQuantity());
+        return ResponseEntity.ok(toDto(saved, Map.of(saved.getItemId(), fnbItemInventoryService.getQuantity(saved.getItemId()))));
     }
 
     @Operation(summary = "Xóa sản phẩm F&B", description = "Xóa hoàn toàn một sản phẩm khởi hệ thống")
@@ -130,13 +140,13 @@ public class FnbController {
         return dto;
     }
 
-    private FnbItemDTO toDto(FnbItem item) {
+    private FnbItemDTO toDto(FnbItem item, Map<Integer, Integer> quantityMap) {
         FnbItemDTO dto = new FnbItemDTO();
         dto.setItemId(item.getItemId());
         dto.setName(item.getName());
         dto.setDescription(item.getDescription());
         dto.setPrice(item.getPrice());
-        dto.setStockQuantity(item.getStockQuantity());
+        dto.setStockQuantity(quantityMap.getOrDefault(item.getItemId(), 0));
         dto.setIsActive(item.getIsActive());
         dto.setImageUrl(item.getImageUrl());
         dto.setCategoryId(item.getCategory() != null ? item.getCategory().getCategoryId() : null);

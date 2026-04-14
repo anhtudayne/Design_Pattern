@@ -14,6 +14,8 @@ public class PostPaymentMediator {
     @Autowired
     public PostPaymentMediator(
             BookingStatusUpdater bookingStatusUpdater,
+            PromotionInventoryRollback promotionInventoryRollback,
+            FnbInventoryRollback fnbInventoryRollback,
             UserSpendingUpdater userSpendingUpdater,
             TicketIssuer ticketIssuer,
             PaymentStatusUpdater paymentStatusUpdater,
@@ -21,6 +23,8 @@ public class PostPaymentMediator {
         // Order of execution matters
         this.colleagues = Arrays.asList(
                 bookingStatusUpdater,
+                promotionInventoryRollback,
+                fnbInventoryRollback,
                 userSpendingUpdater,
                 ticketIssuer,
                 paymentStatusUpdater,

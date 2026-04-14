@@ -6,6 +6,8 @@ import com.cinema.booking.entities.*;
 import com.cinema.booking.repositories.*;
 import com.cinema.booking.services.BookingService;
 import com.cinema.booking.services.EmailService;
+import com.cinema.booking.services.FnbItemInventoryService;
+import com.cinema.booking.services.PromotionInventoryService;
 import com.cinema.booking.services.factory.BookingFactory;
 import org.springframework.stereotype.Component;
 
@@ -25,10 +27,11 @@ public class DemoCheckoutProcess extends AbstractCheckoutTemplate {
     public DemoCheckoutProcess(
             UserRepository userRepository,
             TicketRepository ticketRepository,
-            PromotionRepository promotionRepository,
+            PromotionInventoryService promotionInventoryService,
             BookingService bookingService,
             BookingRepository bookingRepository,
             FnbItemRepository fnbItemRepository,
+            FnbItemInventoryService fnbItemInventoryService,
             FnBLineRepository fnBLineRepository,
             PaymentRepository paymentRepository,
             BookingFactory bookingFactory,
@@ -36,8 +39,8 @@ public class DemoCheckoutProcess extends AbstractCheckoutTemplate {
             SeatRepository seatRepository,
             CustomerRepository customerRepository,
             EmailService emailService) {
-        super(userRepository, ticketRepository, promotionRepository, bookingService,
-                bookingRepository, fnbItemRepository, fnBLineRepository, paymentRepository, bookingFactory);
+        super(userRepository, ticketRepository, promotionInventoryService, bookingService,
+                bookingRepository, fnbItemRepository, fnbItemInventoryService, fnBLineRepository, paymentRepository, bookingFactory);
         this.showtimeRepository = showtimeRepository;
         this.seatRepository = seatRepository;
         this.customerRepository = customerRepository;

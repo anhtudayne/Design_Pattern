@@ -1,6 +1,7 @@
 package com.cinema.booking.controllers;
 
 import com.cinema.booking.dtos.CinemaDTO;
+import com.cinema.booking.dtos.FnbItemDTO;
 import com.cinema.booking.dtos.MovieDTO;
 import com.cinema.booking.dtos.ShowtimeDTO;
 import com.cinema.booking.dtos.LocationDTO;
@@ -10,9 +11,9 @@ import com.cinema.booking.entities.Movie.MovieStatus;
 import com.cinema.booking.repositories.FnbCategoryRepository;
 import com.cinema.booking.repositories.FnbItemRepository;
 import com.cinema.booking.services.CinemaService;
+import com.cinema.booking.services.FnbItemInventoryService;
 import com.cinema.booking.services.LocationService;
 import com.cinema.booking.services.MovieService;
-import com.cinema.booking.services.ShowtimeService;
 import com.cinema.booking.services.builder.filter.ShowtimeFilter;
 import com.cinema.booking.services.builder.filter.ShowtimeFilterBuilder;
 import com.cinema.booking.services.builder.filter.ShowtimeQueryService;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -39,9 +41,6 @@ public class PublicController {
     private CinemaService cinemaService;
 
     @Autowired
-    private ShowtimeService showtimeService;
-
-    @Autowired
     private LocationService locationService;
 
     @Autowired
@@ -49,6 +48,9 @@ public class PublicController {
 
     @Autowired
     private FnbItemRepository fnbItemRepository;
+
+    @Autowired
+    private FnbItemInventoryService fnbItemInventoryService;
 
     // ──────────────────────────────────────────────────────────────────
     //  Builder Pattern: ShowtimeQueryService sử dụng ShowtimeFilter
@@ -142,7 +144,23 @@ public class PublicController {
     // 4.7 Menu F&B công khai (sản phẩm)
     @Operation(summary = "Lấy sản phẩm F&B", description = "Trả về danh sách sản phẩm bắp nước kèm giá cho khách hàng")
     @GetMapping("/fnb/items")
-    public ResponseEntity<List<FnbItem>> getPublicFnbItems() {
-        return ResponseEntity.ok(fnbItemRepository.findAll());
+    public ResponseEntity<List<FnbItemDTO>> getPublicFnbItems() {
+        List<FnbItem> items = fnbItemRepository.findAll();
+        Map<Integer, Integer> quantityMap = fnbItemInventoryService.getQuantityMap(
+                items.stream().map(FnbItem::getItemId).toList()
+        );
+        List<FnbItemDTO> response = items.stream().map(item -> {
+            FnbItemDTO dto = new FnbItemDTO();
+            dto.setItemId(item.getItemId());
+            dto.setName(item.getName());
+            dto.setDescription(item.getDescription());
+            dto.setPrice(item.getPrice());
+            dto.setStockQuantity(quantityMap.getOrDefault(item.getItemId(), 0));
+            dto.setIsActive(item.getIsActive());
+            dto.setImageUrl(item.getImageUrl());
+            dto.setCategoryId(item.getCategory() != null ? item.getCategory().getCategoryId() : null);
+            return dto;
+        }).toList();
+        return ResponseEntity.ok(response);
     }
 }

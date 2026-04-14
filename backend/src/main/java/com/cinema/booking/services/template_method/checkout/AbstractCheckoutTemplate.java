@@ -7,6 +7,8 @@ import com.cinema.booking.dtos.PriceBreakdownDTO;
 import com.cinema.booking.entities.*;
 import com.cinema.booking.repositories.*;
 import com.cinema.booking.services.BookingService;
+import com.cinema.booking.services.FnbItemInventoryService;
+import com.cinema.booking.services.PromotionInventoryService;
 import com.cinema.booking.services.factory.BookingFactory;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,10 +18,11 @@ public abstract class AbstractCheckoutTemplate {
 
     protected final UserRepository userRepository;
     protected final TicketRepository ticketRepository;
-    protected final PromotionRepository promotionRepository;
+    protected final PromotionInventoryService promotionInventoryService;
     protected final BookingService bookingService;
     protected final BookingRepository bookingRepository;
     protected final FnbItemRepository fnbItemRepository;
+    protected final FnbItemInventoryService fnbItemInventoryService;
     protected final FnBLineRepository fnBLineRepository;
     protected final PaymentRepository paymentRepository;
     protected final BookingFactory bookingFactory;
@@ -27,19 +30,21 @@ public abstract class AbstractCheckoutTemplate {
     protected AbstractCheckoutTemplate(
             UserRepository userRepository,
             TicketRepository ticketRepository,
-            PromotionRepository promotionRepository,
+            PromotionInventoryService promotionInventoryService,
             BookingService bookingService,
             BookingRepository bookingRepository,
             FnbItemRepository fnbItemRepository,
+            FnbItemInventoryService fnbItemInventoryService,
             FnBLineRepository fnBLineRepository,
             PaymentRepository paymentRepository,
             BookingFactory bookingFactory) {
         this.userRepository = userRepository;
         this.ticketRepository = ticketRepository;
-        this.promotionRepository = promotionRepository;
+        this.promotionInventoryService = promotionInventoryService;
         this.bookingService = bookingService;
         this.bookingRepository = bookingRepository;
         this.fnbItemRepository = fnbItemRepository;
+        this.fnbItemInventoryService = fnbItemInventoryService;
         this.fnBLineRepository = fnBLineRepository;
         this.paymentRepository = paymentRepository;
         this.bookingFactory = bookingFactory;
@@ -65,7 +70,8 @@ public abstract class AbstractCheckoutTemplate {
         // Step 6: Create Booking
         Booking booking = createBooking(customer, promotion, initialBookingStatus);
 
-        // Step 7: Save F&B
+        // Step 7: Reserve F&B inventory and Save F&B
+        fnbItemInventoryService.reserveItemsOrThrow(request.getFnbs());
         saveFnbLines(booking, request.getFnbs());
 
         // Step 8: Process Payment logic (Method specific)
@@ -74,11 +80,24 @@ public abstract class AbstractCheckoutTemplate {
         // Step 9: Finalize Booking (Method specific)
         finalizeBooking(booking, price, request, paymentResult);
 
+        // Demo failure/cancelled flows happen in-request, so release reserved resources here.
+        if (booking.getStatus() == Booking.BookingStatus.CANCELLED) {
+            rollbackReservedResources(booking);
+        }
+
         return CheckoutResult.builder()
                 .booking(booking)
                 .price(price)
                 .paymentResult(paymentResult)
                 .build();
+    }
+
+    protected void rollbackReservedResources(Booking booking) {
+        if (booking == null || booking.getBookingId() == null) {
+            return;
+        }
+        promotionInventoryService.releasePromotionForBooking(booking.getBookingId());
+        fnbItemInventoryService.releaseItemsForBooking(booking.getBookingId());
     }
 
     protected Customer validateUser(Integer userId) {
@@ -124,7 +143,7 @@ public abstract class AbstractCheckoutTemplate {
 
     protected Promotion findPromotion(String promoCode) {
         if (promoCode != null && !promoCode.isBlank()) {
-            return promotionRepository.findByCode(promoCode).orElse(null);
+            return promotionInventoryService.reservePromotionOrThrow(promoCode);
         }
         return null;
     }

@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { BookingProvider } from './contexts/BookingContext';
 import Layout from './components/Layout';
 import Home from './pages/Home';
@@ -28,6 +29,14 @@ import FnbConcession from './pages/staff/FnbConcession';
 import OrderLookup from './pages/staff/OrderLookup';
 
 function CustomerRoutes() {
+  const { user, isAuthenticated } = useSelector(state => state.auth);
+  
+  // Dynamic redirection based on role
+  if (isAuthenticated) {
+    if (user?.roles?.includes('ROLE_ADMIN')) return <Navigate to="/admin" replace />;
+    if (user?.roles?.includes('ROLE_STAFF')) return <Navigate to="/staff" replace />;
+  }
+
   return (
     <Layout>
       <Outlet />

@@ -3,6 +3,7 @@ package com.cinema.booking.patterns.specification;
 import com.cinema.booking.entities.Booking;
 import org.springframework.data.jpa.domain.Specification;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.JoinType;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,26 +18,30 @@ public class BookingSpecificationBuilder {
             List<Predicate> predicates = new ArrayList<>();
             String searchText = query.trim().toLowerCase();
 
-            // 1. Search by Booking ID (if query is a number and not looking like a phone number)
+            // 1. Search by Booking ID
             try {
                 if (searchText.matches("\\d+")) {
-                    // Try parsing as ID
                     Integer id = Integer.parseInt(searchText);
                     predicates.add(criteriaBuilder.equal(root.get("bookingId"), id));
                 }
             } catch (NumberFormatException ignored) {}
 
-            var customerJoin = root.join("customer");
-            var accountJoin = customerJoin.join("userAccount"); // To get email
+            // Use LEFT JOIN to avoid filtering out Bookings without registered Customer/UserAccount (e.g., Guest checkout)
+            var customerJoin = root.join("customer", JoinType.LEFT);
+            var accountJoin = customerJoin.join("userAccount", JoinType.LEFT);
 
-            // If it contains @, search by email
+            // 2. Search by Email
             if (searchText.contains("@")) {
                 predicates.add(criteriaBuilder.like(criteriaBuilder.lower(accountJoin.get("email")), "%" + searchText + "%"));
-            } else if (searchText.matches("\\d{9,11}")) {
-                // If it is 9-11 digits, it is likely a phone number. Add phone number predicate
+            } 
+            
+            // 3. Search by Phone
+            if (searchText.matches("\\d{9,11}")) {
                 predicates.add(criteriaBuilder.like(customerJoin.get("phone"), "%" + searchText + "%"));
-            } else {
-                 // Generic search by customer's phone or email
+            }
+
+            // 4. Fallback: search both fields if not specific
+            if (!searchText.contains("@") && !searchText.matches("\\d+")) {
                  predicates.add(criteriaBuilder.like(criteriaBuilder.lower(accountJoin.get("email")), "%" + searchText + "%"));
                  predicates.add(criteriaBuilder.like(customerJoin.get("phone"), "%" + searchText + "%"));
             }

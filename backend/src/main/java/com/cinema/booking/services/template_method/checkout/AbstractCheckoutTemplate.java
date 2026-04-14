@@ -71,7 +71,9 @@ public abstract class AbstractCheckoutTemplate {
         Booking booking = createBooking(customer, promotion, initialBookingStatus);
 
         // Step 7: Reserve F&B inventory and Save F&B
-        fnbItemInventoryService.reserveItemsOrThrow(request.getFnbs());
+        if (fnbItemInventoryService != null) {
+            fnbItemInventoryService.reserveItemsOrThrow(request.getFnbs());
+        }
         saveFnbLines(booking, request.getFnbs());
 
         // Step 8: Process Payment logic (Method specific)
@@ -96,8 +98,12 @@ public abstract class AbstractCheckoutTemplate {
         if (booking == null || booking.getBookingId() == null) {
             return;
         }
-        promotionInventoryService.releasePromotionForBooking(booking.getBookingId());
-        fnbItemInventoryService.releaseItemsForBooking(booking.getBookingId());
+        if (promotionInventoryService != null) {
+            promotionInventoryService.releasePromotionForBooking(booking.getBookingId());
+        }
+        if (fnbItemInventoryService != null) {
+            fnbItemInventoryService.releaseItemsForBooking(booking.getBookingId());
+        }
     }
 
     protected Customer validateUser(Integer userId) {

@@ -23,6 +23,23 @@ const MOVIE_STATUS = [
   { value: 'STOPPED', label: 'Ngừng chiếu', color: 'slate' }
 ];
 
+const MOJIBAKE_PATTERN = /(Ã.|Â.|Ä.|á»|áº|Æ|Ð|Ñ)/;
+
+const normalizeVietnameseText = (value) => {
+  if (typeof value !== 'string' || !value) return value;
+  if (!MOJIBAKE_PATTERN.test(value)) return value;
+  try {
+    const bytes = Uint8Array.from(value, (char) => char.charCodeAt(0) & 0xff);
+    const decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    return decoded || value;
+  } catch {
+    return value;
+  }
+};
+
+const normalizeGenrePayload = (genres) =>
+  (genres || []).map((g) => ({ ...g, name: normalizeVietnameseText(g.name) }));
+
 function Toast({ msg, type, onClose }) {
   useEffect(() => { const t = setTimeout(onClose, 3000); return () => clearTimeout(t); }, [onClose]);
   const colors = { success: 'bg-green-600', error: 'bg-red-600', info: 'bg-blue-600' };
@@ -59,7 +76,7 @@ function Modal({ title, onClose, children }) {
         .custom-scrollbar::-webkit-scrollbar { display: none; }
         .custom-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
-      <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto custom-scrollbar font-['Space_Grotesk'] border border-slate-100">
+      <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto custom-scrollbar border border-slate-100">
         <div className="flex items-center justify-between px-10 py-8 border-b border-slate-50 sticky top-0 bg-white z-10">
           <div className="flex items-center gap-4">
             <div className="w-3 h-10 bg-orange-500 rounded-full" />
@@ -170,7 +187,10 @@ export default function MovieManagement() {
         fetch(`${BASE_URL}/admin/metadata/genres`, { headers: getAuthHeaders() })
       ]);
       if (rMovies.ok) setList(await rMovies.json());
-      if (rGenres.ok) setAllGenres(await rGenres.json());
+      if (rGenres.ok) {
+        const genres = await rGenres.json();
+        setAllGenres(normalizeGenrePayload(genres));
+      }
       try {
         const cms = await fetchCastMembers(getAuthHeaders());
         setCastMembers(cms);
@@ -294,7 +314,7 @@ export default function MovieManagement() {
   const filtered = list.filter(m => m.title.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] p-6 md:p-10 font-['Space_Grotesk'] antialiased">
+    <div className="min-h-screen bg-[#F8FAFC] p-6 md:p-10 antialiased">
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
       <div className="max-w-7xl mx-auto">
@@ -539,7 +559,7 @@ export default function MovieManagement() {
               </FormField>
 
               <div className="flex gap-4 pt-6 border-t border-slate-50">
-                <button type="button" onClick={() => setModal(null)} className="flex-1 py-4 rounded-[22px] border border-slate-200 text-slate-500 text-sm font-black hover:bg-slate-50 transition-all uppercase tracking-widest font-['Space_Grotesk']">Đóng</button>
+                <button type="button" onClick={() => setModal(null)} className="flex-1 py-4 rounded-[22px] border border-slate-200 text-slate-500 text-sm font-black hover:bg-slate-50 transition-all uppercase tracking-widest">Đóng</button>
                 <button type="submit" disabled={saving} className="flex-1 py-4 rounded-[22px] bg-slate-900 text-white text-sm font-black hover:bg-black transition-all shadow-2xl shadow-indigo-100 active:scale-95 disabled:opacity-50 uppercase tracking-tighter">
                   {saving ? 'Đang lưu...' : modal.edit ? 'Cập nhật' : 'Đưa vào kho'}
                 </button>

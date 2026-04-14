@@ -1,4 +1,5 @@
 USE film_booking_web;
+SET NAMES utf8mb4;
 
 -- 1. Chèn dữ liệu vào bảng gốc users
 INSERT INTO users (id, fullname, phone) VALUES
@@ -33,7 +34,12 @@ INSERT INTO seat_types (id, name, price_surcharge) VALUES
 (3, 'COUPLE', 50000.00);
 
 -- 5. Dữ liệu Phim và Thể loại
-INSERT INTO genres (id, name) VALUES (1, 'Hành động'), (2, 'Kinh dị'), (3, 'Hoạt hình');
+INSERT INTO genres (id, name) VALUES
+(1, 'Hành động'),
+(2, 'Kinh dị'),
+(3, 'Hoạt hình')
+ON DUPLICATE KEY UPDATE
+name = VALUES(name);
 
 INSERT INTO movies (id, title, duration_minutes, status, poster_url, trailer_url) VALUES
 (1, 'Kung Fu Panda 4', 94, 'NOW_SHOWING',
@@ -166,8 +172,10 @@ INSERT INTO movies (id, title, description, duration_minutes, release_date, lang
  'https://picsum.photos/seed/starcine-movie-5/480/720', NULL);
 
 INSERT INTO genres (id, name) VALUES
-(4, 'Tinh cam'),
-(5, 'Vien tuong');
+(4, 'Tình cảm'),
+(5, 'Viễn tưởng')
+ON DUPLICATE KEY UPDATE
+name = VALUES(name);
 
 INSERT INTO movie_genres (movie_id, genre_id) VALUES
 (3, 1), (3, 5),

@@ -31,19 +31,7 @@ public abstract class User {
 
     /**
      * Tên vai trò Spring Security (không gồm tiền tố ROLE_).
-     * Customer dùng "USER" để tương thích hasRole('USER') hiện có.
+     * Mỗi subclass tự khai báo role của mình — tuân thủ OCP.
      */
-    public String getSpringSecurityRole() {
-        if (this instanceof Admin) {
-            return "ADMIN";
-        }
-        if (this instanceof Staff) {
-            return "STAFF";
-        }
-        if (this instanceof Customer) {
-            return "USER";
-        }
-        // Fallback for legacy/seed data that may not have a row in subtype tables yet.
-        return "USER";
-    }
+    public abstract String getSpringSecurityRole();
 }

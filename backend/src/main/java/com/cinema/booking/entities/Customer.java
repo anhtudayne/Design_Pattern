@@ -22,4 +22,9 @@ public class Customer extends User {
 
     @Column(name = "loyalty_points")
     private Integer loyaltyPoints = 0;
+
+    @Override
+    public String getSpringSecurityRole() {
+        return "USER";
+    }
 }

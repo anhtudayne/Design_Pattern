@@ -12,9 +12,12 @@ import com.cinema.booking.services.BookingService;
 import com.cinema.booking.services.FnbItemInventoryService;
 import com.cinema.booking.services.PromotionInventoryService;
 import com.cinema.booking.services.seatlock.SeatLockProvider;
-import com.cinema.booking.services.strategy_decorator.pricing.PricingContext;
-import com.cinema.booking.services.strategy_decorator.pricing.PricingEngine;
+import com.cinema.booking.services.strategy_decorator.pricing.IPricingEngine;
+import com.cinema.booking.services.strategy_decorator.pricing.PricingContextBuilder;
+import com.cinema.booking.services.strategy_decorator.pricing.validation.PricingValidationContext;
+import com.cinema.booking.services.strategy_decorator.pricing.validation.PricingValidationHandler;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -43,9 +46,6 @@ public class BookingServiceImpl implements BookingService {
     private TicketRepository ticketRepository;
 
     @Autowired
-    private PromotionInventoryService promotionInventoryService;
-
-    @Autowired
     private BookingRepository bookingRepository;
 
     @Autowired
@@ -57,11 +57,22 @@ public class BookingServiceImpl implements BookingService {
     @Autowired
     private FnbItemInventoryService fnbItemInventoryService;
 
+    @Autowired
+    private PromotionInventoryService promotionInventoryService;
+
     @Value("${cinema.app.redisTtlSeconds:600}")
     private long redisTtlSeconds;
 
     @Autowired
-    private PricingEngine pricingEngine;
+    @Qualifier("cachingPricingEngineProxy")
+    private IPricingEngine pricingEngine;
+
+    @Autowired
+    @Qualifier("pricingValidationChain")
+    private PricingValidationHandler pricingValidationChain;
+
+    @Autowired
+    private PricingContextBuilder pricingContextBuilder;
 
     @Override
     public List<SeatStatusDTO> getSeatStatuses(Integer showtimeId) {
@@ -121,21 +132,22 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public PriceBreakdownDTO calculatePrice(BookingCalculationDTO request) {
-        Showtime showtime = showtimeRepository.findById(request.getShowtimeId())
-                .orElseThrow(() -> new RuntimeException("Suất chiếu không tồn tại!"));
+        PricingValidationContext validationCtx = PricingValidationContext.builder()
+                .request(request)
+                .build();
 
-        List<Seat> seats = seatRepository.findAllById(request.getSeatIds());
-        Promotion promotion = promotionInventoryService.resolvePromotionForPricing(request.getPromoCode());
+        pricingValidationChain.validate(validationCtx);
 
-        return pricingEngine.calculateTotalPrice(
-                PricingContext.builder()
-                        .showtime(showtime)
-                        .seats(seats)
-                        .fnbs(request.getFnbs())
-                        .promotion(promotion)
-                        .build()
-        );
+        // Promotion availability is now managed by promotion_inventory.
+        if (request.getPromoCode() != null && !request.getPromoCode().isBlank()) {
+            validationCtx.setPromotion(
+                    promotionInventoryService.resolvePromotionForPricing(request.getPromoCode())
+            );
+        }
+
+        return pricingEngine.calculateTotalPrice(pricingContextBuilder.build(validationCtx, request));
     }
+
 
     @Override
     public BookingDTO getBookingDetail(Integer bookingId) {

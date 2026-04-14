@@ -13,4 +13,6 @@ public interface TicketRepository extends JpaRepository<Ticket, Integer> {
     boolean existsByShowtime_ShowtimeIdAndSeat_SeatId(Integer showtimeId, Integer seatId);
 
     long countBySeat_SeatId(Integer seatId);
+
+    long countByShowtime_ShowtimeId(Integer showtimeId);
 }

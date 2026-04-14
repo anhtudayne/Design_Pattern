@@ -249,7 +249,7 @@ export default function BoxOfficePOS() {
           showtimeId: selectedShowtime.showtimeId,
           seatIds: selectedSeats.map(s => s.seatId),
           fnbs: cartFnb.map(f => ({ itemId: f.itemId, quantity: f.quantity })),
-          promoCode: promoCode || null,
+          promoCode: Number(priceBreakdown?.discountAmount || 0) > 0 ? (promoCode || null) : null,
         }),
       });
       if (!res.ok) {

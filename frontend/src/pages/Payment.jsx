@@ -174,12 +174,16 @@ export default function Payment() {
     if (!demoQr) return;
     try {
       setLoading(true);
+      const safePromoCode = displayDiscount > 0 && voucherCode?.trim()
+        ? voucherCode.trim()
+        : null;
       const checkoutData = {
         userId: user.id,
         showtimeId: showtime.showtimeId,
         seatIds: selectedSeats.map(s => s.seatId),
         fnbs: (selectedSnacks || []).map(s => ({ itemId: s.itemId, quantity: s.quantity })),
-        promoCode: voucherCode || null,
+        // Only send promo when it was validated and applied.
+        promoCode: safePromoCode,
       };
       const result = await demoCheckout(checkoutData, isSuccess);
       const target = isSuccess

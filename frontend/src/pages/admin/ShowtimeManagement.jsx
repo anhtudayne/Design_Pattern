@@ -125,7 +125,7 @@ export default function ShowtimeManagement() {
     const room = rooms.find(r => r.roomId === s.roomId);
     setForm({
       movieId: s.movieId,
-      cinemaId: room?.cinemaId || room?.cinema?.cinemaId || '',
+      cinemaId: room?.cinemaId ?? room?.cinema?.cinemaId ?? s.cinemaId ?? '',
       roomId: s.roomId,
       startTime: s.startTime.substring(0, 16), // Format for datetime-local
       basePrice: s.basePrice
@@ -169,8 +169,13 @@ export default function ShowtimeManagement() {
   };
 
   const filtered = list.filter(s => {
+    const q = search.toLowerCase().trim();
+    if (!q) return true;
     const movie = movies.find(m => m.movieId === s.movieId);
-    return movie?.title.toLowerCase().includes(search.toLowerCase());
+    const byTitle = movie?.title?.toLowerCase().includes(q);
+    const byCinema = (s.cinemaName || '').toLowerCase().includes(q)
+      || (cinemas.find(c => c.cinemaId === s.cinemaId)?.name || '').toLowerCase().includes(q);
+    return byTitle || byCinema;
   });
   const filteredRooms = rooms.filter(r => (r.cinemaId || r.cinema?.cinemaId) === Number(form.cinemaId));
 
@@ -195,7 +200,7 @@ export default function ShowtimeManagement() {
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-orange-500 transition-colors">search</span>
                 <input 
                    className="w-full md:w-80 pl-12 pr-4 py-3 rounded-2xl border border-slate-200 bg-white/50 backdrop-blur-sm focus:outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-100 transition-all font-bold text-sm"
-                   placeholder="Tìm theo tên phim..."
+                   placeholder="Tìm theo tên phim hoặc rạp..."
                    value={search}
                    onChange={e => setSearch(e.target.value)}
                 />
@@ -224,7 +229,7 @@ export default function ShowtimeManagement() {
               <thead>
                 <tr className="bg-slate-50/50">
                   <th className="px-8 py-6 text-[11px] font-black text-slate-400 uppercase tracking-[2px]">Thông tin Phim</th>
-                  <th className="px-8 py-6 text-[11px] font-black text-slate-400 uppercase tracking-[2px]">Phòng & Rạp</th>
+                  <th className="px-8 py-6 text-[11px] font-black text-slate-400 uppercase tracking-[2px]">Chi nhánh & Phòng</th>
                   <th className="px-8 py-6 text-[11px] font-black text-slate-400 uppercase tracking-[2px]">Thời gian</th>
                   <th className="px-8 py-6 text-[11px] font-black text-slate-400 uppercase tracking-[2px]">Giá vé & Phụ thu</th>
                   <th className="px-8 py-6 text-[11px] font-black text-slate-400 uppercase tracking-[2px] text-right">Hành động</th>
@@ -233,7 +238,14 @@ export default function ShowtimeManagement() {
               <tbody className="divide-y divide-slate-50">
                 {filtered.map(s => {
                   const m = movies.find(m => m.movieId === s.movieId);
-                  const r = rooms.find(r => r.roomId === s.roomId);
+                  const r = rooms.find(room => room.roomId === s.roomId);
+                  const cinemaLabel =
+                    s.cinemaName
+                    ?? (s.cinemaId != null ? cinemas.find(c => c.cinemaId === s.cinemaId)?.name : null)
+                    ?? r?.cinemaName
+                    ?? r?.cinema?.name
+                    ?? '—';
+                  const roomLabel = s.roomName ?? r?.name ?? `Phòng #${s.roomId}`;
                   const start = new Date(s.startTime);
                   return (
                     <tr key={s.showtimeId} className="group hover:bg-slate-50/30 transition-all active:bg-orange-50/20">
@@ -249,8 +261,11 @@ export default function ShowtimeManagement() {
                         </div>
                       </td>
                       <td className="px-8 py-6">
-                         <p className="font-bold text-slate-700 tracking-tighter">{r?.name || `Phòng ${s.roomId}`}</p>
-                         <p className="text-[11px] text-slate-400 font-bold uppercase mt-0.5 tracking-tight">{r?.cinema?.name || 'Chi nhánh StarCine'}</p>
+                         <p className="font-bold text-slate-800 tracking-tight">{cinemaLabel}</p>
+                         <p className="text-sm text-slate-600 mt-0.5">
+                           {roomLabel}
+                           {s.screenType ? <span className="text-slate-400"> · {s.screenType}</span> : null}
+                         </p>
                       </td>
                       <td className="px-8 py-6">
                          <div className="flex items-center gap-2 mb-1">

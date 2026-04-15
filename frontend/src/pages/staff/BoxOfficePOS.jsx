@@ -87,18 +87,16 @@ export default function BoxOfficePOS() {
     }
   }, [toastVisible, lastAction]);
 
-  // ── Load initial data ───────────────────────────────────────────────
+  // ── Load initial data (F&B theo rạp đã chọn — xem useEffect bên dưới) ──
   useEffect(() => {
     const load = async () => {
       try {
-        const [showtimeData, cinemaData, fnbData] = await Promise.all([
+        const [showtimeData, cinemaData] = await Promise.all([
           fetchPublicShowtimes({}),
           fetchCinemas(),
-          fetchFnBItems(),
         ]);
         setAllShowtimes(showtimeData);
         setCinemas(cinemaData);
-        setFnbItems(fnbData);
       } catch(e) {
         console.error('Failed to load data', e);
       } finally {
@@ -107,6 +105,17 @@ export default function BoxOfficePOS() {
     };
     load();
   }, []);
+
+  useEffect(() => {
+    if (!selectedCinema?.cinemaId) {
+      setFnbItems([]);
+      return;
+    }
+    setCartFnb([]);
+    fetchFnBItems(selectedCinema.cinemaId)
+      .then(setFnbItems)
+      .catch((e) => console.error('Failed to load F&B for cinema', e));
+  }, [selectedCinema]);
 
   // ── Derive: movies from showtimes (today only, filtered by cinema) ──
   const todayStr = new Date().toISOString().split('T')[0];

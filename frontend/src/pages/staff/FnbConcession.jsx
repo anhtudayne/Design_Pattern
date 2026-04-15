@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { fetchFnBItems, fetchFnBCategories } from '../../services/fnbService';
+import { fetchCinemas } from '../../services/cinemaService';
 
 const formatMoney = (v) => new Intl.NumberFormat('vi-VN').format(v || 0) + 'đ';
 
@@ -9,6 +10,8 @@ const formatMoney = (v) => new Intl.NumberFormat('vi-VN').format(v || 0) + 'đ';
 export default function FnbConcession() {
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [cinemas, setCinemas] = useState([]);
+  const [selectedCinemaId, setSelectedCinemaId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('ALL');
   const [cart, setCart] = useState([]);
@@ -16,24 +19,25 @@ export default function FnbConcession() {
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
-  // ── Load data ───────────────────────────────────────────────────────
   useEffect(() => {
-    const load = async () => {
-      try {
-        const [itemData, catData] = await Promise.all([
-          fetchFnBItems(),
-          fetchFnBCategories(),
-        ]);
-        setItems(itemData);
-        setCategories(catData);
-      } catch (e) {
-        console.error('Failed to load F&B data', e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+    fetchFnBCategories().then(setCategories).catch(console.error);
+    fetchCinemas()
+      .then((list) => {
+        setCinemas(list);
+        if (list?.length) setSelectedCinemaId(list[0].cinemaId);
+      })
+      .catch(console.error);
   }, []);
+
+  useEffect(() => {
+    if (selectedCinemaId == null) return;
+    setCart([]);
+    setLoading(true);
+    fetchFnBItems(selectedCinemaId)
+      .then(setItems)
+      .catch((e) => console.error('Failed to load F&B data', e))
+      .finally(() => setLoading(false));
+  }, [selectedCinemaId]);
 
   // ── Filtered items ──────────────────────────────────────────────────
   const filteredItems = useMemo(() => {
@@ -129,8 +133,20 @@ export default function FnbConcession() {
       ════════════════════════════════════════════════════════════════ */}
       <div className="flex-[7] flex flex-col min-w-0 overflow-hidden">
 
-        {/* Search + Category Tabs */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
+        {/* Chi nhánh + Search + Category Tabs */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4 flex-wrap">
+          <div className="flex items-center gap-2 min-w-[200px]">
+            <span className="material-symbols-outlined text-slate-400 text-lg">storefront</span>
+            <select
+              value={selectedCinemaId ?? ''}
+              onChange={(e) => setSelectedCinemaId(Number(e.target.value))}
+              className="flex-1 min-w-[180px] px-3 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-sm font-bold text-slate-800 dark:text-white focus:outline-none focus:border-orange-500"
+            >
+              {cinemas.map((c) => (
+                <option key={c.cinemaId} value={c.cinemaId}>{c.name}</option>
+              ))}
+            </select>
+          </div>
           {/* Search */}
           <div className="relative flex-1 max-w-sm">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>

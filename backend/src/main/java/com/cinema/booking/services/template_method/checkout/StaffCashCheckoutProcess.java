@@ -17,11 +17,9 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Template Method Pattern: Staff bán vé trực tiếp tại quầy bằng tiền mặt.
- * Khác Customer flow ở chỗ:
- *  - Không gọi MoMo, không có redirect URL
- *  - Booking được CONFIRMED ngay lập tức (tiền đã nhận)
- *  - Payment record ghi method = CASH, status = SUCCESS
+ * Template Method Pattern: thanh toán tiền mặt (POS nhân viên hoặc khách chọn tiền mặt trên web).
+ *  - Không gọi cổng thanh toán online, không có redirect URL
+ *  - Booking CONFIRMED ngay; Payment method = CASH, status = SUCCESS
  */
 @Component
 public class StaffCashCheckoutProcess extends AbstractCheckoutTemplate {

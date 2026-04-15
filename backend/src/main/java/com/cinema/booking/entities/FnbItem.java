@@ -37,4 +37,11 @@ public class FnbItem {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private FnbCategory category;
+
+    /** Rạp / chi nhánh — menu F&B theo từng cụm rạp */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cinema_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Cinema cinema;
 }

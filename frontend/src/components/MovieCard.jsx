@@ -117,7 +117,7 @@ const MovieCard = ({ movie }) => {
           ) : (
             <>
               <Link
-                to="/booking/seats"
+                to="/movies"
                 className="w-full py-4 rounded-xl bg-gradient-to-r from-orange-500 to-red-600 text-white font-black tracking-widest text-center shadow-lg shadow-orange-500/40 hover:scale-[1.02] active:scale-95 transition-all uppercase"
               >
                 Mua vé

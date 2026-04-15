@@ -113,13 +113,20 @@ INSERT INTO promotion_inventory (promotion_id, quantity) VALUES
 (2, 50),
 (3, 0);
 
--- 13. Dữ liệu F&B
-INSERT INTO fnb_items (id, name, description, price, is_active, image_url) VALUES
-(1, 'Combo 1', '1 bap ngot + 1 pepsi lon', 89000.00, TRUE, 'https://picsum.photos/seed/starcine-fnb-combo/480/480'),
-(2, 'Bap caramel', 'Bap vi caramel size vua', 55000.00, TRUE, 'https://picsum.photos/seed/starcine-fnb-popcorn/480/480'),
-(3, 'Pepsi lon', 'Nuoc ngot pepsi 330ml', 25000.00, TRUE, 'https://picsum.photos/seed/starcine-fnb-soda/480/480'),
-(4, 'Nachos phomai', 'Banh nachos kem sot phomai', 65000.00, TRUE, 'https://picsum.photos/seed/starcine-fnb-nachos/480/480'),
-(5, 'Tra dao', 'Tra dao mat lanh', 30000.00, FALSE, 'https://picsum.photos/seed/starcine-fnb-tea/480/480');
+-- 13. Dữ liệu F&B — danh mục gắn với từng sản phẩm hiện có
+INSERT INTO fnb_categories (category_id, name, is_active) VALUES
+(1, 'COMBO', TRUE),
+(2, 'Bắp', TRUE),
+(3, 'Nước', TRUE),
+(4, 'Ăn vặt', TRUE),
+(5, 'Trà', TRUE);
+
+INSERT INTO fnb_items (id, cinema_id, category_id, name, description, price, is_active, image_url) VALUES
+(1, 1, 1, 'Combo 1', '1 bap ngot + 1 pepsi lon', 89000.00, TRUE, 'https://picsum.photos/seed/starcine-fnb-combo/480/480'),
+(2, 1, 2, 'Bap caramel', 'Bap vi caramel size vua', 55000.00, TRUE, 'https://picsum.photos/seed/starcine-fnb-popcorn/480/480'),
+(3, 2, 3, 'Pepsi lon', 'Nuoc ngot pepsi 330ml', 25000.00, TRUE, 'https://picsum.photos/seed/starcine-fnb-soda/480/480'),
+(4, 2, 4, 'Nachos phomai', 'Banh nachos kem sot phomai', 65000.00, TRUE, 'https://picsum.photos/seed/starcine-fnb-nachos/480/480'),
+(5, 3, 5, 'Tra dao', 'Tra dao mat lanh', 30000.00, FALSE, 'https://picsum.photos/seed/starcine-fnb-tea/480/480');
 
 INSERT INTO fnb_item_inventory (item_id, quantity) VALUES
 (1, 100),

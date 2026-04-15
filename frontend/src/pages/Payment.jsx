@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { useBooking } from '../contexts/BookingContext';
 import { calculatePrice } from '../services/bookingService';
-import { demoCheckout } from '../services/paymentService';
+import { demoCheckout, cashCheckout } from '../services/paymentService';
 
 // ─── Stepper component ──────────────────────────────────────────────
 function Stepper({ active }) {
@@ -159,8 +159,28 @@ export default function Payment() {
           qrText: `demo-payment|orderId=${orderId}|user=${user?.id}|showtime=${showtime?.showtimeId}|token=${randomToken}`,
         });
         setLoading(false);
+      } else if (paymentMethod === 'cash') {
+        if (!window.confirm('Xác nhận đặt vé và thanh toán bằng tiền mặt tại quầy rạp? Vé sẽ được xác nhận trong hệ thống ngay sau khi bạn đồng ý.')) {
+          setLoading(false);
+          return;
+        }
+        const safePromoCode = displayDiscount > 0 && voucherCode?.trim()
+          ? voucherCode.trim()
+          : null;
+        const checkoutData = {
+          userId: user.id,
+          showtimeId: showtime.showtimeId,
+          seatIds: selectedSeats.map(s => s.seatId),
+          fnbs: (selectedSnacks || []).map(s => ({ itemId: s.itemId, quantity: s.quantity })),
+          promoCode: safePromoCode,
+        };
+        const result = await cashCheckout(checkoutData);
+        setLoading(false);
+        navigate(
+          `/profile/transactions?payment=success&orderId=${encodeURIComponent(result?.bookingCode || '')}&bookingId=${result?.bookingId || ''}&method=cash`
+        );
       } else {
-        alert('Hình thức thanh toán này đang được bảo trì. Vui lòng chọn Ví MoMo.');
+        alert('Phương thức này chưa áp dụng cho đặt vé online. Vui lòng chọn MoMo hoặc tiền mặt.');
         setLoading(false);
       }
     } catch (err) {
@@ -198,10 +218,32 @@ export default function Payment() {
     }
   };
 
+  // Khớp cột `method` ENUM('CASH','MOMO','VNPAY') trong database_schema.sql
   const paymentMethods = [
-    { id: 'momo', name: 'Ví MoMo', desc: 'Thanh toán nhanh qua QR', icon: 'account_balance_wallet', iconColor: 'text-pink-500' },
-    { id: 'visa', name: 'Thẻ Visa / Mastercard', desc: 'Sắp ra mắt', icon: 'credit_card', iconColor: 'text-blue-600', disabled: true },
-    { id: 'zalo', name: 'ZaloPay', desc: 'Sắp ra mắt', icon: 'payments', iconColor: 'text-blue-500', disabled: true },
+    {
+      id: 'momo',
+      name: 'MoMo',
+      desc: 'Thanh toán online (QR / ví MoMo)',
+      icon: 'account_balance_wallet',
+      iconColor: 'text-pink-500',
+      disabled: false,
+    },
+    {
+      id: 'vnpay',
+      name: 'VNPay',
+      desc: 'Cổng VNPay — đang phát triển',
+      icon: 'credit_card',
+      iconColor: 'text-blue-600',
+      disabled: true,
+    },
+    {
+      id: 'cash',
+      name: 'Tiền mặt',
+      desc: 'Xác nhận đặt vé, thanh toán tiền mặt khi đến quầy rạp',
+      icon: 'payments',
+      iconColor: 'text-emerald-600',
+      disabled: false,
+    },
   ];
 
   if (!movie || !isAuthenticated) return null;
@@ -382,7 +424,7 @@ export default function Payment() {
                 <span className="w-2 h-8 bg-gradient-to-b from-cyan-500 to-blue-500 rounded-full"></span>
                 <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight uppercase">Hình thức thanh toán</h2>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {paymentMethods.map(m => (
                   <label key={m.id} className={`cursor-pointer group ${m.disabled ? 'opacity-50 grayscale pointer-events-none' : ''}`}>
                     <input type="radio" name="payment" className="peer sr-only" checked={paymentMethod === m.id} onChange={() => setPaymentMethod(m.id)} disabled={m.disabled} />

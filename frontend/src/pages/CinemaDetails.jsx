@@ -395,7 +395,7 @@ export default function CinemaDetails() {
 
               {/* CTA Book Now */}
               <Link
-                to="/booking/seats"
+                to="/movies"
                 className="w-full py-5 rounded-2xl bg-gradient-to-r from-orange-500 to-red-500 text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined">confirmation_number</span>

@@ -1,7 +1,16 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { logout } from '../../store/authSlice';
 
 const AdminSidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate('/');
+  };
 
   const sections = [
     {
@@ -85,7 +94,11 @@ const AdminSidebar = () => {
 
       {/* Footer */}
       <div className="p-4 border-t border-slate-100/60">
-        <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-500 hover:text-red-500 hover:bg-red-50 transition-all text-sm font-medium group">
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-500 hover:text-red-500 hover:bg-red-50 transition-all text-sm font-medium group"
+        >
           <span className="material-symbols-outlined text-[20px] group-hover:text-red-500 transition-colors">logout</span>
           <span>Đăng xuất</span>
         </button>

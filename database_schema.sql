@@ -205,13 +205,24 @@ CREATE TABLE tickets (
     FOREIGN KEY (showtime_id) REFERENCES showtimes(id)
 );
 
+-- Danh mục F&B (Combo, Bắp, Nước, ...)
+CREATE TABLE fnb_categories (
+    category_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
 CREATE TABLE fnb_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    cinema_id INT NOT NULL,
+    category_id INT NULL,
     name VARCHAR(150) NOT NULL,
     description TEXT,
     price DECIMAL(10, 2) NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
-    image_url VARCHAR(1024) NULL
+    image_url VARCHAR(1024) NULL,
+    FOREIGN KEY (cinema_id) REFERENCES cinemas(id),
+    FOREIGN KEY (category_id) REFERENCES fnb_categories(category_id) ON DELETE SET NULL
 );
 
 CREATE TABLE fnb_item_inventory (

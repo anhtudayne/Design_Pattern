@@ -3,6 +3,7 @@ package com.cinema.booking.services.strategy_decorator.pricing;
 import com.cinema.booking.dtos.BookingCalculationDTO;
 import com.cinema.booking.entities.Customer;
 import com.cinema.booking.entities.FnbItem;
+import com.cinema.booking.entities.Showtime;
 import com.cinema.booking.entities.Promotion;
 import com.cinema.booking.entities.Seat;
 import com.cinema.booking.entities.Showtime;
@@ -38,7 +39,7 @@ public class PricingContextBuilder {
         Promotion promotion = validationCtx.getPromotion();
 
         List<Seat> seats = seatRepository.findAllById(request.getSeatIds());
-        List<PricingContext.ResolvedFnbItem> resolvedFnbs = resolveFnbItems(request.getFnbs());
+        List<PricingContext.ResolvedFnbItem> resolvedFnbs = resolveFnbItems(request.getFnbs(), showtime);
         Customer customer = resolveCurrentCustomer();
 
         int bookedSeatsCount = ticketRepository.findByShowtime_ShowtimeId(request.getShowtimeId()).size();
@@ -59,14 +60,22 @@ public class PricingContextBuilder {
     }
 
     private List<PricingContext.ResolvedFnbItem> resolveFnbItems(
-            List<BookingCalculationDTO.FnbOrderDTO> fnbOrders) {
+            List<BookingCalculationDTO.FnbOrderDTO> fnbOrders, Showtime showtime) {
         if (fnbOrders == null || fnbOrders.isEmpty()) {
             return new ArrayList<>();
+        }
+        Integer showtimeCinemaId = null;
+        if (showtime.getRoom() != null && showtime.getRoom().getCinema() != null) {
+            showtimeCinemaId = showtime.getRoom().getCinema().getCinemaId();
         }
         List<PricingContext.ResolvedFnbItem> result = new ArrayList<>();
         for (BookingCalculationDTO.FnbOrderDTO order : fnbOrders) {
             FnbItem item = fnbItemRepository.findById(order.getItemId())
                     .orElseThrow(() -> new RuntimeException("F&B product not found: " + order.getItemId()));
+            if (showtimeCinemaId != null && item.getCinema() != null
+                    && !showtimeCinemaId.equals(item.getCinema().getCinemaId())) {
+                throw new RuntimeException("Sản phẩm F&B không thuộc rạp của suất chiếu này (itemId=" + order.getItemId() + ")");
+            }
             result.add(new PricingContext.ResolvedFnbItem(
                     item.getItemId(), item.getName(), item.getPrice(), order.getQuantity()));
         }

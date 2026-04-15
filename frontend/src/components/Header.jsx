@@ -89,7 +89,7 @@ export default function Header() {
               <span className="text-sm">ĐẶT BẮP NƯỚC</span>
             </Link>
             
-            <Link to="/booking/seats" className="group relative px-6 py-2.5 rounded-full bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold flex items-center gap-2 transition-all duration-300 shadow-[0_8px_20px_rgba(249,115,22,0.3)] hover:shadow-[0_8px_25px_rgba(249,115,22,0.5)] hover:-translate-y-0.5 overflow-hidden">
+            <Link to="/movies" className="group relative px-6 py-2.5 rounded-full bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold flex items-center gap-2 transition-all duration-300 shadow-[0_8px_20px_rgba(249,115,22,0.3)] hover:shadow-[0_8px_25px_rgba(249,115,22,0.5)] hover:-translate-y-0.5 overflow-hidden">
               <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
               <span className="material-symbols-outlined text-lg animate-pulse">confirmation_number</span>
               <span className="text-sm whitespace-nowrap">ĐẶT VÉ NGAY</span>

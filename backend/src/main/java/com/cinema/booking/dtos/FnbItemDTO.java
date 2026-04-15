@@ -14,4 +14,9 @@ public class FnbItemDTO {
     // Backward-compatible fields for old frontend contracts
     private String imageUrl;
     private Integer categoryId;
+    /** Tên danh mục — chỉ để hiển thị */
+    private String categoryName;
+    /** Chi nhánh / rạp */
+    private Integer cinemaId;
+    private String cinemaName;
 }

@@ -2,6 +2,8 @@
 
 > **Tong quan**: Dynamic Pricing Engine ket hop 5 GoF pattern tren luong `POST /api/booking/calculate`: Chain of Responsibility (validate input), Proxy (Redis cache), Specification (dieu kien ngay gio), Strategy (tinh tung thanh phan gia), Decorator (giam gia).
 
+**Tai lieu chi tiet theo tung pattern (thu muc rieng):** [08-dynamic-pricing-engine/README.md](08-dynamic-pricing-engine/README.md) — hoac tung file: [chain-of-responsibility](08-dynamic-pricing-engine/chain-of-responsibility.md), [proxy](08-dynamic-pricing-engine/proxy.md), [specification](08-dynamic-pricing-engine/specification.md), [strategy](08-dynamic-pricing-engine/strategy.md), [decorator](08-dynamic-pricing-engine/decorator.md).
+
 ---
 
 ## Muc luc

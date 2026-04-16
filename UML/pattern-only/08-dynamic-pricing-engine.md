@@ -5,6 +5,8 @@
 5 GoF pattern kết hợp trong production path:
 **Chain of Responsibility** (validation) + **Proxy** (Redis cache) + **Specification** (PricingConditions) + **Strategy** (Ticket / Fnb / TimeBased) + **Decorator** (NoDiscount → Promotion → Member).
 
+**Ghi chú:** `PriceBreakdownDTO` trên diagram chỉ các khoản tiền; code thực tế vẫn có thêm `appliedStrategy`.
+
 ```mermaid
 classDiagram
   direction TB
@@ -26,7 +28,6 @@ classDiagram
     +BigDecimal timeBasedSurcharge
     +BigDecimal membershipDiscount
     +BigDecimal discountAmount
-    +String appliedStrategy
     +BigDecimal finalTotal
   }
 

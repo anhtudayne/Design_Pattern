@@ -5,6 +5,8 @@
 Tham chiếu domain đầy đủ: [classdiagram.md](../classdiagram.md).  
 Tài liệu giải thích: [08-dynamic-pricing-engine.md](../docs/patterns/08-dynamic-pricing-engine.md).
 
+**Ghi chú:** Trên class diagram, `PriceBreakdownDTO` chỉ liệt kê các khoản tiền; trong code Java vẫn còn field `appliedStrategy` (nhãn tóm tắt thành phần đã áp dụng).
+
 
 
 ```mermaid
@@ -63,7 +65,6 @@ classDiagram
         +BigDecimal membershipDiscount
         +BigDecimal discountAmount
         +BigDecimal finalTotal
-        +String appliedStrategy
     }
 
     %% ═══════════════════════════════════════════════════════════════════
@@ -238,6 +239,8 @@ classDiagram
 
     class DiscountResult {
         +BigDecimal totalDiscount
+        +BigDecimal promotionDiscount
+        +BigDecimal membershipDiscount
     }
 
     %% ═══════════════════════════════════════════════════════════════════

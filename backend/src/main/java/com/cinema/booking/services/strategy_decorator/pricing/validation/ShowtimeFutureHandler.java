@@ -18,7 +18,7 @@ public class ShowtimeFutureHandler extends AbstractPricingValidationHandler {
 
     private final ShowtimeRepository showtimeRepository;
 
-    @Override
+    @Override   
     protected void doValidate(PricingValidationContext context) {
         Showtime showtime = showtimeRepository.findById(context.getRequest().getShowtimeId())
                 .orElseThrow(() -> new RuntimeException("Suất chiếu không tồn tại."));

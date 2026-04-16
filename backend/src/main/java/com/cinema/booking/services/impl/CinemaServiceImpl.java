@@ -27,13 +27,12 @@ public class CinemaServiceImpl implements CinemaService {
         dto.setCinemaId(cinema.getCinemaId());
         
         if (cinema.getLocation() != null) {
-            dto.setLocationId(cinema.getLocation().getLocationId());
+            dto.setLocationId(cinema.getLocation().getId());
             dto.setLocationName(cinema.getLocation().getName());
         }
         
         dto.setName(cinema.getName());
         dto.setAddress(cinema.getAddress());
-        dto.setHotline(cinema.getHotline());
         return dto;
     }
 
@@ -44,7 +43,7 @@ public class CinemaServiceImpl implements CinemaService {
 
     @Override
     public List<CinemaDTO> getCinemasByLocation(Integer locationId) {
-        return cinemaRepository.findByLocation_LocationId(locationId).stream().map(this::mapToDTO).collect(Collectors.toList());
+        return cinemaRepository.findByLocation_Id(locationId).stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
     @Override

@@ -25,7 +25,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     public List<TicketDTO> getTicketsByUser(Integer userId) {
-        return ticketRepository.findByBooking_Customer_UserId(userId).stream()
+        return ticketRepository.findByBooking_User_UserId(userId).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
@@ -59,7 +59,7 @@ public class TicketServiceImpl implements TicketService {
                 .seatNumber(ticket.getSeat() != null ? extractSeatNumber(ticket.getSeat().getSeatCode()) : null)
                 .seatType(ticket.getSeat() != null && ticket.getSeat().getSeatType() != null 
                         ? ticket.getSeat().getSeatType().getName() : "STANDARD")
-                .price(ticket.getPrice())
+                .price(ticket.getUnitPrice())
                 .bookingCode(ticket.getBooking() != null ? ticket.getBooking().getBookingCode() : null)
                 .build();
     }

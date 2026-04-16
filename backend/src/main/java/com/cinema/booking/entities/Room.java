@@ -3,6 +3,8 @@ package com.cinema.booking.entities;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.List;
+
 @Entity
 @Table(name = "rooms")
 @Data
@@ -10,6 +12,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class Room {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
@@ -22,6 +25,16 @@ public class Room {
     @Column(nullable = false, length = 50)
     private String name;
 
+    @OneToMany(mappedBy = "room", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Seat> seatList;
+
     @Column(name = "screen_type")
     private String screenType; // 2D, 3D, IMAX
+
+    /**
+     * Trả về sức chứa phòng (số ghế).
+     */
+    public int getCapacity() {
+        return seatList != null ? seatList.size() : 0;
+    }
 }

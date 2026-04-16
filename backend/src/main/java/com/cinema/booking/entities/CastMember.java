@@ -15,8 +15,8 @@ public class CastMember {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
-    private Integer id;
+    @Column(name = "cast_member_id")
+    private Integer castMemberId;
 
     @Column(name = "full_name", nullable = false, length = 150)
     private String fullName;

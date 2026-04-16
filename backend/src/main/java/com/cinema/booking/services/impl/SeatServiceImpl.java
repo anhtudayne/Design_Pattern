@@ -57,9 +57,8 @@ public class SeatServiceImpl implements SeatService {
                 dto.setSeatNumber(null);
             }
         }
-        dto.setIsActive(seat.getIsActive() != null ? seat.getIsActive() : Boolean.TRUE);
         if (seat.getSeatType() != null) {
-            dto.setSeatTypeId(seat.getSeatType().getId());
+            dto.setSeatTypeId(seat.getSeatType().getSeatId());
             dto.setSeatTypeName(seat.getSeatType().getName());
             dto.setSeatTypeSurcharge(seat.getSeatType().getPriceSurcharge());
         }
@@ -166,18 +165,15 @@ public class SeatServiceImpl implements SeatService {
             SeatType seatType = seatTypeRepository.findById(dto.getSeatTypeId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
                             "SeatType khong hop le: " + dto.getSeatTypeId()));
-            boolean active = dto.getIsActive() != null ? dto.getIsActive() : Boolean.TRUE;
             Seat seat = byNormalizedCode.get(code);
             if (seat != null) {
                 seat.setSeatType(seatType);
-                seat.setIsActive(active);
                 savedOrdered.add(seatRepository.save(seat));
             } else {
                 Seat created = new Seat();
                 created.setRoom(room);
                 created.setSeatCode(code);
                 created.setSeatType(seatType);
-                created.setIsActive(active);
                 Seat persisted = seatRepository.save(created);
                 byNormalizedCode.put(code, persisted);
                 savedOrdered.add(persisted);

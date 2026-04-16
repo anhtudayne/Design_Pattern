@@ -3,6 +3,8 @@ package com.cinema.booking.entities;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.List;
+
 @Entity
 @Table(name = "users")
 @Inheritance(strategy = InheritanceType.JOINED)
@@ -23,15 +25,18 @@ public abstract class User {
     @Column(unique = true, length = 20)
     private String phone;
 
-    @Column(name = "created_at")
-    private java.time.LocalDateTime createdAt;
-
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, optional = false, orphanRemoval = true)
     private UserAccount userAccount;
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Notification> notifications;
+
     /**
      * Tên vai trò Spring Security (không gồm tiền tố ROLE_).
-     * Mỗi subclass tự khai báo role của mình — tuân thủ OCP.
      */
     public abstract String getSpringSecurityRole();
+
+    public void updateProfile() {
+        // Stub
+    }
 }

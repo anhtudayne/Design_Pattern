@@ -1,6 +1,6 @@
 package com.cinema.booking.services.strategy_decorator.pricing;
 
-import com.cinema.booking.entities.Customer;
+import com.cinema.booking.entities.User;
 import com.cinema.booking.entities.Promotion;
 import com.cinema.booking.entities.Seat;
 import com.cinema.booking.entities.Showtime;
@@ -19,8 +19,8 @@ public class PricingContext {
     /** FnB items đã được resolve giá từ DB trước khi vào engine. */
     private List<ResolvedFnbItem> resolvedFnbs;
     private Promotion promotion;
-    /** Khách hàng đặt vé — null nếu anonymous. */
-    private Customer customer;
+    /** Người dùng đặt vé — null nếu khách vãng lai. */
+    private User user;
     /** Thời điểm đặt vé — dùng cho EarlyBird / time-based checks. */
     @Builder.Default
     private LocalDateTime bookingTime = LocalDateTime.now();

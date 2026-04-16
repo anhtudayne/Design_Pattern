@@ -37,9 +37,7 @@ public class MovieServiceImpl implements MovieService {
         dto.setDurationMinutes(movie.getDurationMinutes());
         dto.setReleaseDate(movie.getReleaseDate());
         dto.setLanguage(movie.getLanguage());
-        dto.setAgeRating(movie.getAgeRating());
         dto.setPosterUrl(movie.getPosterUrl());
-        dto.setTrailerUrl(movie.getTrailerUrl());
         dto.setStatus(movie.getStatus());
 
         List<MovieCast> casts = movieCastRepository.findByMovieIdWithCastMembers(movie.getMovieId());
@@ -47,7 +45,7 @@ public class MovieServiceImpl implements MovieService {
             MovieCastDTO c = new MovieCastDTO();
             c.setId(mc.getId());
             if (mc.getCastMember() != null) {
-                c.setCastMemberId(mc.getCastMember().getId());
+                c.setCastMemberId(mc.getCastMember().getCastMemberId());
                 c.setCastMemberName(mc.getCastMember().getFullName());
                 c.setCastMemberBio(mc.getCastMember().getBio());
                 c.setCastMemberImageUrl(mc.getCastMember().getImageUrl());
@@ -66,9 +64,7 @@ public class MovieServiceImpl implements MovieService {
         movie.setDurationMinutes(dto.getDurationMinutes());
         movie.setReleaseDate(dto.getReleaseDate());
         movie.setLanguage(dto.getLanguage());
-        movie.setAgeRating(dto.getAgeRating());
         movie.setPosterUrl(dto.getPosterUrl());
-        movie.setTrailerUrl(dto.getTrailerUrl());
         movie.setStatus(dto.getStatus());
         return movie;
     }

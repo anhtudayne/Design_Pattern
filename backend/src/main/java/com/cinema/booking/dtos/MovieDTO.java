@@ -1,6 +1,5 @@
 package com.cinema.booking.dtos;
 
-import com.cinema.booking.entities.Movie.AgeRating;
 import com.cinema.booking.entities.Movie.MovieStatus;
 import com.cinema.booking.entities.MovieCast.RoleType;
 import jakarta.validation.constraints.NotBlank;
@@ -24,9 +23,7 @@ public class MovieDTO {
     
     private LocalDate releaseDate;
     private String language;
-    private AgeRating ageRating;
     private String posterUrl;
-    private String trailerUrl;
     private MovieStatus status;
 
     /**

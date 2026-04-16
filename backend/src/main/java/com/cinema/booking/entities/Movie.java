@@ -17,6 +17,7 @@ import java.util.List;
 @Builder
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Movie {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
@@ -37,28 +38,27 @@ public class Movie {
     @Column(length = 50)
     private String language;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "age_rating")
-    private AgeRating ageRating;
-
     @Column(name = "poster_url")
     private String posterUrl;
-
-    @Column(name = "trailer_url")
-    private String trailerUrl;
 
     @Enumerated(EnumType.STRING)
     private MovieStatus status;
 
     @OneToMany(mappedBy = "movie", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
-    private List<MovieCast> movieCasts;
+    private List<MovieCast> movieCastList;
 
-    public enum AgeRating {
-        P, K, C13, C16, C18
-    }
+    @ManyToMany
+    @JoinTable(name = "movie_genres",
+            joinColumns = @JoinColumn(name = "movie_id"),
+            inverseJoinColumns = @JoinColumn(name = "genre_id"))
+    private List<Genre> genres;
 
     public enum MovieStatus {
         NOW_SHOWING, COMING_SOON, STOPPED
+    }
+
+    public void getDetails() {
+        // Stub
     }
 }

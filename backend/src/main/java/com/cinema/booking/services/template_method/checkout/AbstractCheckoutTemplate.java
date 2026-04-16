@@ -7,8 +7,6 @@ import com.cinema.booking.dtos.PriceBreakdownDTO;
 import com.cinema.booking.entities.*;
 import com.cinema.booking.repositories.*;
 import com.cinema.booking.services.BookingService;
-import com.cinema.booking.services.FnbItemInventoryService;
-import com.cinema.booking.services.PromotionInventoryService;
 import com.cinema.booking.services.factory.BookingFactory;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,11 +16,9 @@ public abstract class AbstractCheckoutTemplate {
 
     protected final UserRepository userRepository;
     protected final TicketRepository ticketRepository;
-    protected final PromotionInventoryService promotionInventoryService;
     protected final BookingService bookingService;
     protected final BookingRepository bookingRepository;
     protected final FnbItemRepository fnbItemRepository;
-    protected final FnbItemInventoryService fnbItemInventoryService;
     protected final FnBLineRepository fnBLineRepository;
     protected final PaymentRepository paymentRepository;
     protected final BookingFactory bookingFactory;
@@ -30,21 +26,17 @@ public abstract class AbstractCheckoutTemplate {
     protected AbstractCheckoutTemplate(
             UserRepository userRepository,
             TicketRepository ticketRepository,
-            PromotionInventoryService promotionInventoryService,
             BookingService bookingService,
             BookingRepository bookingRepository,
             FnbItemRepository fnbItemRepository,
-            FnbItemInventoryService fnbItemInventoryService,
             FnBLineRepository fnBLineRepository,
             PaymentRepository paymentRepository,
             BookingFactory bookingFactory) {
         this.userRepository = userRepository;
         this.ticketRepository = ticketRepository;
-        this.promotionInventoryService = promotionInventoryService;
         this.bookingService = bookingService;
         this.bookingRepository = bookingRepository;
         this.fnbItemRepository = fnbItemRepository;
-        this.fnbItemInventoryService = fnbItemInventoryService;
         this.fnBLineRepository = fnBLineRepository;
         this.paymentRepository = paymentRepository;
         this.bookingFactory = bookingFactory;
@@ -53,7 +45,7 @@ public abstract class AbstractCheckoutTemplate {
     @Transactional
     public final CheckoutResult checkout(CheckoutRequest request) throws Exception {
         // Step 1: Validate User
-        Customer customer = validateUser(request.getUserId());
+        User user = validateUser(request.getUserId());
 
         // Step 2: Validate Seats
         validateSeats(request.getShowtimeId(), request.getSeatIds());
@@ -68,12 +60,9 @@ public abstract class AbstractCheckoutTemplate {
         Booking.BookingStatus initialBookingStatus = determineInitialBookingStatus(request);
 
         // Step 6: Create Booking
-        Booking booking = createBooking(customer, promotion, initialBookingStatus);
+        Booking booking = createBooking(user, promotion, initialBookingStatus);
 
-        // Step 7: Reserve F&B inventory and Save F&B
-        if (fnbItemInventoryService != null) {
-            fnbItemInventoryService.reserveItemsOrThrow(request.getFnbs());
-        }
+        // Step 7: Save F&B (Inventory logic removed per strict diagram)
         saveFnbLines(booking, request.getFnbs());
 
         // Step 8: Process Payment logic (Method specific)
@@ -95,39 +84,11 @@ public abstract class AbstractCheckoutTemplate {
     }
 
     protected void rollbackReservedResources(Booking booking) {
-        if (booking == null || booking.getBookingId() == null) {
-            return;
-        }
-        if (promotionInventoryService != null) {
-            promotionInventoryService.releasePromotionForBooking(booking.getBookingId());
-        }
-        if (fnbItemInventoryService != null) {
-            fnbItemInventoryService.releaseItemsForBooking(booking.getBookingId());
-        }
+        // Inventory and specific promotion release logic removed to match strict diagram
     }
 
-    protected Customer validateUser(Integer userId) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
-        if (!(user instanceof Customer)) {
-            // Đối tượng mặc định (Khách vãng lai) cho các Staff bán vé tại quầy
-            return getOrCreateWalkInGuest();
-        }
-        return (Customer) user;
-    }
-
-    private Customer getOrCreateWalkInGuest() {
-        // Tìm xem đã có Khách vãng lai mặc định trong DB chưa (dựa theo SDT 0000000000)
-        return userRepository.findByPhone("0000000000")
-                .filter(u -> u instanceof Customer)
-                .map(u -> (Customer) u)
-                .orElseGet(() -> {
-                    Customer guest = new Customer();
-                    guest.setFullname("Khách Vãng Lai");
-                    guest.setPhone("0000000000");
-                    guest.setTotalSpending(java.math.BigDecimal.ZERO);
-                    guest.setLoyaltyPoints(0);
-                    return userRepository.save(guest);
-                });
+    protected User validateUser(Integer userId) {
+        return userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
     }
 
     protected void validateSeats(Integer showtimeId, List<Integer> seatIds) {
@@ -148,14 +109,12 @@ public abstract class AbstractCheckoutTemplate {
     }
 
     protected Promotion findPromotion(String promoCode) {
-        if (promoCode != null && !promoCode.isBlank()) {
-            return promotionInventoryService.reservePromotionOrThrow(promoCode);
-        }
+        // Promotion inventory and code lookup logic removed for strict mode
         return null;
     }
 
-    protected Booking createBooking(Customer customer, Promotion promotion, Booking.BookingStatus status) {
-        Booking booking = bookingFactory.createBooking(customer, promotion, status);
+    protected Booking createBooking(User user, Promotion promotion, Booking.BookingStatus status) {
+        Booking booking = bookingFactory.createBooking(user, promotion, status);
         return bookingRepository.save(booking);
     }
 
@@ -165,8 +124,8 @@ public abstract class AbstractCheckoutTemplate {
                 FnbItem fnbItem = fnbItemRepository.findById(fnbDto.getItemId())
                         .orElseThrow(() -> new RuntimeException("Sản phẩm F&B không tồn tại: " + fnbDto.getItemId()));
 
-                FnBLine item = bookingFactory.createFnbLine(booking, fnbItem, fnbDto.getQuantity(), fnbItem.getPrice());
-                fnBLineRepository.save(item);
+                FnBLine fnbLine = bookingFactory.createFnbLine(booking, fnbItem, fnbDto.getQuantity());
+                fnBLineRepository.save(fnbLine);
             }
         }
     }

@@ -1,6 +1,5 @@
 package com.cinema.booking.dtos;
 
-import com.cinema.booking.entities.Movie.AgeRating;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import java.math.BigDecimal;
@@ -28,7 +27,6 @@ public class ShowtimeDTO {
     // ── Enriched fields (read-only, populated by service) ──
     private String movieTitle;
     private String moviePosterUrl;
-    private AgeRating movieAgeRating;
     private Integer movieDurationMinutes;
     private String roomName;
     private String screenType;

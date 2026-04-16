@@ -5,8 +5,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.math.BigDecimal;
-
 @Entity
 @Table(name = "fnb_lines")
 @Data
@@ -15,6 +13,7 @@ import java.math.BigDecimal;
 @Builder
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class FnBLine {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
@@ -26,13 +25,13 @@ public class FnBLine {
     private Booking booking;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "item_id", nullable = false)
-    private FnbItem item;
+    @JoinColumn(name = "fnb_item_id", nullable = false)
+    private FnbItem fnbItem;
 
     @Column(nullable = false)
     private Integer quantity;
 
-    @Column(name = "unit_price", nullable = false, precision = 10, scale = 2)
-    private BigDecimal unitPrice;
+    public void calculateLineTotal() {
+        // Stub
+    }
 }
-

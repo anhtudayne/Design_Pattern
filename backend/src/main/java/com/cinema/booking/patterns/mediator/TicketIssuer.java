@@ -41,7 +41,7 @@ public class TicketIssuer implements PaymentColleague {
                         .booking(context.getBooking())
                         .seat(seat)
                         .showtime(showtime)
-                        .price(ticketPrice)
+                        .unitPrice(ticketPrice)
                         .build();
                 ticketRepository.save(ticket);
                 ticketsCreated++;

@@ -10,14 +10,14 @@ import java.time.LocalDateTime;
 public class StandardBookingFactory implements BookingFactory {
 
     @Override
-    public Booking createPendingBooking(Customer customer, Promotion promotion) {
-        return createBooking(customer, promotion, Booking.BookingStatus.PENDING);
+    public Booking createPendingBooking(User user, Promotion promotion) {
+        return createBooking(user, promotion, Booking.BookingStatus.PENDING);
     }
 
     @Override
-    public Booking createBooking(Customer customer, Promotion promotion, Booking.BookingStatus status) {
+    public Booking createBooking(User user, Promotion promotion, Booking.BookingStatus status) {
         return Booking.builder()
-                .customer(customer)
+                .user(user)
                 .promotion(promotion)
                 .status(status)
                 .createdAt(LocalDateTime.now())
@@ -25,22 +25,22 @@ public class StandardBookingFactory implements BookingFactory {
     }
 
     @Override
-    public Ticket createTicket(Booking booking, Seat seat, Showtime showtime, BigDecimal price) {
+    public Ticket createTicket(Booking booking, Seat seat, Showtime showtime, Movie movie, BigDecimal unitPrice) {
         return Ticket.builder()
                 .booking(booking)
                 .seat(seat)
                 .showtime(showtime)
-                .price(price)
+                .movie(movie)
+                .unitPrice(unitPrice)
                 .build();
     }
 
     @Override
-    public FnBLine createFnbLine(Booking booking, FnbItem item, Integer quantity, BigDecimal unitPrice) {
+    public FnBLine createFnbLine(Booking booking, FnbItem fnbItem, Integer quantity) {
         return FnBLine.builder()
                 .booking(booking)
-                .item(item)
+                .fnbItem(fnbItem)
                 .quantity(quantity)
-                .unitPrice(unitPrice)
                 .build();
     }
 

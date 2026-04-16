@@ -13,10 +13,6 @@ import java.util.function.Predicate;
 
 /**
  * Time-based surcharge (weekend / holiday) using Specification predicates from {@link PricingConditions}.
- * Converts orchestration {@link PricingContext} to {@link PricingSpecificationContext} for evaluation.
- *
- * <p>Rates: {@code cinema.pricing.weekend-surcharge-pct} (default 15),
- * {@code cinema.pricing.holiday-surcharge-pct} (default 20). Holiday wins when both apply.
  */
 @Component
 public class TimeBasedPricingStrategy implements PricingStrategy {
@@ -45,15 +41,21 @@ public class TimeBasedPricingStrategy implements PricingStrategy {
         PricingSpecificationContext specCtx = toSpecContext(context);
 
         Predicate<PricingSpecificationContext> isHoliday = PricingConditions.isHoliday();
-        Predicate<PricingSpecificationContext> isWeekend = PricingConditions.isWeekend();
+        Predicate<Predicate<PricingSpecificationContext>> isWeekendWrapper = p -> PricingConditions.isWeekend().test(specCtx); // Simplified for now
+        
+        boolean holidayMatch = isHoliday.test(specCtx);
+        boolean weekendMatch = PricingConditions.isWeekend().test(specCtx);
 
-        if (!isHoliday.test(specCtx) && !isWeekend.test(specCtx)) {
+        if (!holidayMatch && !weekendMatch) {
             return BigDecimal.ZERO;
         }
 
-        BigDecimal appliedRate = isHoliday.test(specCtx) ? holidaySurchargePct : weekendSurchargePct;
+        BigDecimal appliedRate = holidayMatch ? holidaySurchargePct : weekendSurchargePct;
 
         BigDecimal ticketSubtotal = BigDecimal.ZERO;
+        
+        // Note: although showtime.basePrice was marked for deletion in class diagram, 
+        // it was kept in Phase 1 to support this calculation logic.
         BigDecimal basePrice = context.getShowtime().getBasePrice();
         for (com.cinema.booking.entities.Seat seat : context.getSeats()) {
             BigDecimal seatSurcharge = (seat.getSeatType() != null && seat.getSeatType().getPriceSurcharge() != null)
@@ -79,7 +81,7 @@ public class TimeBasedPricingStrategy implements PricingStrategy {
         return new PricingSpecificationContext(
                 ctx.getShowtime(),
                 seats,
-                ctx.getCustomer(),
+                ctx.getUser(),
                 ctx.getPromotion(),
                 fnbTotal,
                 ctx.getBookedSeatsCount(),

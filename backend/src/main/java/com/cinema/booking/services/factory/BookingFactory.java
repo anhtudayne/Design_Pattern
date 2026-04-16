@@ -5,9 +5,9 @@ import com.cinema.booking.entities.*;
 import java.math.BigDecimal;
 
 public interface BookingFactory {
-    Booking createPendingBooking(Customer customer, Promotion promotion);
-    Booking createBooking(Customer customer, Promotion promotion, Booking.BookingStatus status);
-    Ticket createTicket(Booking booking, Seat seat, Showtime showtime, BigDecimal price);
-    FnBLine createFnbLine(Booking booking, FnbItem item, Integer quantity, BigDecimal unitPrice);
+    Booking createPendingBooking(User user, Promotion promotion);
+    Booking createBooking(User user, Promotion promotion, Booking.BookingStatus status);
+    Ticket createTicket(Booking booking, Seat seat, Showtime showtime, Movie movie, BigDecimal unitPrice);
+    FnBLine createFnbLine(Booking booking, FnbItem fnbItem, Integer quantity);
     Payment createPayment(Booking booking, String method, BigDecimal amount, Payment.PaymentStatus status);
 }

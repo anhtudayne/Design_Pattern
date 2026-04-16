@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class Promotion {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
@@ -29,9 +30,6 @@ public class Promotion {
 
     @Column(name = "valid_to", nullable = false)
     private LocalDateTime validTo;
-
-    @OneToOne(mappedBy = "promotion", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    private PromotionInventory inventory;
 
     public enum DiscountType {
         PERCENT,

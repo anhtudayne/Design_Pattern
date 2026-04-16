@@ -34,8 +34,6 @@ public class UserExistsHandler extends AbstractCheckoutValidationHandler {
                     Customer guest = new Customer();
                     guest.setFullname("Khách Vãng Lai");
                     guest.setPhone("0000000000");
-                    guest.setTotalSpending(java.math.BigDecimal.ZERO);
-                    guest.setLoyaltyPoints(0);
                     return customerRepository.save(guest);
                 });
     }

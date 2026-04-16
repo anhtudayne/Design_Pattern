@@ -26,4 +26,16 @@ public class UserAccount {
 
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
+
+    public void login() {
+        // Stub
+    }
+
+    public void changePassword() {
+        // Stub
+    }
+
+    public void resetPassword() {
+        // Stub
+    }
 }

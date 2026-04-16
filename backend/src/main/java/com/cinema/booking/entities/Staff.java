@@ -15,4 +15,12 @@ public class Staff extends User {
     public String getSpringSecurityRole() {
         return "STAFF";
     }
+
+    public void sellTicketOffline() {
+        // Stub
+    }
+
+    public void manageFnbOrders() {
+        // Stub
+    }
 }

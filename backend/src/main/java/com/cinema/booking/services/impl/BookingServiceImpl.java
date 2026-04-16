@@ -9,8 +9,6 @@ import com.cinema.booking.domain.seat.SeatStateFactory;
 import com.cinema.booking.entities.*;
 import com.cinema.booking.repositories.*;
 import com.cinema.booking.services.BookingService;
-import com.cinema.booking.services.FnbItemInventoryService;
-import com.cinema.booking.services.PromotionInventoryService;
 import com.cinema.booking.services.seatlock.SeatLockProvider;
 import com.cinema.booking.services.strategy_decorator.pricing.IPricingEngine;
 import com.cinema.booking.services.strategy_decorator.pricing.PricingContextBuilder;
@@ -54,11 +52,6 @@ public class BookingServiceImpl implements BookingService {
     @Autowired
     private PaymentRepository paymentRepository;
 
-    @Autowired
-    private FnbItemInventoryService fnbItemInventoryService;
-
-    @Autowired
-    private PromotionInventoryService promotionInventoryService;
 
     @Value("${cinema.app.redisTtlSeconds:600}")
     private long redisTtlSeconds;
@@ -138,12 +131,8 @@ public class BookingServiceImpl implements BookingService {
 
         pricingValidationChain.validate(validationCtx);
 
-        // Promotion availability is now managed by promotion_inventory.
-        if (request.getPromoCode() != null && !request.getPromoCode().isBlank()) {
-            validationCtx.setPromotion(
-                    promotionInventoryService.resolvePromotionForPricing(request.getPromoCode())
-            );
-        }
+        // Promotion validation is handled in validation chain, 
+        // inventory validation is removed per new logic schema
 
         return pricingEngine.calculateTotalPrice(pricingContextBuilder.build(validationCtx, request));
     }
@@ -174,8 +163,7 @@ public class BookingServiceImpl implements BookingService {
 
         // Release reserved resources only when booking has never been settled successfully.
         if (!paymentRepository.existsByBookingAndStatus(booking, Payment.PaymentStatus.SUCCESS)) {
-            promotionInventoryService.releasePromotionForBooking(bookingId);
-            fnbItemInventoryService.releaseItemsForBooking(bookingId);
+            // Inventory and promotion inventory logic removed
         }
     }
 
@@ -203,17 +191,17 @@ public class BookingServiceImpl implements BookingService {
 
         return BookingDTO.builder()
                 .bookingId(booking.getBookingId())
-                .customerId(booking.getCustomer() != null ? booking.getCustomer().getUserId() : null)
+                .customerId(booking.getUser() != null ? booking.getUser().getUserId() : null)
                 .showtimeId(tickets.isEmpty() || tickets.get(0).getShowtime() == null ? null : tickets.get(0).getShowtime().getShowtimeId())
                 .promoCode(booking.getPromotion() != null ? booking.getPromotion().getCode() : null)
                 .totalPrice(
                         tickets.stream()
-                                .map(Ticket::getPrice)
+                                .map(Ticket::getUnitPrice)
                                 .filter(java.util.Objects::nonNull)
                                 .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add)
                                 .add(
                                         fnbs.stream()
-                                                .map(l -> l.getUnitPrice().multiply(java.math.BigDecimal.valueOf(l.getQuantity())))
+                                                .map(l -> l.getFnbItem().getPrice().multiply(java.math.BigDecimal.valueOf(l.getQuantity())))
                                                 .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add)
                                 )
                 )
@@ -227,16 +215,16 @@ public class BookingServiceImpl implements BookingService {
                         .seatNumber(t.getSeat() != null ? extractSeatNumber(t.getSeat().getSeatCode()) : null)
                         .seatType(t.getSeat() != null && t.getSeat().getSeatType() != null ? t.getSeat().getSeatType().getName() : null)
                         .seatSurcharge(t.getSeat() != null && t.getSeat().getSeatType() != null ? t.getSeat().getSeatType().getPriceSurcharge() : null)
-                        .price(t.getPrice())
+                        .price(t.getUnitPrice())
                         .build()).toList())
                 .fnbs(fnbs.stream().map(l -> {
-                    java.math.BigDecimal lineTotal = l.getUnitPrice().multiply(java.math.BigDecimal.valueOf(l.getQuantity()));
+                    java.math.BigDecimal lineTotal = l.getFnbItem().getPrice().multiply(java.math.BigDecimal.valueOf(l.getQuantity()));
                     return BookingDTO.FnBLineDTO.builder()
                             .id(l.getId())
-                            .itemId(l.getItem() != null ? l.getItem().getItemId() : null)
-                            .itemName(l.getItem() != null ? l.getItem().getName() : null)
+                            .itemId(l.getFnbItem() != null ? l.getFnbItem().getFnbItemId() : null)
+                            .itemName(l.getFnbItem() != null ? l.getFnbItem().getName() : null)
                             .quantity(l.getQuantity())
-                            .unitPrice(l.getUnitPrice())
+                            .unitPrice(l.getFnbItem() != null ? l.getFnbItem().getPrice() : null)
                             .lineTotal(lineTotal)
                             .build();
                 }).toList())

@@ -11,10 +11,11 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 public class FnbItem {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
-    private Integer itemId;
+    @Column(name = "fnb_item_id")
+    private Integer fnbItemId;
 
     @Column(nullable = false, length = 150)
     private String name;
@@ -25,23 +26,6 @@ public class FnbItem {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
-    @Column(name = "is_active")
-    @Builder.Default
-    private Boolean isActive = true;
-
     @Column(name = "image_url")
     private String imageUrl;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id")
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
-    private FnbCategory category;
-
-    /** Rạp / chi nhánh — menu F&B theo từng cụm rạp */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cinema_id", nullable = false)
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
-    private Cinema cinema;
 }

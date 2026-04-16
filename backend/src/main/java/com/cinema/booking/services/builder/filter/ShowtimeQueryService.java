@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Director — Sử dụng ShowtimeFilter (Product) để truy vấn và lọc suất chiếu từ DB.
+ *  — Sử dụng ShowtimeFilter (Product) để truy vấn và lọc suất chiếu từ DB.
  * Nhận filter đã build từ Builder, áp dụng từng tiêu chí lên stream kết quả.
  */
 @Service
@@ -52,7 +52,7 @@ public class ShowtimeQueryService {
             stream = stream.filter(s -> s.getRoom() != null
                     && s.getRoom().getCinema() != null
                     && s.getRoom().getCinema().getLocation() != null
-                    && filter.getLocationId().equals(s.getRoom().getCinema().getLocation().getLocationId()));
+                    && filter.getLocationId().equals(s.getRoom().getCinema().getLocation().getId()));
         }
 
         // Lọc theo ngày chiếu
@@ -94,7 +94,6 @@ public class ShowtimeQueryService {
         Movie movie = showtime.getMovie();
         dto.setMovieTitle(movie.getTitle());
         dto.setMoviePosterUrl(movie.getPosterUrl());
-        dto.setMovieAgeRating(movie.getAgeRating());
         dto.setMovieDurationMinutes(movie.getDurationMinutes());
 
         Room room = showtime.getRoom();

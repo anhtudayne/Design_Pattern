@@ -15,4 +15,20 @@ public class Admin extends User {
     public String getSpringSecurityRole() {
         return "ADMIN";
     }
+
+    public void manageUsers() {
+        // Stub
+    }
+
+    public void manageCinemas() {
+        // Stub
+    }
+
+    public void viewSystemReports() {
+        // Stub
+    }
+
+    public void viewDashboard() {
+        // Stub
+    }
 }

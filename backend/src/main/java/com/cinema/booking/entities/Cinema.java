@@ -10,6 +10,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class Cinema {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
@@ -25,7 +26,7 @@ public class Cinema {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String address;
 
-    @Column(length = 20)
-    private String hotline;
+    public void getDetails() {
+        // Stub
+    }
 }
-

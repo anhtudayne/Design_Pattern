@@ -1,6 +1,5 @@
 package com.cinema.booking.patterns.mediator;
 
-import com.cinema.booking.services.PromotionInventoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -8,7 +7,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class PromotionInventoryRollback implements PaymentColleague {
 
-    private final PromotionInventoryService promotionInventoryService;
+    // Dependency removed due to new inventory schema
 
     @Override
     public void onPaymentSuccess(MomoCallbackContext context) {
@@ -17,6 +16,6 @@ public class PromotionInventoryRollback implements PaymentColleague {
 
     @Override
     public void onPaymentFailure(MomoCallbackContext context) {
-        promotionInventoryService.releasePromotionForBooking(context.getBooking().getBookingId());
+        // No-op. Quantity already managed differently.
     }
 }

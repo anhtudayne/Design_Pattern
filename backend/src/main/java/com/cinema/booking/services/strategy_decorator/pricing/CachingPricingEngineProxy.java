@@ -14,15 +14,6 @@ import java.util.stream.Collectors;
 
 /**
  * Proxy Pattern — wraps PricingEngine để thêm Redis caching.
- *
- * <p>Đánh dấu {@code @Primary} để Spring inject proxy này vào mọi caller
- * (BookingServiceImpl) mà không cần thay đổi caller code (ngoài việc inject interface).
- *
- * <p>Cache key: {@code pricing:{showtimeId}:{seats}:{fnb}:{promo}:{customer}}
- * (ghế và F&amp;B sorted để tránh collision).
- * TTL: {@code cinema.app.redisTtlSeconds} (mặc định 600s).
- *
- * <p>Không cần invalidate thủ công vì pricing là read-only snapshot tại thời điểm tính.
  */
 @Primary
 @Component("cachingPricingEngineProxy")
@@ -57,10 +48,6 @@ public class CachingPricingEngineProxy implements IPricingEngine {
         return result;
     }
 
-    /**
-     * Cache key: showtime + ghế (sorted seatId) + F&amp;B (sorted itemId:qty) + promo + customer.
-     * Customer null → "anon".
-     */
     private String buildCacheKey(PricingContext context) {
         Integer showtimeId = context.getShowtime() != null ? context.getShowtime().getShowtimeId() : 0;
 
@@ -79,9 +66,9 @@ public class CachingPricingEngineProxy implements IPricingEngine {
                 ? "promo:" + context.getPromotion().getCode()
                 : "promo:none";
 
-        String customerPart = (context.getCustomer() != null && context.getCustomer().getUserId() != null)
-                ? "cust:" + context.getCustomer().getUserId()
-                : "cust:anon";
+        String userPart = (context.getUser() != null && context.getUser().getUserId() != null)
+                ? "user:" + context.getUser().getUserId()
+                : "user:anon";
 
         String fnbPart = "fnb:none";
         if (context.getResolvedFnbs() != null && !context.getResolvedFnbs().isEmpty()) {
@@ -93,6 +80,6 @@ public class CachingPricingEngineProxy implements IPricingEngine {
                     .collect(Collectors.joining(","));
         }
 
-        return KEY_PREFIX + showtimeId + ":" + seatPart + ":" + fnbPart + ":" + promoPart + ":" + customerPart;
+        return KEY_PREFIX + showtimeId + ":" + seatPart + ":" + fnbPart + ":" + promoPart + ":" + userPart;
     }
 }

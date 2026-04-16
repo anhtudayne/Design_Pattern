@@ -6,6 +6,4 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface FnbItemRepository extends JpaRepository<FnbItem, Integer> {
-
-    java.util.List<FnbItem> findByCinema_CinemaId(Integer cinemaId);
 }

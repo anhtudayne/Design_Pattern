@@ -2,7 +2,6 @@ package com.cinema.booking.entities;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "notifications")
@@ -11,10 +10,11 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class Notification {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
-    private Integer id;
+    @Column(name = "notification_id")
+    private Integer notificationId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -27,8 +27,6 @@ public class Notification {
     private String message;
 
     @Column(name = "is_read")
+    @Builder.Default
     private Boolean isRead = false;
-
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
 }

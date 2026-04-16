@@ -17,10 +17,9 @@ public class LocationServiceImpl implements LocationService {
     @Autowired
     private LocationRepository locationRepository;
 
-    // Hàm Converter: Chuyển từ Entity (MySQL) sang DTO (Bọc JSON)
     private LocationDTO mapToDTO(Location location) {
         LocationDTO dto = new LocationDTO();
-        dto.setLocationId(location.getLocationId());
+        dto.setLocationId(location.getId());
         dto.setName(location.getName());
         return dto;
     }

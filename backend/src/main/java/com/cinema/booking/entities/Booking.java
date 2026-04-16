@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 @Builder
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Booking {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
@@ -23,8 +24,8 @@ public class Booking {
     private String bookingCode;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "customer_id", nullable = false)
-    private Customer customer;
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "promotion_id")
@@ -34,17 +35,21 @@ public class Booking {
     @Column(columnDefinition = "ENUM('PENDING', 'CONFIRMED', 'CANCELLED') DEFAULT 'PENDING'")
     private BookingStatus status;
 
-    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
-    private java.util.List<FnBLine> fnBLines;
-
-    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL)
-    private java.util.List<Ticket> tickets;
-
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<Ticket> ticketList;
+
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<FnBLine> fnbLines;
+
+
+    @OneToOne(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Payment payment;
+
     public enum BookingStatus {
-        PENDING, CONFIRMED, CANCELLED, REFUNDED
+        PENDING, CONFIRMED, CANCELLED
     }
 
     public void confirm() {
@@ -60,5 +65,13 @@ public class Booking {
         if (this.bookingCode == null || this.bookingCode.isBlank()) {
             this.bookingCode = "BK-" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
         }
+    }
+
+    public void calculateTotals() {
+        // Stub
+    }
+
+    public void applyPromotion() {
+        // Stub
     }
 }

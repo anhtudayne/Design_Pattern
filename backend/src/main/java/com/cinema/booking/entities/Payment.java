@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 @Builder
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Payment {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
@@ -24,7 +25,7 @@ public class Payment {
     @JoinColumn(name = "booking_id", nullable = false, unique = true)
     private Booking booking;
 
-    @Column(name = "method", nullable = false, length = 20)
+    @Column(name = "payment_method", nullable = false, length = 20)
     private String paymentMethod;
 
     @Column(nullable = false, precision = 10, scale = 2)
@@ -39,5 +40,9 @@ public class Payment {
 
     public enum PaymentStatus {
         SUCCESS, FAILED, PENDING
+    }
+
+    public void processPayment() {
+        // Stub
     }
 }

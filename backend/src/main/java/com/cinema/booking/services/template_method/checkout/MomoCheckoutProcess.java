@@ -7,9 +7,7 @@ import com.cinema.booking.entities.Booking;
 import com.cinema.booking.entities.Payment;
 import com.cinema.booking.repositories.*;
 import com.cinema.booking.services.BookingService;
-import com.cinema.booking.services.FnbItemInventoryService;
 import com.cinema.booking.services.MomoService;
-import com.cinema.booking.services.PromotionInventoryService;
 import com.cinema.booking.services.factory.BookingFactory;
 import org.springframework.stereotype.Component;
 
@@ -23,17 +21,15 @@ public class MomoCheckoutProcess extends AbstractCheckoutTemplate {
     public MomoCheckoutProcess(
             UserRepository userRepository,
             TicketRepository ticketRepository,
-            PromotionInventoryService promotionInventoryService,
             BookingService bookingService,
             BookingRepository bookingRepository,
             FnbItemRepository fnbItemRepository,
-            FnbItemInventoryService fnbItemInventoryService,
             FnBLineRepository fnBLineRepository,
             PaymentRepository paymentRepository,
             BookingFactory bookingFactory,
             MomoService momoService) {
-        super(userRepository, ticketRepository, promotionInventoryService, bookingService,
-                bookingRepository, fnbItemRepository, fnbItemInventoryService, fnBLineRepository, paymentRepository, bookingFactory);
+        super(userRepository, ticketRepository, bookingService,
+                bookingRepository, fnbItemRepository, fnBLineRepository, paymentRepository, bookingFactory);
         this.momoService = momoService;
     }
 

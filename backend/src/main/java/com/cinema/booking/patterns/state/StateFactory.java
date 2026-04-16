@@ -9,7 +9,6 @@ public class StateFactory {
             case PENDING: return new PendingState();
             case CONFIRMED: return new ConfirmedState();
             case CANCELLED: return new CancelledState();
-            case REFUNDED: return new RefundedState();
             default: return new PendingState();
         }
     }

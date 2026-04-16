@@ -16,8 +16,8 @@ public class SeatType {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
-    private Integer id;
+    @Column(name = "seat_id")
+    private Integer seatId;
 
     @Column(name = "name", nullable = false, length = 50)
     private String name; // STANDARD, VIP, COUPLE

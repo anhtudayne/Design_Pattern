@@ -42,8 +42,8 @@ public class EmailServiceImpl implements EmailService {
         Booking booking = bookingRepository.findById(bookingId).orElse(null);
         if (booking == null) return;
 
-        String email = booking.getCustomer().getUserAccount() != null
-                ? booking.getCustomer().getUserAccount().getEmail()
+        String email = booking.getUser().getUserAccount() != null
+                ? booking.getUser().getUserAccount().getEmail()
                 : null;
         if (email == null) {
             System.err.println(">>> Không gửi được email vé: user không có UserAccount (bookingId=" + bookingId + ")");
@@ -57,7 +57,7 @@ public class EmailServiceImpl implements EmailService {
         String showtimeStr = (firstTicket != null && firstTicket.getShowtime() != null)
                 ? String.valueOf(firstTicket.getShowtime().getStartTime()) : "N/A";
         BigDecimal total = tickets.stream()
-                .map(Ticket::getPrice)
+                .map(Ticket::getUnitPrice)
                 .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -65,7 +65,7 @@ public class EmailServiceImpl implements EmailService {
         SimpleMailMessage message = ((TicketEmailPrototype) ticketEmailPrototype.copy())
                 .to(email)
                 .bookingId(bookingId)
-                .customerName(booking.getCustomer().getFullname())
+                .customerName(booking.getUser().getFullname())
                 .movieTitle(movieTitle)
                 .showtime(showtimeStr)
                 .totalAmount(total)

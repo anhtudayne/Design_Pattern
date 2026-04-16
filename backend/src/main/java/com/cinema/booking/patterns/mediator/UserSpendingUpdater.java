@@ -22,9 +22,8 @@ public class UserSpendingUpdater implements PaymentColleague {
         Customer customer = context.getBooking().getCustomer();
         if (customer != null) {
             BigDecimal paidAmount = new BigDecimal(context.getCallback().getAmount());
-            safeIncreaseCustomerSpending(customer.getUserId(), paidAmount);
-            System.out.println(">>> [StarCine] Đã cộng total_spending cho User #"
-                    + customer.getUserId() + " thêm: " + paidAmount);
+            System.out.println(">>> [StarCine] Đã ghi nhận User #"
+                    + customer.getUserId() + " có phát sinh giao dịch.");
         }
     }
 
@@ -33,26 +32,4 @@ public class UserSpendingUpdater implements PaymentColleague {
         // No spending update on failure
     }
 
-    private void safeIncreaseCustomerSpending(Integer userId, BigDecimal amount) {
-        RuntimeException last = null;
-        for (int i = 0; i < MAX_DEADLOCK_RETRIES; i++) {
-            try {
-                customerRepository.increaseTotalSpending(userId, amount);
-                return;
-            } catch (RuntimeException ex) {
-                last = ex;
-                String msg = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
-                if (!msg.contains("deadlock")) {
-                    throw ex;
-                }
-                try {
-                    TimeUnit.MILLISECONDS.sleep(RETRY_BASE_MS * (i + 1));
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw ex;
-                }
-            }
-        }
-        throw last != null ? last : new RuntimeException("Không thể cập nhật tổng chi tiêu khách hàng");
-    }
 }

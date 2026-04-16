@@ -13,8 +13,12 @@ public class Location {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
-    private Integer locationId;
+    private Integer id;
 
     @Column(nullable = false, length = 100)
     private String name;
+
+    public void getLocations() {
+        // Stub method matching class diagram
+    }
 }

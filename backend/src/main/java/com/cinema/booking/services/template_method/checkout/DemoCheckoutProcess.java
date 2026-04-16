@@ -6,45 +6,40 @@ import com.cinema.booking.entities.*;
 import com.cinema.booking.repositories.*;
 import com.cinema.booking.services.BookingService;
 import com.cinema.booking.services.EmailService;
-import com.cinema.booking.services.FnbItemInventoryService;
-import com.cinema.booking.services.PromotionInventoryService;
 import com.cinema.booking.services.factory.BookingFactory;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 @Component
 public class DemoCheckoutProcess extends AbstractCheckoutTemplate {
 
     private final ShowtimeRepository showtimeRepository;
     private final SeatRepository seatRepository;
-    private final CustomerRepository customerRepository;
     private final EmailService emailService;
+    private final MovieRepository movieRepository;
 
     public DemoCheckoutProcess(
             UserRepository userRepository,
             TicketRepository ticketRepository,
-            PromotionInventoryService promotionInventoryService,
             BookingService bookingService,
             BookingRepository bookingRepository,
             FnbItemRepository fnbItemRepository,
-            FnbItemInventoryService fnbItemInventoryService,
             FnBLineRepository fnBLineRepository,
             PaymentRepository paymentRepository,
             BookingFactory bookingFactory,
             ShowtimeRepository showtimeRepository,
             SeatRepository seatRepository,
-            CustomerRepository customerRepository,
-            EmailService emailService) {
-        super(userRepository, ticketRepository, promotionInventoryService, bookingService,
-                bookingRepository, fnbItemRepository, fnbItemInventoryService, fnBLineRepository, paymentRepository, bookingFactory);
+            EmailService emailService,
+            MovieRepository movieRepository) {
+        super(userRepository, ticketRepository, bookingService,
+                bookingRepository, fnbItemRepository, fnBLineRepository, paymentRepository, bookingFactory);
         this.showtimeRepository = showtimeRepository;
         this.seatRepository = seatRepository;
-        this.customerRepository = customerRepository;
         this.emailService = emailService;
+        this.movieRepository = movieRepository;
     }
 
     @Override
@@ -68,20 +63,23 @@ public class DemoCheckoutProcess extends AbstractCheckoutTemplate {
             Showtime showtime = showtimeRepository.findById(request.getShowtimeId())
                     .orElseThrow(() -> new RuntimeException("Suất chiếu không tồn tại"));
 
+            Movie movie = movieRepository.findById(showtime.getMovie().getMovieId())
+                    .orElseThrow(() -> new RuntimeException("Phim không tồn tại"));
+
             for (Integer seatId : request.getSeatIds()) {
                 Seat seat = seatRepository.findById(seatId)
                         .orElseThrow(() -> new RuntimeException("Ghế không tồn tại: " + seatId));
+                
+                // Note: basePrice is kept in Showtime in Phase 1 despite not being in original diagram, 
+                // to support existing price calculation logic during this migration phase.
                 BigDecimal ticketPrice = showtime.getBasePrice()
                         .add(seat.getSeatType() != null && seat.getSeatType().getPriceSurcharge() != null
                                 ? seat.getSeatType().getPriceSurcharge()
                                 : BigDecimal.ZERO);
 
-                Ticket ticket = bookingFactory.createTicket(booking, seat, showtime, ticketPrice);
+                Ticket ticket = bookingFactory.createTicket(booking, seat, showtime, movie, ticketPrice);
                 ticketRepository.save(ticket);
             }
-
-            // Cập nhật tổng chi tiêu cho Customer
-            safeIncreaseCustomerSpending(booking.getCustomer().getUserId(), price.getFinalTotal());
 
             // Gửi email vé
             try {
@@ -92,10 +90,6 @@ public class DemoCheckoutProcess extends AbstractCheckoutTemplate {
         }
     }
 
-    /**
-     * Build kết quả trả về cho PaymentController (demo checkout).
-     * Method này được CheckoutServiceImpl gọi sau khi template checkout() hoàn thành.
-     */
     public Map<String, Object> buildDemoResult(Booking booking, Payment payment, PriceBreakdownDTO price) {
         Map<String, Object> result = new HashMap<>();
         result.put("bookingId", booking.getBookingId());
@@ -103,28 +97,5 @@ public class DemoCheckoutProcess extends AbstractCheckoutTemplate {
         result.put("paymentStatus", payment.getStatus().name());
         result.put("totalAmount", price.getFinalTotal());
         return result;
-    }
-
-    private void safeIncreaseCustomerSpending(Integer userId, BigDecimal amount) {
-        RuntimeException last = null;
-        for (int i = 0; i < 3; i++) {
-            try {
-                customerRepository.increaseTotalSpending(userId, amount);
-                return;
-            } catch (RuntimeException ex) {
-                last = ex;
-                String msg = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
-                if (!msg.contains("deadlock")) {
-                    throw ex;
-                }
-                try {
-                    TimeUnit.MILLISECONDS.sleep(120L * (i + 1));
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw ex;
-                }
-            }
-        }
-        throw last != null ? last : new RuntimeException("Không thể cập nhật tổng chi tiêu khách hàng");
     }
 }

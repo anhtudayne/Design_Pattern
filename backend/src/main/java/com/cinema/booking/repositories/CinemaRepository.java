@@ -9,5 +9,5 @@ import java.util.List;
 @Repository
 public interface CinemaRepository extends JpaRepository<Cinema, Integer> {
     // Mở rộng thêm hàm tìm Cụm Rạp theo Mã Tỉnh/Thành phố
-    List<Cinema> findByLocation_LocationId(Integer locationId);
+    List<Cinema> findByLocation_Id(Integer locationId);
 }

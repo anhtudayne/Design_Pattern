@@ -9,7 +9,7 @@ import java.util.List;
 public interface TicketRepository extends JpaRepository<Ticket, Integer> {
     List<Ticket> findByShowtime_ShowtimeId(Integer showtimeId);
     List<Ticket> findByBooking_BookingId(Integer bookingId);
-    List<Ticket> findByBooking_Customer_UserId(Integer userId);
+    List<Ticket> findByBooking_User_UserId(Integer userId);
     boolean existsByShowtime_ShowtimeIdAndSeat_SeatId(Integer showtimeId, Integer seatId);
 
     long countBySeat_SeatId(Integer seatId);

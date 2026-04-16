@@ -5,13 +5,8 @@ import com.cinema.booking.dtos.FnbItemDTO;
 import com.cinema.booking.dtos.MovieDTO;
 import com.cinema.booking.dtos.ShowtimeDTO;
 import com.cinema.booking.dtos.LocationDTO;
-import com.cinema.booking.entities.FnbCategory;
-import com.cinema.booking.entities.FnbItem;
-import com.cinema.booking.entities.Movie.MovieStatus;
-import com.cinema.booking.repositories.FnbCategoryRepository;
 import com.cinema.booking.repositories.FnbItemRepository;
 import com.cinema.booking.services.CinemaService;
-import com.cinema.booking.services.FnbItemInventoryService;
 import com.cinema.booking.services.LocationService;
 import com.cinema.booking.services.MovieService;
 import com.cinema.booking.services.builder.filter.ShowtimeFilter;
@@ -22,6 +17,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.cinema.booking.entities.Movie.MovieStatus;
+import com.cinema.booking.entities.FnbItem;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -44,13 +41,7 @@ public class PublicController {
     private LocationService locationService;
 
     @Autowired
-    private FnbCategoryRepository fnbCategoryRepository;
-
-    @Autowired
     private FnbItemRepository fnbItemRepository;
-
-    @Autowired
-    private FnbItemInventoryService fnbItemInventoryService;
 
     // ──────────────────────────────────────────────────────────────────
     //  Builder Pattern: ShowtimeQueryService sử dụng ShowtimeFilter
@@ -134,37 +125,21 @@ public class PublicController {
         return ResponseEntity.ok(showtimeQueryService.findShowtimes(filter));
     }
 
-    // 4.6 Menu F&B công khai (danh mục)
-    @Operation(summary = "Lấy danh mục F&B", description = "Trả về danh sách danh mục bắp nước cho khách hàng")
-    @GetMapping("/fnb/categories")
-    public ResponseEntity<List<FnbCategory>> getPublicFnbCategories() {
-        return ResponseEntity.ok(fnbCategoryRepository.findAll());
-    }
-
-    // 4.7 Menu F&B công khai (sản phẩm) — theo chi nhánh (cinemaId)
-    @Operation(summary = "Lấy sản phẩm F&B", description = "Lọc theo cinemaId (rạp). Chỉ trả món đang active.")
+    @Operation(summary = "Lấy sản phẩm F&B", description = "Lọc theo cinemaId (rạp).")
     @GetMapping("/fnb/items")
     public ResponseEntity<List<FnbItemDTO>> getPublicFnbItems(@RequestParam(required = false) Integer cinemaId) {
         List<FnbItem> items = cinemaId != null
                 ? fnbItemRepository.findByCinema_CinemaId(cinemaId)
                 : fnbItemRepository.findAll();
-        items = items.stream()
-                .filter(i -> Boolean.TRUE.equals(i.getIsActive()))
-                .toList();
-        Map<Integer, Integer> quantityMap = fnbItemInventoryService.getQuantityMap(
-                items.stream().map(FnbItem::getItemId).toList()
-        );
+
         List<FnbItemDTO> response = items.stream().map(item -> {
             FnbItemDTO dto = new FnbItemDTO();
             dto.setItemId(item.getItemId());
             dto.setName(item.getName());
             dto.setDescription(item.getDescription());
             dto.setPrice(item.getPrice());
-            dto.setStockQuantity(quantityMap.getOrDefault(item.getItemId(), 0));
-            dto.setIsActive(item.getIsActive());
             dto.setImageUrl(item.getImageUrl());
-            dto.setCategoryId(item.getCategory() != null ? item.getCategory().getCategoryId() : null);
-            dto.setCategoryName(item.getCategory() != null ? item.getCategory().getName() : null);
+            
             if (item.getCinema() != null) {
                 dto.setCinemaId(item.getCinema().getCinemaId());
                 dto.setCinemaName(item.getCinema().getName());

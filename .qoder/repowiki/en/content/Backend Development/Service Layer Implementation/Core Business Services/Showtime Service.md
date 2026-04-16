@@ -7,7 +7,6 @@
 - [ShowtimeController.java](file://backend/src/main/java/com/cinema/booking/controllers/ShowtimeController.java)
 - [ShowtimeService.java](file://backend/src/main/java/com/cinema/booking/services/ShowtimeService.java)
 - [ShowtimeServiceImpl.java](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java)
-- [ShowtimeSpecifications.java](file://backend/src/main/java/com/cinema/booking/patterns/specification/ShowtimeSpecifications.java)
 - [ShowtimeRepository.java](file://backend/src/main/java/com/cinema/booking/repositories/ShowtimeRepository.java)
 - [ShowtimeFilter.java](file://backend/src/main/java/com/cinema/booking/services/builder/filter/ShowtimeFilter.java)
 - [ShowtimeFilterBuilder.java](file://backend/src/main/java/com/cinema/booking/services/builder/filter/ShowtimeFilterBuilder.java)
@@ -18,6 +17,14 @@
 - [RoomServiceImpl.java](file://backend/src/main/java/com/cinema/booking/services/impl/RoomServiceImpl.java)
 - [SeatService.java](file://backend/src/main/java/com/cinema/booking/services/SeatService.java)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Updated filtering section to reflect removal of specification pattern
+- Revised searchPublicShowtimes implementation to use direct stream filtering
+- Updated architecture overview to reflect simplified conditional filtering approach
+- Removed references to ShowtimeSpecifications class
+- Updated performance considerations to reflect in-memory filtering approach
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -34,10 +41,12 @@
 ## Introduction
 This document describes the Showtime Service responsible for managing movie showtimes, including creation, modification, deletion, and querying with flexible filters. It explains how showtimes are validated against room capacities, how schedule conflicts are detected, and how the service integrates with room and seat management for capacity tracking. It also covers date/time handling, timezone considerations, and error handling for overlapping schedules and invalid configurations.
 
+**Updated** The service now uses a simplified conditional filtering approach instead of the previous specification pattern, with filtering logic implemented through direct stream operations for improved simplicity and maintainability.
+
 ## Project Structure
-The Showtime Service spans entity, DTO, controller, service, repository, and specification/filtering layers. Room and seat entities support room capacity and seat allocation. Filtering is implemented via two complementary approaches:
-- JPA Specification pattern for efficient database-side filtering
-- Builder/Filter pattern for in-memory filtering across joined entities
+The Showtime Service spans entity, DTO, controller, service, and repository layers. Room and seat entities support room capacity and seat allocation. Filtering is implemented via a streamlined approach:
+- Direct stream filtering operations for in-memory filtering across joined entities
+- Simplified conditional filtering approach replacing the previous specification pattern
 
 ```mermaid
 graph TB
@@ -45,29 +54,27 @@ subgraph "Showtime Layer"
 A["ShowtimeController"] --> B["ShowtimeService"]
 B --> C["ShowtimeServiceImpl"]
 C --> D["ShowtimeRepository"]
-C --> E["ShowtimeSpecifications"]
-C --> F["MovieRepository"]
-C --> G["RoomRepository"]
+C --> E["MovieRepository"]
+C --> F["RoomRepository"]
 end
 subgraph "Filtering Layer"
-H["ShowtimeFilterBuilder"] --> I["ShowtimeFilter"]
-I --> J["ShowtimeQueryService"]
-J --> D
+G["ShowtimeFilterBuilder"] --> H["ShowtimeFilter"]
+H --> I["ShowtimeQueryService"]
+I --> D
 end
 subgraph "Room & Seat Layer"
-K["Room"] --> L["Seat"]
-M["RoomService"] --> N["RoomServiceImpl"]
-O["SeatService"]
+J["Room"] --> K["Seat"]
+L["RoomService"] --> M["RoomServiceImpl"]
+N["SeatService"]
 end
-C --> K
-J --> K
+C --> J
+I --> J
 ```
 
 **Diagram sources**
 - [ShowtimeController.java:1-54](file://backend/src/main/java/com/cinema/booking/controllers/ShowtimeController.java#L1-L54)
 - [ShowtimeService.java:1-15](file://backend/src/main/java/com/cinema/booking/services/ShowtimeService.java#L1-L15)
-- [ShowtimeServiceImpl.java:1-126](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L1-L126)
-- [ShowtimeSpecifications.java:1-53](file://backend/src/main/java/com/cinema/booking/patterns/specification/ShowtimeSpecifications.java#L1-L53)
+- [ShowtimeServiceImpl.java:1-125](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L1-L125)
 - [ShowtimeRepository.java:1-15](file://backend/src/main/java/com/cinema/booking/repositories/ShowtimeRepository.java#L1-L15)
 - [ShowtimeFilterBuilder.java:1-63](file://backend/src/main/java/com/cinema/booking/services/builder/filter/ShowtimeFilterBuilder.java#L1-L63)
 - [ShowtimeFilter.java:1-42](file://backend/src/main/java/com/cinema/booking/services/builder/filter/ShowtimeFilter.java#L1-L42)
@@ -80,8 +87,7 @@ J --> K
 
 **Section sources**
 - [ShowtimeController.java:1-54](file://backend/src/main/java/com/cinema/booking/controllers/ShowtimeController.java#L1-L54)
-- [ShowtimeServiceImpl.java:1-126](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L1-L126)
-- [ShowtimeSpecifications.java:1-53](file://backend/src/main/java/com/cinema/booking/patterns/specification/ShowtimeSpecifications.java#L1-L53)
+- [ShowtimeServiceImpl.java:1-125](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L1-L125)
 - [ShowtimeFilterBuilder.java:1-63](file://backend/src/main/java/com/cinema/booking/services/builder/filter/ShowtimeFilterBuilder.java#L1-L63)
 - [ShowtimeQueryService.java:1-109](file://backend/src/main/java/com/cinema/booking/services/builder/filter/ShowtimeQueryService.java#L1-L109)
 - [RoomServiceImpl.java:1-89](file://backend/src/main/java/com/cinema/booking/services/impl/RoomServiceImpl.java#L1-L89)
@@ -91,7 +97,6 @@ J --> K
 - ShowtimeDTO enriches showtime data with movie and room metadata for display.
 - ShowtimeController exposes admin endpoints for CRUD operations and public search.
 - ShowtimeService and ShowtimeServiceImpl implement business logic, mapping, and filtering.
-- ShowtimeSpecifications encapsulates JPA Specifications for cinema/movie/date filters.
 - ShowtimeRepository extends JPA repositories with specification execution and a room-time range query.
 - ShowtimeFilter and ShowtimeFilterBuilder define an immutable filter product and fluent builder.
 - ShowtimeQueryService applies the filter to in-memory streams after loading all showtimes.
@@ -100,7 +105,7 @@ J --> K
 Key responsibilities:
 - Create showtimes with derived end time from movie duration.
 - Validate room existence during create/update.
-- Search showtimes by cinema, movie, and date using JPA Specifications.
+- Search showtimes by cinema, movie, and date using direct stream filtering.
 - Filter showtimes by multiple criteria (location, screen type, price range) using the Builder/Filter pattern.
 - Integrate with room management for room selection and seat allocation.
 
@@ -109,8 +114,7 @@ Key responsibilities:
 - [ShowtimeDTO.java:1-38](file://backend/src/main/java/com/cinema/booking/dtos/ShowtimeDTO.java#L1-L38)
 - [ShowtimeController.java:1-54](file://backend/src/main/java/com/cinema/booking/controllers/ShowtimeController.java#L1-L54)
 - [ShowtimeService.java:1-15](file://backend/src/main/java/com/cinema/booking/services/ShowtimeService.java#L1-L15)
-- [ShowtimeServiceImpl.java:1-126](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L1-L126)
-- [ShowtimeSpecifications.java:1-53](file://backend/src/main/java/com/cinema/booking/patterns/specification/ShowtimeSpecifications.java#L1-L53)
+- [ShowtimeServiceImpl.java:1-125](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L1-L125)
 - [ShowtimeRepository.java:1-15](file://backend/src/main/java/com/cinema/booking/repositories/ShowtimeRepository.java#L1-L15)
 - [ShowtimeFilter.java:1-42](file://backend/src/main/java/com/cinema/booking/services/builder/filter/ShowtimeFilter.java#L1-L42)
 - [ShowtimeFilterBuilder.java:1-63](file://backend/src/main/java/com/cinema/booking/services/builder/filter/ShowtimeFilterBuilder.java#L1-L63)
@@ -126,8 +130,10 @@ The Showtime Service follows layered architecture:
 - Presentation: ShowtimeController handles HTTP requests.
 - Application: ShowtimeService defines contracts; ShowtimeServiceImpl implements logic.
 - Persistence: ShowtimeRepository executes JPA queries and specifications.
-- Filtering: Two complementary strategies—JPA Specifications and in-memory filtering via Builder/Filter.
+- Filtering: Simplified conditional filtering approach replacing the previous specification pattern.
 - Domain: Entities and services for rooms/seats integrate capacity and seat allocation.
+
+**Updated** The filtering architecture now uses direct stream operations with conditional checks instead of JPA Specifications, providing a more straightforward approach to filtering showtimes.
 
 ```mermaid
 graph TB
@@ -135,7 +141,6 @@ Client["Client"] --> API["ShowtimeController"]
 API --> Svc["ShowtimeService"]
 Svc --> Impl["ShowtimeServiceImpl"]
 Impl --> Repo["ShowtimeRepository"]
-Impl --> Spec["ShowtimeSpecifications"]
 Impl --> MR["MovieRepository"]
 Impl --> RR["RoomRepository"]
 Impl --> RS["RoomService"]
@@ -147,9 +152,8 @@ SS --> SRepo["SeatRepository"]
 **Diagram sources**
 - [ShowtimeController.java:1-54](file://backend/src/main/java/com/cinema/booking/controllers/ShowtimeController.java#L1-L54)
 - [ShowtimeService.java:1-15](file://backend/src/main/java/com/cinema/booking/services/ShowtimeService.java#L1-L15)
-- [ShowtimeServiceImpl.java:1-126](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L1-L126)
+- [ShowtimeServiceImpl.java:1-125](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L1-L125)
 - [ShowtimeRepository.java:1-15](file://backend/src/main/java/com/cinema/booking/repositories/ShowtimeRepository.java#L1-L15)
-- [ShowtimeSpecifications.java:1-53](file://backend/src/main/java/com/cinema/booking/patterns/specification/ShowtimeSpecifications.java#L1-L53)
 - [RoomServiceImpl.java:1-89](file://backend/src/main/java/com/cinema/booking/services/impl/RoomServiceImpl.java#L1-L89)
 - [SeatService.java:1-15](file://backend/src/main/java/com/cinema/booking/services/SeatService.java#L1-L15)
 
@@ -255,7 +259,7 @@ Ctrl-->>Client : 200 OK
 - Schedule conflict detection: The repository provides a method to query overlapping showtimes for a room within a time window. This method can be used to detect conflicts during create/update.
 
 Recommendations:
-- During create/update, call the repository’s time-range query for the target room and check overlap with the proposed start/end times.
+- During create/update, call the repository's time-range query for the target room and check overlap with the proposed start/end times.
 - If overlap exists, throw a validation error indicating a schedule conflict.
 
 Current repository capability:
@@ -265,29 +269,31 @@ Current repository capability:
 - [ShowtimeRepository.java:11-15](file://backend/src/main/java/com/cinema/booking/repositories/ShowtimeRepository.java#L11-L15)
 - [ShowtimeServiceImpl.java:71-108](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L71-L108)
 
-### Filtering and Searching with Specification Pattern
-- JPA Specification-based search supports cinema, movie, and date filters. Used by the public search endpoint.
-- The implementation composes specifications using Specification.where(...) and .and(...).
+### Filtering and Searching with Direct Stream Filtering
+**Updated** The filtering logic has been refactored from JPA Specifications to direct stream filtering operations for improved simplicity and maintainability.
+
+- Direct stream filtering supports cinema, movie, and date filters. Used by the public search endpoint.
+- The implementation uses conditional filtering with stream operations and null checks.
 
 ```mermaid
 flowchart TD
-Start(["Search Request"]) --> BuildSpec["Build Specifications<br/>hasCinemaId ∧ hasMovieId ∧ onDate"]
-BuildSpec --> Exec["Execute findAll(Specification)"]
-Exec --> Map["Map to ShowtimeDTO"]
+Start(["Search Request"]) --> Load["Load All Showtimes"]
+Load --> Filter1["Filter by CinemaId"]
+Filter1 --> Filter2["Filter by MovieId"]
+Filter2 --> Filter3["Filter by Date"]
+Filter3 --> Map["Map to ShowtimeDTO"]
 Map --> Return(["Return List"])
 ```
 
 **Diagram sources**
-- [ShowtimeServiceImpl.java:115-124](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L115-L124)
-- [ShowtimeSpecifications.java:18-51](file://backend/src/main/java/com/cinema/booking/patterns/specification/ShowtimeSpecifications.java#L18-L51)
+- [ShowtimeServiceImpl.java:113-123](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L113-L123)
 
 **Section sources**
-- [ShowtimeServiceImpl.java:115-124](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L115-L124)
-- [ShowtimeSpecifications.java:1-53](file://backend/src/main/java/com/cinema/booking/patterns/specification/ShowtimeSpecifications.java#L1-L53)
+- [ShowtimeServiceImpl.java:113-123](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L113-L123)
 
 ### Filtering and Searching with Builder/Filter Pattern
 - ShowtimeFilterBuilder constructs an immutable ShowtimeFilter with optional criteria (cinema, movie, location, date, screen type, price range).
-- ShowtimeQueryService applies these filters to an in-memory stream of all showtimes.
+- ShowtimeQueryService applies these filters to an in-memory stream of all showtimes using conditional filtering operations.
 
 ```mermaid
 sequenceDiagram
@@ -301,7 +307,7 @@ Builder-->>Filter : build()
 Client->>Query : findShowtimes(Filter)
 Query->>Repo : findAll()
 Repo-->>Query : List<Showtime>
-Query->>Query : apply filters (cinema/location/screenType/price/date)
+Query->>Query : apply conditional filters (cinema/location/screenType/price/date)
 Query-->>Client : List<ShowtimeDTO>
 ```
 
@@ -360,8 +366,6 @@ SeatService ..> Room : "seat.room"
   - Normalize start/end times to UTC at the boundary (controller/service) if cross-timezone support is required.
   - Validate that start time is not in the past and that end time is after start time.
 
-[No sources needed since this section provides general guidance]
-
 ### Examples
 
 - Showtime CRUD operations
@@ -371,7 +375,7 @@ SeatService ..> Room : "seat.room"
   - Retrieve: GET to /api/admin/showtimes and GET to /api/admin/showtimes/{id}.
 
 - Search queries with filters
-  - JPA Specification search: searchPublicShowtimes(cinemaId, movieId, date) builds a Specification and executes findAll.
+  - Direct stream filtering search: searchPublicShowtimes(cinemaId, movieId, date) uses conditional filtering on loaded showtimes.
   - In-memory filter search: use ShowtimeFilterBuilder to compose filters and call ShowtimeQueryService.findShowtimes.
 
 - Room capacity management
@@ -379,21 +383,22 @@ SeatService ..> Room : "seat.room"
 
 **Section sources**
 - [ShowtimeController.java:23-52](file://backend/src/main/java/com/cinema/booking/controllers/ShowtimeController.java#L23-L52)
-- [ShowtimeServiceImpl.java:115-124](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L115-L124)
+- [ShowtimeServiceImpl.java:113-123](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L113-L123)
 - [ShowtimeFilterBuilder.java:10-16](file://backend/src/main/java/com/cinema/booking/services/builder/filter/ShowtimeFilterBuilder.java#L10-L16)
 - [ShowtimeQueryService.java:33-81](file://backend/src/main/java/com/cinema/booking/services/builder/filter/ShowtimeQueryService.java#L33-L81)
 - [RoomServiceImpl.java:56-82](file://backend/src/main/java/com/cinema/booking/services/impl/RoomServiceImpl.java#L56-L82)
 - [SeatService.java:1-15](file://backend/src/main/java/com/cinema/booking/services/SeatService.java#L1-L15)
 
 ## Dependency Analysis
-- ShowtimeServiceImpl depends on ShowtimeRepository, MovieRepository, RoomRepository, and uses ShowtimeSpecifications for filtering.
-- ShowtimeQueryService depends on ShowtimeRepository and applies in-memory filters.
+- ShowtimeServiceImpl depends on ShowtimeRepository, MovieRepository, RoomRepository, and uses direct stream filtering for search operations.
+- ShowtimeQueryService depends on ShowtimeRepository and applies in-memory filters using conditional operations.
 - RoomService and SeatService operate independently but integrate conceptually with showtime room assignments.
+
+**Updated** The dependency graph reflects the removal of specification pattern dependencies and the adoption of direct stream filtering.
 
 ```mermaid
 graph LR
-Impl["ShowtimeServiceImpl"] --> Spec["ShowtimeSpecifications"]
-Impl --> Repo["ShowtimeRepository"]
+Impl["ShowtimeServiceImpl"] --> Repo["ShowtimeRepository"]
 Impl --> MRepo["MovieRepository"]
 Impl --> RRepo["RoomRepository"]
 Qry["ShowtimeQueryService"] --> Repo
@@ -402,22 +407,22 @@ SSvc["SeatService"] -.-> RSvc
 ```
 
 **Diagram sources**
-- [ShowtimeServiceImpl.java:1-126](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L1-L126)
-- [ShowtimeSpecifications.java:1-53](file://backend/src/main/java/com/cinema/booking/patterns/specification/ShowtimeSpecifications.java#L1-L53)
+- [ShowtimeServiceImpl.java:1-125](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L1-L125)
 - [ShowtimeRepository.java:1-15](file://backend/src/main/java/com/cinema/booking/repositories/ShowtimeRepository.java#L1-L15)
 - [RoomServiceImpl.java:1-89](file://backend/src/main/java/com/cinema/booking/services/impl/RoomServiceImpl.java#L1-L89)
 - [SeatService.java:1-15](file://backend/src/main/java/com/cinema/booking/services/SeatService.java#L1-L15)
 
 **Section sources**
-- [ShowtimeServiceImpl.java:1-126](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L1-L126)
+- [ShowtimeServiceImpl.java:1-125](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L1-L125)
 - [ShowtimeQueryService.java:1-109](file://backend/src/main/java/com/cinema/booking/services/builder/filter/ShowtimeQueryService.java#L1-L109)
 
 ## Performance Considerations
-- JPA Specification-based search is efficient for database-side filtering.
-- In-memory filtering via ShowtimeQueryService loads all showtimes; consider limiting scope or adding pagination for large datasets.
-- Room-time overlap checks should leverage the existing repository method to avoid redundant scans.
+**Updated** Performance characteristics have changed with the removal of specification pattern:
 
-[No sources needed since this section provides general guidance]
+- Direct stream filtering via ShowtimeQueryService loads all showtimes; consider limiting scope or adding pagination for large datasets.
+- The simplified conditional filtering approach reduces complexity but may have higher memory usage for large datasets.
+- Room-time overlap checks should leverage the existing repository method to avoid redundant scans.
+- Consider implementing database-level filtering for better performance with large datasets.
 
 ## Troubleshooting Guide
 Common issues and resolutions:
@@ -430,10 +435,10 @@ Common issues and resolutions:
 **Section sources**
 - [ShowtimeServiceImpl.java:65-68](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L65-L68)
 - [ShowtimeServiceImpl.java:73-76](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L73-L76)
-- [ShowtimeRepository.java:13-14](file://backend/src/main/java/com/cinema/booking/repositories/ShowtimeRepository.java#L13-L14)
+- [ShowtimeRepository.java:13](file://backend/src/main/java/com/cinema/booking/repositories/ShowtimeRepository.java#L13)
 
 ## Conclusion
-The Showtime Service provides robust CRUD operations for showtimes, integrates with room management, and offers dual filtering strategies—JPA Specifications for efficient database queries and a Builder/Filter pattern for flexible in-memory filtering. Room capacity validation and schedule conflict detection are not yet implemented in the service and should be added to ensure operational correctness. Timezone handling and availability checks can be improved with explicit normalization and validation.
+The Showtime Service provides robust CRUD operations for showtimes, integrates with room management, and offers filtering capabilities through a simplified conditional filtering approach. The removal of the specification pattern has resulted in a more straightforward implementation using direct stream operations, while maintaining the flexibility of the Builder/Filter pattern for complex queries. Room capacity validation and schedule conflict detection are not yet implemented in the service and should be added to ensure operational correctness. Timezone handling and availability checks can be improved with explicit normalization and validation.
 
 ## Appendices
 

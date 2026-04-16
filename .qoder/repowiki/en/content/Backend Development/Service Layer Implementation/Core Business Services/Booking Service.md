@@ -43,7 +43,16 @@
 - [SeatStatusDTO.java](file://backend/src/main/java/com/cinema/booking/dtos/SeatStatusDTO.java)
 - [PriceBreakdownDTO.java](file://backend/src/main/java/com/cinema/booking/dtos/PriceBreakdownDTO.java)
 - [application.properties](file://backend/src/main/resources/application.properties)
+- [BookingRepository.java](file://backend/src/main/java/com/cinema/booking/repositories/BookingRepository.java)
+- [ShowtimeServiceImpl.java](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Updated search functionality section to reflect removal of specification pattern in favor of direct stream filtering operations
+- Removed references to BookingSpecificationBuilder and JpaSpecificationExecutor
+- Updated search implementation examples to show new direct filtering approach
+- Added documentation for current search functionality in both BookingServiceImpl and ShowtimeServiceImpl
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -65,6 +74,7 @@ This document provides comprehensive documentation for the Booking Service imple
 - Cancellation and refund processes, inventory release mechanisms, and transaction boundaries.
 - Concrete examples of seat locking/unlocking operations, price breakdown calculations, and booking state transitions.
 - Error handling strategies for concurrent seat reservations and invalid booking operations.
+- **Updated**: Search functionality now uses direct stream filtering operations instead of the removed specification pattern.
 
 ## Project Structure
 The Booking Service resides under the backend module and follows a layered architecture:
@@ -204,6 +214,7 @@ SSF --> SSS
 - Booking state machine: manages booking lifecycle with explicit state transitions and guard conditions.
 - Dynamic pricing engine: calculates total price with strategies and decorators; validated by a chain of responsibility.
 - Controllers: expose endpoints for seat selection and booking checkout.
+- **Updated**: Search functionality: replaced specification pattern with direct stream filtering operations for improved performance and simplicity.
 
 **Section sources**
 - [SeatState.java:1-18](file://backend/src/main/java/com/cinema/booking/domain/seat/SeatState.java#L1-L18)
@@ -363,6 +374,42 @@ Concrete examples:
 - [SeatStateFactory.java:1-21](file://backend/src/main/java/com/cinema/booking/domain/seat/SeatStateFactory.java#L1-L21)
 - [SeatLockProvider.java:1-19](file://backend/src/main/java/com/cinema/booking/services/seatlock/SeatLockProvider.java#L1-L19)
 - [RedisSeatLockAdapter.java:1-56](file://backend/src/main/java/com/cinema/booking/services/seatlock/RedisSeatLockAdapter.java#L1-L56)
+
+### Search Functionality (Direct Stream Filtering)
+**Updated**: The search functionality has been refactored to replace the specification pattern with direct stream filtering operations for improved performance and maintainability.
+
+Search implementations now use Java Stream API with direct filtering instead of JPA Specifications:
+
+```mermaid
+flowchart TD
+Start(["Search Request"]) --> CheckType{"Search Type?"}
+CheckType --> |Booking Search| BookingStream["Stream over BookingRepository.findAll()"]
+CheckType --> |Showtime Search| ShowtimeStream["Stream over ShowtimeRepository.findAll()"]
+BookingStream --> FilterBooking["Filter by bookingCode OR customer fullname"]
+FilterBooking --> CollectBooking["Collect results"]
+ShowtimeStream --> FilterShowtime["Filter by cinemaId, movieId, date"]
+FilterShowtime --> CollectShowtime["Collect results"]
+CollectBooking --> End(["Return Results"])
+CollectShowtime --> End
+```
+
+**Diagram sources**
+- [BookingServiceImpl.java:154-163](file://backend/src/main/java/com/cinema/booking/services/impl/BookingServiceImpl.java#L154-L163)
+- [ShowtimeServiceImpl.java:114-123](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L114-L123)
+
+Key improvements in search functionality:
+- **Removed specification pattern**: Eliminated complex JPA Specifications and BookingSpecificationBuilder
+- **Direct stream filtering**: Uses simple filter() operations with lambda expressions
+- **Better performance**: Reduces complexity and improves query execution time
+- **Simplified maintenance**: Easier to understand and modify search logic
+
+Concrete examples:
+- Booking search with direct filtering: [BookingServiceImpl.java:154-163](file://backend/src/main/java/com/cinema/booking/services/impl/BookingServiceImpl.java#L154-L163)
+- Showtime search with direct filtering: [ShowtimeServiceImpl.java:114-123](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L114-L123)
+
+**Section sources**
+- [BookingServiceImpl.java:154-163](file://backend/src/main/java/com/cinema/booking/services/impl/BookingServiceImpl.java#L154-L163)
+- [ShowtimeServiceImpl.java:114-123](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L114-L123)
 
 ### Price Calculation Workflow (Dynamic Pricing Engine)
 The pricing engine calculates the total price using strategies and decorators, with validation handled by a chain of responsibility. The workflow supports ticket pricing, food and beverage pricing, time-based adjustments, membership discounts, promotions, and caching.
@@ -592,7 +639,7 @@ BookingCtrl-->>Client : "200 OK"
 ### Transaction Boundaries and Concurrency Control
 - Distributed locks: Redis SETNX with TTL prevents race conditions during seat locking.
 - Batch operations: multiGet enables efficient lock checks across multiple seats.
-- State synchronization: BookingContext updates the underlying booking entity’s status to keep persistence in sync.
+- State synchronization: BookingContext updates the underlying booking entity's status to keep persistence in sync.
 - Validation chain: ensures preconditions (availability, future showtime, promotion validity) before pricing and booking.
 
 Concrete examples:
@@ -615,6 +662,7 @@ The system exhibits clear separation of concerns:
 - Seat locking is abstracted behind an interface, enabling pluggable Redis implementation.
 - Booking state machine encapsulates lifecycle logic and enforces invariants.
 - Pricing engine composes strategies and decorators, with caching support and validation chain.
+- **Updated**: Search functionality depends on repository interfaces but no longer uses JPA Specifications.
 
 ```mermaid
 graph TB
@@ -627,6 +675,8 @@ IPricingEngine --> PricingContext
 IPricingEngine --> PricingStrategies
 IPricingEngine --> PricingDecorators
 IPricingEngine --> PricingValidation
+BookingRepository --> DirectFiltering
+ShowtimeRepository --> DirectFiltering
 ```
 
 **Diagram sources**
@@ -651,6 +701,7 @@ IPricingEngine --> PricingValidation
 - [SeatsAvailableHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/SeatsAvailableHandler.java)
 - [ShowtimeFutureHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/ShowtimeFutureHandler.java)
 - [PromoValidHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PromoValidHandler.java)
+- [BookingRepository.java:1-11](file://backend/src/main/java/com/cinema/booking/repositories/BookingRepository.java#L1-L11)
 
 **Section sources**
 - [SeatState.java:1-18](file://backend/src/main/java/com/cinema/booking/domain/seat/SeatState.java#L1-L18)
@@ -673,14 +724,14 @@ IPricingEngine --> PricingValidation
 - [SeatsAvailableHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/SeatsAvailableHandler.java)
 - [ShowtimeFutureHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/ShowtimeFutureHandler.java)
 - [PromoValidHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PromoValidHandler.java)
+- [BookingRepository.java:1-11](file://backend/src/main/java/com/cinema/booking/repositories/BookingRepository.java#L1-L11)
 
 ## Performance Considerations
 - Redis SETNX with TTL ensures atomicity and prevents stale locks; tune TTL to balance responsiveness and safety.
 - Batch lock held checks reduce round trips via multiGet.
 - Caching proxy for pricing engine reduces repeated computation for identical contexts.
 - State transitions are O(1); keep entity updates minimal and synchronized via the context setter.
-
-[No sources needed since this section provides general guidance]
+- **Updated**: Direct stream filtering in search operations eliminates the overhead of specification compilation and execution, improving query performance.
 
 ## Troubleshooting Guide
 Common issues and strategies:
@@ -693,11 +744,15 @@ Common issues and strategies:
   - Cancelled and refunded states prevent further lifecycle changes.
 - Pricing validation failures:
   - Ensure seats are available, showtime is in the future, and promotions are valid before invoking pricing.
+- **Updated**: Search functionality issues:
+  - Direct filtering operations are simpler and faster than specifications.
+  - Ensure proper null checks when filtering by optional parameters like cinemaId, movieId, or date.
 
 Concrete examples:
 - Lock acquisition failure: [RedisSeatLockAdapter.java:27-32](file://backend/src/main/java/com/cinema/booking/services/seatlock/RedisSeatLockAdapter.java#L27-L32)
 - State guard violations: [PendingState.java:16-23](file://backend/src/main/java/com/cinema/booking/patterns/state/PendingState.java#L16-L23), [ConfirmedState.java:10-13](file://backend/src/main/java/com/cinema/booking/patterns/state/ConfirmedState.java#L10-L13), [CancelledState.java:6-13](file://backend/src/main/java/com/cinema/booking/patterns/state/CancelledState.java#L6-L13), [RefundedState.java:6-13](file://backend/src/main/java/com/cinema/booking/patterns/state/RefundedState.java#L6-L13)
 - Pricing validation errors: [PricingValidationHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PricingValidationHandler.java), [SeatsAvailableHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/SeatsAvailableHandler.java), [ShowtimeFutureHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/ShowtimeFutureHandler.java), [PromoValidHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PromoValidHandler.java)
+- **Updated**: Search filtering examples: [BookingServiceImpl.java:154-163](file://backend/src/main/java/com/cinema/booking/services/impl/BookingServiceImpl.java#L154-L163), [ShowtimeServiceImpl.java:114-123](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L114-L123)
 
 **Section sources**
 - [RedisSeatLockAdapter.java:27-32](file://backend/src/main/java/com/cinema/booking/services/seatlock/RedisSeatLockAdapter.java#L27-L32)
@@ -709,11 +764,11 @@ Concrete examples:
 - [SeatsAvailableHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/SeatsAvailableHandler.java)
 - [ShowtimeFutureHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/ShowtimeFutureHandler.java)
 - [PromoValidHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PromoValidHandler.java)
+- [BookingServiceImpl.java:154-163](file://backend/src/main/java/com/cinema/booking/services/impl/BookingServiceImpl.java#L154-L163)
+- [ShowtimeServiceImpl.java:114-123](file://backend/src/main/java/com/cinema/booking/services/impl/ShowtimeServiceImpl.java#L114-L123)
 
 ## Conclusion
-The Booking Service implements robust seat status management with Redis-backed locking, a clear state machine for booking lifecycle control, and a flexible dynamic pricing engine with validation and caching. Together, these components provide concurrency-safe, transparent, and extensible booking operations.
-
-[No sources needed since this section summarizes without analyzing specific files]
+The Booking Service implements robust seat status management with Redis-backed locking, a clear state machine for booking lifecycle control, and a flexible dynamic pricing engine with validation and caching. **Updated**: The search functionality has been optimized by replacing the specification pattern with direct stream filtering operations, improving performance and maintainability. Together, these components provide concurrency-safe, transparent, and extensible booking operations.
 
 ## Appendices
 - Entity and DTO references:
@@ -724,6 +779,9 @@ The Booking Service implements robust seat status management with Redis-backed l
   - Price breakdown DTO: [PriceBreakdownDTO.java](file://backend/src/main/java/com/cinema/booking/dtos/PriceBreakdownDTO.java)
 - Application configuration:
   - Redis configuration and properties: [application.properties](file://backend/src/main/resources/application.properties)
+- **Updated**: Repository interfaces:
+  - Booking repository: [BookingRepository.java](file://backend/src/main/java/com/cinema/booking/repositories/BookingRepository.java)
+  - Showtime repository: [ShowtimeRepository.java](file://backend/src/main/java/com/cinema/booking/repositories/ShowtimeRepository.java)
 
 **Section sources**
 - [Seat.java](file://backend/src/main/java/com/cinema/booking/entities/Seat.java)
@@ -732,3 +790,5 @@ The Booking Service implements robust seat status management with Redis-backed l
 - [SeatStatusDTO.java](file://backend/src/main/java/com/cinema/booking/dtos/SeatStatusDTO.java)
 - [PriceBreakdownDTO.java](file://backend/src/main/java/com/cinema/booking/dtos/PriceBreakdownDTO.java)
 - [application.properties](file://backend/src/main/resources/application.properties)
+- [BookingRepository.java](file://backend/src/main/java/com/cinema/booking/repositories/BookingRepository.java)
+- [ShowtimeRepository.java](file://backend/src/main/java/com/cinema/booking/repositories/ShowtimeRepository.java)

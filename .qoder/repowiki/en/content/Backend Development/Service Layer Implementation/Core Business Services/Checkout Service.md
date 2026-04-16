@@ -9,11 +9,19 @@
 - [DemoCheckoutProcess.java](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/DemoCheckoutProcess.java)
 - [StaffCashCheckoutProcess.java](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/StaffCashCheckoutProcess.java)
 - [PaymentStrategyFactory.java](file://backend/src/main/java/com/cinema/booking/services/payment/PaymentStrategyFactory.java)
-- [AbstractCheckoutValidationHandler.java](file://backend/src/main/java/com/cinema/booking/patterns/chainofresponsibility/AbstractCheckoutValidationHandler.java)
-- [CheckoutValidationContext.java](file://backend/src/main/java/com/cinema/booking/patterns/chainofresponsibility/CheckoutValidationContext.java)
-- [PostPaymentMediator.java](file://backend/src/main/java/com/cinema/booking/patterns/mediator/PostPaymentMediator.java)
-- [MomoCallbackContext.java](file://backend/src/main/java/com/cinema/booking/patterns/mediator/MomoCallbackContext.java)
+- [CashPaymentStrategy.java](file://backend/src/main/java/com/cinema/booking/services/payment/CashPaymentStrategy.java)
+- [DemoPaymentStrategy.java](file://backend/src/main/java/com/cinema/booking/services/payment/DemoPaymentStrategy.java)
+- [MomoPaymentStrategy.java](file://backend/src/main/java/com/cinema/booking/services/payment/MomoPaymentStrategy.java)
+- [MomoService.java](file://backend/src/main/java/com/cinema/booking/services/MomoService.java)
+- [MomoCallbackRequest.java](file://backend/src/main/java/com/cinema/booking/dtos/MomoCallbackRequest.java)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Removed PostPaymentMediator and related collaborator dependencies from CheckoutServiceImpl
+- Updated processMomoCallback method to indicate required post-payment implementation
+- Revised architecture diagrams to reflect direct implementation approach instead of mediator pattern
+- Updated troubleshooting guide to reflect new direct post-payment processing requirements
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -33,15 +41,16 @@ This document describes the Checkout Service that orchestrates payment processin
 - Demo checkout for internal testing with deterministic outcomes
 - Staff cash checkout for box office operations
 
-It also documents the pre-payment validation pipeline using the Chain of Responsibility pattern, and the post-payment coordination via the Mediator pattern that updates inventory, sends notifications, and manages refunds. Finally, it outlines integration with payment gateways, callback verification, error recovery mechanisms, and security considerations for PCI compliance.
+The system now implements a direct approach for post-payment processing, removing the previous Mediator pattern dependency. It documents the pre-payment validation pipeline using the Chain of Responsibility pattern, and outlines the direct post-payment coordination approach that updates inventory, sends notifications, and manages refunds. Finally, it covers integration with payment gateways, callback verification, error recovery mechanisms, and security considerations for PCI compliance.
+
+**Updated** Removed PostPaymentMediator dependency and updated post-payment processing to direct implementation approach.
 
 ## Project Structure
 The checkout system is organized around:
 - Service interfaces and implementations
 - Template Method implementations for each checkout variant
-- Validation handlers for pre-payment checks
-- Mediator for post-payment coordination
 - Payment strategy factory for selecting the appropriate checkout flow
+- Direct post-payment processing implementation
 
 ```mermaid
 graph TB
@@ -57,74 +66,88 @@ SC["StaffCashCheckoutProcess"]
 end
 subgraph "Supporting"
 PSF["PaymentStrategyFactory"]
-CO["Chain of Responsibility<br/>Handlers"]
-MED["PostPaymentMediator"]
-MCC["MomoCallbackContext"]
+CASH["CashPaymentStrategy"]
+DEMO["DemoPaymentStrategy"]
+MOMO["MomoPaymentStrategy"]
+MS["MomoService"]
+CB["MomoCallbackRequest"]
 end
 IF --> CS
 CS --> PSF
-PSF --> MM
-PSF --> DM
-PSF --> SC
-MM --> AB
-DM --> AB
-SC --> AB
-CS --> MED
-MED --> MCC
-CO -. pre-validation .-> AB
+PSF --> CASH
+PSF --> DEMO
+PSF --> MOMO
+CASH --> SC
+DEMO --> DM
+MOMO --> MM
+CS --> MS
+MS --> CB
 ```
 
 **Diagram sources**
-- [CheckoutServiceImpl.java:26-184](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L26-L184)
-- [AbstractCheckoutTemplate.java:17-181](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/AbstractCheckoutTemplate.java#L17-L181)
-- [MomoCheckoutProcess.java:18-69](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/MomoCheckoutProcess.java#L18-L69)
-- [DemoCheckoutProcess.java:19-130](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/DemoCheckoutProcess.java#L19-L130)
-- [StaffCashCheckoutProcess.java:26-128](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/StaffCashCheckoutProcess.java#L26-L128)
-- [PaymentStrategyFactory.java:14-48](file://backend/src/main/java/com/cinema/booking/services/payment/PaymentStrategyFactory.java#L14-L48)
-- [PostPaymentMediator.java:10-46](file://backend/src/main/java/com/cinema/booking/patterns/mediator/PostPaymentMediator.java#L10-L46)
-- [MomoCallbackContext.java:10-18](file://backend/src/main/java/com/cinema/booking/patterns/mediator/MomoCallbackContext.java#L10-L18)
+- [CheckoutServiceImpl.java:24-199](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L24-L199)
+- [AbstractCheckoutTemplate.java:17-182](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/AbstractCheckoutTemplate.java#L17-L182)
+- [MomoCheckoutProcess.java:18-70](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/MomoCheckoutProcess.java#L18-L70)
+- [DemoCheckoutProcess.java:19-131](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/DemoCheckoutProcess.java#L19-L131)
+- [StaffCashCheckoutProcess.java:26-129](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/StaffCashCheckoutProcess.java#L26-L129)
+- [PaymentStrategyFactory.java:14-49](file://backend/src/main/java/com/cinema/booking/services/payment/PaymentStrategyFactory.java#L14-L49)
+- [CashPaymentStrategy.java:17-40](file://backend/src/main/java/com/cinema/booking/services/payment/CashPaymentStrategy.java#L17-L40)
+- [DemoPaymentStrategy.java:13-36](file://backend/src/main/java/com/cinema/booking/services/payment/DemoPaymentStrategy.java#L13-L36)
+- [MomoPaymentStrategy.java:8-27](file://backend/src/main/java/com/cinema/booking/services/payment/MomoPaymentStrategy.java#L8-L27)
 
 **Section sources**
 - [CheckoutService.java:3-11](file://backend/src/main/java/com/cinema/booking/services/CheckoutService.java#L3-L11)
-- [CheckoutServiceImpl.java:26-184](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L26-L184)
+- [CheckoutServiceImpl.java:24-199](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L24-L199)
 
 ## Core Components
-- CheckoutService and CheckoutServiceImpl define the external contract and orchestrate checkout variants, callback verification, and post-payment mediator invocation.
+- CheckoutService and CheckoutServiceImpl define the external contract and orchestrate checkout variants, callback verification, and direct post-payment processing.
 - PaymentStrategyFactory selects the appropriate checkout template based on the requested payment method.
 - Template Method variants encapsulate the shared steps and override payment-specific behavior.
-- Chain of Responsibility handlers validate pre-payment conditions.
-- PostPaymentMediator coordinates post-payment actions among specialized collaborators.
+- Payment strategies (CashPaymentStrategy, DemoPaymentStrategy, MomoPaymentStrategy) delegate to their respective template implementations.
+- MomoService handles MoMo payment gateway integration and signature verification.
+
+**Updated** Removed PostPaymentMediator dependency and updated to direct post-payment processing approach.
 
 **Section sources**
 - [CheckoutService.java:3-11](file://backend/src/main/java/com/cinema/booking/services/CheckoutService.java#L3-L11)
-- [CheckoutServiceImpl.java:26-184](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L26-L184)
-- [PaymentStrategyFactory.java:14-48](file://backend/src/main/java/com/cinema/booking/services/payment/PaymentStrategyFactory.java#L14-L48)
+- [CheckoutServiceImpl.java:24-199](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L24-L199)
+- [PaymentStrategyFactory.java:14-49](file://backend/src/main/java/com/cinema/booking/services/payment/PaymentStrategyFactory.java#L14-L49)
+- [CashPaymentStrategy.java:17-40](file://backend/src/main/java/com/cinema/booking/services/payment/CashPaymentStrategy.java#L17-L40)
+- [DemoPaymentStrategy.java:13-36](file://backend/src/main/java/com/cinema/booking/services/payment/DemoPaymentStrategy.java#L13-L36)
+- [MomoPaymentStrategy.java:8-27](file://backend/src/main/java/com/cinema/booking/services/payment/MomoPaymentStrategy.java#L8-L27)
 
 ## Architecture Overview
-The checkout flow is driven by a central service that delegates to a payment strategy determined by the requested method. The Template Method defines the canonical steps, while subclasses implement payment-specific logic. Pre-payment validation runs before the template executes, and post-payment actions are coordinated via a mediator after successful payment or upon failure.
+The checkout flow is driven by a central service that delegates to a payment strategy determined by the requested method. The Template Method defines the canonical steps, while subclasses implement payment-specific logic. Pre-payment validation runs before the template executes, and post-payment actions are processed directly in the service layer after successful payment or upon failure.
+
+**Updated** Removed mediator pattern dependency and updated to direct post-payment processing approach.
 
 ```mermaid
 sequenceDiagram
 participant Client as "Client"
 participant Service as "CheckoutServiceImpl"
 participant Factory as "PaymentStrategyFactory"
+participant Strategy as "PaymentStrategy"
 participant Template as "AbstractCheckoutTemplate + Variant"
-participant Med as "PostPaymentMediator"
+participant Gateway as "MomoService"
 Client->>Service : "createBooking(...)"
 Service->>Factory : "getStrategy(method)"
 Factory-->>Service : "PaymentStrategy (variant)"
-Service->>Template : "checkout(request)"
+Service->>Strategy : "checkout(request)"
+Strategy->>Template : "checkout(request)"
 Template->>Template : "validateUser/validateSeats/calculatePrice/findPromotion/createBooking/reserveFnb/processPayment/finalizeBooking"
-Template-->>Service : "CheckoutResult"
+Template-->>Strategy : "CheckoutResult"
+Strategy-->>Service : "CheckoutResult"
 Service-->>Client : "payment redirect URL or result"
-Note over Service,Med : "After payment callback"
-Service->>Med : "settleSuccess(context) or settleFailure(context)"
+Note over Service,Gateway : "After payment callback"
+Client-->>Gateway : "POST callback"
+Gateway-->>Service : "MomoCallbackRequest"
+Service->>Service : "Direct post-payment processing"
 ```
 
 **Diagram sources**
-- [CheckoutServiceImpl.java:43-64](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L43-L64)
+- [CheckoutServiceImpl.java:43-63](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L43-L63)
 - [AbstractCheckoutTemplate.java:53-95](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/AbstractCheckoutTemplate.java#L53-L95)
-- [PostPaymentMediator.java:35-45](file://backend/src/main/java/com/cinema/booking/patterns/mediator/PostPaymentMediator.java#L35-L45)
+- [MomoPaymentStrategy.java:22-25](file://backend/src/main/java/com/cinema/booking/services/payment/MomoPaymentStrategy.java#L22-L25)
 
 ## Detailed Component Analysis
 
@@ -167,10 +190,10 @@ AbstractCheckoutTemplate <|-- StaffCashCheckoutProcess
 ```
 
 **Diagram sources**
-- [AbstractCheckoutTemplate.java:17-181](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/AbstractCheckoutTemplate.java#L17-L181)
-- [MomoCheckoutProcess.java:18-69](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/MomoCheckoutProcess.java#L18-L69)
-- [DemoCheckoutProcess.java:19-130](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/DemoCheckoutProcess.java#L19-L130)
-- [StaffCashCheckoutProcess.java:26-128](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/StaffCashCheckoutProcess.java#L26-L128)
+- [AbstractCheckoutTemplate.java:17-182](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/AbstractCheckoutTemplate.java#L17-L182)
+- [MomoCheckoutProcess.java:18-70](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/MomoCheckoutProcess.java#L18-L70)
+- [DemoCheckoutProcess.java:19-131](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/DemoCheckoutProcess.java#L19-L131)
+- [StaffCashCheckoutProcess.java:26-129](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/StaffCashCheckoutProcess.java#L26-L129)
 
 Key behaviors:
 - MoMo variant sets booking to pending and creates a payment record with pending status; payment URL is returned for redirection.
@@ -179,12 +202,12 @@ Key behaviors:
 
 **Section sources**
 - [AbstractCheckoutTemplate.java:53-95](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/AbstractCheckoutTemplate.java#L53-L95)
-- [MomoCheckoutProcess.java:40-68](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/MomoCheckoutProcess.java#L40-L68)
+- [MomoCheckoutProcess.java:40-69](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/MomoCheckoutProcess.java#L40-L69)
 - [DemoCheckoutProcess.java:50-93](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/DemoCheckoutProcess.java#L50-L93)
 - [StaffCashCheckoutProcess.java:54-95](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/StaffCashCheckoutProcess.java#L54-L95)
 
-### Payment Strategy Factory
-The factory registers and retrieves payment strategies keyed by payment method, ensuring all supported methods are covered and preventing duplicates or missing strategies.
+### Payment Strategy Factory and Strategies
+The factory registers and retrieves payment strategies keyed by payment method, ensuring all supported methods are covered and preventing duplicates or missing strategies. Each strategy delegates to its corresponding template implementation.
 
 ```mermaid
 classDiagram
@@ -193,123 +216,63 @@ class PaymentStrategyFactory {
 +getStrategy(method) PaymentStrategy
 +getStrategy(method, type) T
 }
+class CashPaymentStrategy {
++getPaymentMethod() PaymentMethod
++checkout(request) CheckoutResult
++buildResult(booking, payment, price) Map
+}
+class DemoPaymentStrategy {
++getPaymentMethod() PaymentMethod
++checkout(request) CheckoutResult
++buildDemoResult(booking, payment, price) Map
+}
+class MomoPaymentStrategy {
++getPaymentMethod() PaymentMethod
++checkout(request) CheckoutResult
+}
+PaymentStrategyFactory --> CashPaymentStrategy
+PaymentStrategyFactory --> DemoPaymentStrategy
+PaymentStrategyFactory --> MomoPaymentStrategy
 ```
 
 **Diagram sources**
-- [PaymentStrategyFactory.java:14-48](file://backend/src/main/java/com/cinema/booking/services/payment/PaymentStrategyFactory.java#L14-L48)
+- [PaymentStrategyFactory.java:14-49](file://backend/src/main/java/com/cinema/booking/services/payment/PaymentStrategyFactory.java#L14-L49)
+- [CashPaymentStrategy.java:17-40](file://backend/src/main/java/com/cinema/booking/services/payment/CashPaymentStrategy.java#L17-L40)
+- [DemoPaymentStrategy.java:13-36](file://backend/src/main/java/com/cinema/booking/services/payment/DemoPaymentStrategy.java#L13-L36)
+- [MomoPaymentStrategy.java:8-27](file://backend/src/main/java/com/cinema/booking/services/payment/MomoPaymentStrategy.java#L8-L27)
 
 **Section sources**
-- [PaymentStrategyFactory.java:14-48](file://backend/src/main/java/com/cinema/booking/services/payment/PaymentStrategyFactory.java#L14-L48)
+- [PaymentStrategyFactory.java:14-49](file://backend/src/main/java/com/cinema/booking/services/payment/PaymentStrategyFactory.java#L14-L49)
+- [CashPaymentStrategy.java:17-40](file://backend/src/main/java/com/cinema/booking/services/payment/CashPaymentStrategy.java#L17-L40)
+- [DemoPaymentStrategy.java:13-36](file://backend/src/main/java/com/cinema/booking/services/payment/DemoPaymentStrategy.java#L13-L36)
+- [MomoPaymentStrategy.java:8-27](file://backend/src/main/java/com/cinema/booking/services/payment/MomoPaymentStrategy.java#L8-L27)
 
-### Pre-Payment Validation Pipeline (Chain of Responsibility)
-Pre-payment validation is implemented as a chain of responsibility. Each handler validates a specific aspect and forwards the context to the next handler if valid.
+### Direct Post-Payment Processing
+After payment callbacks, the service directly handles post-payment actions in a fixed sequence to update booking status, manage inventory rollbacks, update user spending, issue tickets, update payment status, and send email notifications.
 
-```mermaid
-classDiagram
-class AbstractCheckoutValidationHandler {
--next : CheckoutValidationHandler
-+setNext(next) void
-+handle(context) void
-<<abstract>>
-#doHandle(context) void
-}
-class CheckoutValidationContext {
-+userId : Integer
-+showtimeId : Integer
-+seatIds : Integer[]
-+promoCode : String
-+user : User
-+showtime : Showtime
-}
-AbstractCheckoutValidationHandler <|-- CheckoutValidationHandler
-```
-
-```mermaid
-flowchart TD
-Start(["Start Validation"]) --> LoadCtx["Load CheckoutValidationContext"]
-LoadCtx --> Handler1["UserExistsHandler"]
-Handler1 --> Valid1{"Valid?"}
-Valid1 -- "No" --> Fail1["Fail: User does not exist"]
-Valid1 -- "Yes" --> Handler2["ShowtimeExistsHandler"]
-Handler2 --> Valid2{"Valid?"}
-Valid2 -- "No" --> Fail2["Fail: Showtime not found"]
-Valid2 -- "Yes" --> Handler3["MaxSeatsHandler"]
-Handler3 --> Valid3{"Valid?"}
-Valid3 -- "No" --> Fail3["Fail: Too many seats"]
-Valid3 -- "Yes" --> Handler4["SeatsNotSoldHandler"]
-Handler4 --> Valid4{"Valid?"}
-Valid4 -- "No" --> Fail4["Fail: Seats already sold"]
-Valid4 -- "Yes" --> Success(["Validation Success"])
-```
-
-**Diagram sources**
-- [AbstractCheckoutValidationHandler.java:3-20](file://backend/src/main/java/com/cinema/booking/patterns/chainofresponsibility/AbstractCheckoutValidationHandler.java#L3-L20)
-- [CheckoutValidationContext.java:10-21](file://backend/src/main/java/com/cinema/booking/patterns/chainofresponsibility/CheckoutValidationContext.java#L10-L21)
-
-**Section sources**
-- [AbstractCheckoutValidationHandler.java:3-20](file://backend/src/main/java/com/cinema/booking/patterns/chainofresponsibility/AbstractCheckoutValidationHandler.java#L3-L20)
-- [CheckoutValidationContext.java:10-21](file://backend/src/main/java/com/cinema/booking/patterns/chainofresponsibility/CheckoutValidationContext.java#L10-L21)
-
-### Post-Payment Coordination (Mediator)
-After payment callbacks, the mediator coordinates actions across multiple collaborators in a fixed order to update booking status, manage inventory rollbacks, update user spending, issue tickets, update payment status, and send email notifications.
-
-```mermaid
-classDiagram
-class PostPaymentMediator {
--colleagues : PaymentColleague[]
-+settleSuccess(context) void
-+settleFailure(context) void
-}
-class MomoCallbackContext {
-+callback : MomoCallbackRequest
-+booking : Booking
-+seatIds : Integer[]
-+showtimeId : Integer
-+success : boolean
-}
-class PaymentColleague {
-<<interface>>
-+onPaymentSuccess(context) void
-+onPaymentFailure(context) void
-}
-PostPaymentMediator --> PaymentColleague : "coordinates"
-```
+**Updated** Removed mediator pattern and implemented direct post-payment processing approach.
 
 ```mermaid
 sequenceDiagram
 participant Svc as "CheckoutServiceImpl"
-participant Med as "PostPaymentMediator"
-participant Updater as "BookingStatusUpdater"
-participant PromRoll as "PromotionInventoryRollback"
-participant FnbRoll as "FnbInventoryRollback"
-participant Spend as "UserSpendingUpdater"
-participant Issuer as "TicketIssuer"
-participant PayUpd as "PaymentStatusUpdater"
-participant Notifier as "TicketEmailNotifier"
-Svc->>Med : "settleSuccess(context)"
-Med->>Updater : "onPaymentSuccess(context)"
-Med->>PromRoll : "onPaymentSuccess(context)"
-Med->>FnbRoll : "onPaymentSuccess(context)"
-Med->>Spend : "onPaymentSuccess(context)"
-Med->>Issuer : "onPaymentSuccess(context)"
-Med->>PayUpd : "onPaymentSuccess(context)"
-Med->>Notifier : "onPaymentSuccess(context)"
+participant Repo as "Repositories"
+participant Email as "EmailService"
+Svc->>Svc : "processMomoCallback(callback)"
+Note over Svc : "TODO : Implement direct post-payment processing"
+Note over Svc,Repo : "Required tasks : Update Booking status, Update Customer spending, Create Tickets, Update Payment status, Send email notification"
 ```
 
-**Diagram sources**
-- [PostPaymentMediator.java:10-46](file://backend/src/main/java/com/cinema/booking/patterns/mediator/PostPaymentMediator.java#L10-L46)
-- [MomoCallbackContext.java:10-18](file://backend/src/main/java/com/cinema/booking/patterns/mediator/MomoCallbackContext.java#L10-L18)
-
 **Section sources**
-- [PostPaymentMediator.java:10-46](file://backend/src/main/java/com/cinema/booking/patterns/mediator/PostPaymentMediator.java#L10-L46)
-- [MomoCallbackContext.java:10-18](file://backend/src/main/java/com/cinema/booking/patterns/mediator/MomoCallbackContext.java#L10-L18)
+- [CheckoutServiceImpl.java:65-144](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L65-L144)
 
 ### Checkout Scenarios and Workflows
 
 #### MoMo Payment Integration
 - The service validates the payment method and delegates to the MoMo checkout variant.
 - The variant creates a payment record with pending status and returns a payment URL for redirection.
-- On callback, the service verifies signature, decodes extra data, and invokes the mediator to settle success or failure.
+- On callback, the service verifies signature, decodes extra data, and processes post-payment actions directly.
+
+**Updated** Post-payment processing now requires direct implementation instead of mediator pattern.
 
 ```mermaid
 sequenceDiagram
@@ -317,7 +280,6 @@ participant Client as "Client"
 participant Svc as "CheckoutServiceImpl"
 participant MoMo as "MomoCheckoutProcess"
 participant Gate as "MomoService"
-participant Med as "PostPaymentMediator"
 Client->>Svc : "createBooking(..., paymentMethod=MOMO)"
 Svc->>MoMo : "checkout(request)"
 MoMo->>Gate : "createPayment(..., extraData)"
@@ -327,18 +289,16 @@ Svc-->>Client : "redirect to payUrl"
 Note over Svc,Gate : "After callback"
 Client-->>Gate : "POST callback"
 Gate-->>Svc : "MomoCallbackRequest"
-Svc->>Svc : "verifySignature()"
-Svc->>Med : "settleSuccess(context)"
+Note over Svc : "TODO : Implement direct post-payment processing"
 ```
 
 **Diagram sources**
-- [CheckoutServiceImpl.java:43-64](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L43-L64)
-- [MomoCheckoutProcess.java:46-57](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/MomoCheckoutProcess.java#L46-L57)
-- [PostPaymentMediator.java:35-38](file://backend/src/main/java/com/cinema/booking/patterns/mediator/PostPaymentMediator.java#L35-L38)
+- [CheckoutServiceImpl.java:43-63](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L43-L63)
+- [MomoCheckoutProcess.java:46-58](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/MomoCheckoutProcess.java#L46-L58)
 
 **Section sources**
-- [CheckoutServiceImpl.java:43-64](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L43-L64)
-- [MomoCheckoutProcess.java:40-68](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/MomoCheckoutProcess.java#L40-L68)
+- [CheckoutServiceImpl.java:43-63](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L43-L63)
+- [MomoCheckoutProcess.java:40-69](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/MomoCheckoutProcess.java#L40-L69)
 
 #### Demo Checkout for Testing
 - The service constructs a demo checkout request and delegates to the demo variant.
@@ -356,11 +316,11 @@ Svc-->>Test : "buildDemoResult(booking, payment, price)"
 ```
 
 **Diagram sources**
-- [CheckoutServiceImpl.java:132-159](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L132-L159)
+- [CheckoutServiceImpl.java:146-173](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L146-L173)
 - [DemoCheckoutProcess.java:50-62](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/DemoCheckoutProcess.java#L50-L62)
 
 **Section sources**
-- [CheckoutServiceImpl.java:132-159](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L132-L159)
+- [CheckoutServiceImpl.java:146-173](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L146-L173)
 - [DemoCheckoutProcess.java:99-106](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/DemoCheckoutProcess.java#L99-L106)
 
 #### Staff Cash Checkout for Box Office
@@ -379,47 +339,55 @@ Svc-->>Staff : "buildResult(booking, payment, price)"
 ```
 
 **Diagram sources**
-- [CheckoutServiceImpl.java:161-183](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L161-L183)
+- [CheckoutServiceImpl.java:175-197](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L175-L197)
 - [StaffCashCheckoutProcess.java:54-71](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/StaffCashCheckoutProcess.java#L54-L71)
 
 **Section sources**
-- [CheckoutServiceImpl.java:161-183](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L161-L183)
+- [CheckoutServiceImpl.java:175-197](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L175-L197)
 - [StaffCashCheckoutProcess.java:97-106](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/StaffCashCheckoutProcess.java#L97-L106)
 
 ## Dependency Analysis
-The checkout system exhibits clear separation of concerns:
-- CheckoutServiceImpl depends on PaymentStrategyFactory, repositories, and the PostPaymentMediator.
+The checkout system exhibits clear separation of concerns with direct dependencies:
+- CheckoutServiceImpl depends on PaymentStrategyFactory, repositories, and MomoService.
+- Payment strategies depend on their respective template implementations.
 - Template variants depend on repositories and services to implement payment-specific logic.
-- PostPaymentMediator depends on multiple collaborators to coordinate post-payment actions.
-- Validation handlers operate independently and are chained prior to template execution.
+- Direct post-payment processing requires explicit implementation in CheckoutServiceImpl.
+
+**Updated** Removed PostPaymentMediator dependency and updated to direct implementation approach.
 
 ```mermaid
 graph LR
 CS["CheckoutServiceImpl"] --> PSF["PaymentStrategyFactory"]
-PSF --> MM["MomoCheckoutProcess"]
-PSF --> DM["DemoCheckoutProcess"]
-PSF --> SC["StaffCashCheckoutProcess"]
-CS --> MED["PostPaymentMediator"]
-MED --> COL["PaymentColleague*"]
+PSF --> CASH["CashPaymentStrategy"]
+PSF --> DEMO["DemoPaymentStrategy"]
+PSF --> MOMO["MomoPaymentStrategy"]
+CASH --> SC["StaffCashCheckoutProcess"]
+DEMO --> DM["DemoCheckoutProcess"]
+MOMO --> MM["MomoCheckoutProcess"]
+CS --> MS["MomoService"]
 ```
 
 **Diagram sources**
-- [CheckoutServiceImpl.java:31-41](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L31-L41)
+- [CheckoutServiceImpl.java:24-41](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L24-L41)
 - [PaymentStrategyFactory.java:16-31](file://backend/src/main/java/com/cinema/booking/services/payment/PaymentStrategyFactory.java#L16-L31)
-- [PostPaymentMediator.java:14-32](file://backend/src/main/java/com/cinema/booking/patterns/mediator/PostPaymentMediator.java#L14-L32)
+- [CashPaymentStrategy.java:20-24](file://backend/src/main/java/com/cinema/booking/services/payment/CashPaymentStrategy.java#L20-L24)
+- [DemoPaymentStrategy.java:16-20](file://backend/src/main/java/com/cinema/booking/services/payment/DemoPaymentStrategy.java#L16-L20)
+- [MomoPaymentStrategy.java:11-15](file://backend/src/main/java/com/cinema/booking/services/payment/MomoPaymentStrategy.java#L11-L15)
 
 **Section sources**
-- [CheckoutServiceImpl.java:31-41](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L31-L41)
+- [CheckoutServiceImpl.java:24-41](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L24-L41)
 - [PaymentStrategyFactory.java:16-31](file://backend/src/main/java/com/cinema/booking/services/payment/PaymentStrategyFactory.java#L16-L31)
-- [PostPaymentMediator.java:14-32](file://backend/src/main/java/com/cinema/booking/patterns/mediator/PostPaymentMediator.java#L14-L32)
+- [CashPaymentStrategy.java:20-24](file://backend/src/main/java/com/cinema/booking/services/payment/CashPaymentStrategy.java#L20-L24)
+- [DemoPaymentStrategy.java:16-20](file://backend/src/main/java/com/cinema/booking/services/payment/DemoPaymentStrategy.java#L16-L20)
+- [MomoPaymentStrategy.java:11-15](file://backend/src/main/java/com/cinema/booking/services/payment/MomoPaymentStrategy.java#L11-L15)
 
 ## Performance Considerations
 - Template Method reduces duplication and transaction boundaries are clearly marked for each variant.
 - Demo and staff variants avoid external gateway calls, minimizing latency.
-- The mediator iterates through a fixed list of collaborators; ordering is explicit to ensure proper sequencing.
+- Direct post-payment processing eliminates mediator overhead but requires careful implementation.
 - Deadlock resilience is implemented in customer spending updates using retries with exponential backoff-like delays.
 
-[No sources needed since this section provides general guidance]
+**Updated** Added note about direct post-payment processing performance implications.
 
 ## Troubleshooting Guide
 Common issues and recovery strategies:
@@ -429,9 +397,12 @@ Common issues and recovery strategies:
 - Promotion not available: Promotion reservation fails; inform the user or apply alternative discounts.
 - Payment record creation failures: The template logs errors but continues; check payment gateway responses and retry logic.
 - Deadlocks on customer spending updates: The code retries with backoff; monitor database contention and adjust retry policy if needed.
+- **New** Post-payment processing not implemented: The processMomoCallback method currently throws UnsupportedOperationException; implement the required 5 post-payment tasks directly in the service method.
+
+**Updated** Added troubleshooting guidance for direct post-payment processing implementation.
 
 **Section sources**
-- [CheckoutServiceImpl.java:68-130](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L68-L130)
+- [CheckoutServiceImpl.java:67-144](file://backend/src/main/java/com/cinema/booking/services/impl/CheckoutServiceImpl.java#L67-L144)
 - [AbstractCheckoutTemplate.java:109-139](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/AbstractCheckoutTemplate.java#L109-L139)
 - [DemoCheckoutProcess.java:108-129](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/DemoCheckoutProcess.java#L108-L129)
 - [StaffCashCheckoutProcess.java:108-127](file://backend/src/main/java/com/cinema/booking/services/template_method/checkout/StaffCashCheckoutProcess.java#L108-L127)
@@ -446,8 +417,9 @@ Security considerations for payment processing:
 - Tokenization and PCI DSS: Prefer tokenized payments and avoid storing sensitive cardholder data. Use PCI-compliant hosted fields or third-party payment processors.
 - Audit trails: Log events without sensitive data; maintain non-repudiation through signed requests and immutable audit logs.
 - Error handling: Do not expose internal errors containing sensitive data; return generic messages to clients.
+- **New** Direct post-payment processing security: Ensure all direct database operations are properly transactional and handle errors securely.
 
-[No sources needed since this section provides general guidance]
+**Updated** Added security considerations for direct post-payment processing approach.
 
 ## Conclusion
-The Checkout Service leverages the Template Method pattern to unify payment workflows while allowing per-method customization. Pre-payment validation ensures data integrity, and the Mediator pattern coordinates post-payment actions reliably. Integration with MoMo includes robust callback handling, while Demo and Staff Cash variants support testing and box office operations. Adhering to the security and PCI guidelines outlined above will help maintain a secure and compliant payment processing system.
+The Checkout Service leverages the Template Method pattern to unify payment workflows while allowing per-method customization. Pre-payment validation ensures data integrity, and the direct post-payment processing approach provides more control over payment completion workflows. Integration with MoMo includes robust callback handling, while Demo and Staff Cash variants support testing and box office operations. The removal of the mediator pattern simplifies the architecture but requires careful implementation of post-payment processing tasks directly in the service layer. Adhering to the security and PCI guidelines outlined above will help maintain a secure and compliant payment processing system.

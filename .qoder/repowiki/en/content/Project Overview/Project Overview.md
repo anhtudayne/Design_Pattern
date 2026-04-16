@@ -18,32 +18,60 @@
 - [AuthServiceImpl.java](file://backend/src/main/java/com/cinema/booking/services/impl/AuthServiceImpl.java)
 - [authSlice.js](file://frontend/src/store/authSlice.js)
 - [UserController.java](file://backend/src/main/java/com/cinema/booking/controllers/UserController.java)
+- [DashboardStatsComposite.java](file://backend/src/main/java/com/cinema/booking/patterns/composite/DashboardStatsComposite.java)
+- [StatsComponent.java](file://backend/src/main/java/com/cinema/booking/patterns/composite/StatsComponent.java)
+- [MovieStatsLeaf.java](file://backend/src/main/java/com/cinema/booking/patterns/composite/MovieStatsLeaf.java)
+- [UserStatsLeaf.java](file://backend/src/main/java/com/cinema/booking/patterns/composite/UserStatsLeaf.java)
+- [ShowtimeStatsLeaf.java](file://backend/src/main/java/com/cinema/booking/patterns/composite/ShowtimeStatsLeaf.java)
+- [FnbStatsLeaf.java](file://backend/src/main/java/com/cinema/booking/patterns/composite/FnbStatsLeaf.java)
+- [VoucherStatsLeaf.java](file://backend/src/main/java/com/cinema/booking/patterns/composite/VoucherStatsLeaf.java)
+- [RevenueStatsLeaf.java](file://backend/src/main/java/com/cinema/booking/patterns/composite/RevenueStatsLeaf.java)
+- [BookingContext.java](file://backend/src/main/java/com/cinema/booking/patterns/state/BookingContext.java)
+- [PricingEngine.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingEngine.java)
+- [IPricingEngine.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/proxy/IPricingEngine.java)
+- [TicketPricingStrategy.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/TicketPricingStrategy.java)
+- [FnbPricingStrategy.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/FnbPricingStrategy.java)
+- [TimeBasedPricingStrategy.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/TimeBasedPricingStrategy.java)
+- [NoDiscount.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/decorator/NoDiscount.java)
+- [PromotionDiscountDecorator.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/decorator/PromotionDiscountDecorator.java)
+- [MemberDiscountDecorator.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/decorator/MemberDiscountDecorator.java)
+- [RestTemplateConfig.java](file://backend/src/main/java/com/cinema/booking/config/RestTemplateConfig.java)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Updated architecture overview to focus on remaining design patterns (05 Composite, 06 Singleton, 08 Dynamic Pricing Engine)
+- Removed references to patterns 01-04 and 07 from project overview
+- Enhanced documentation of Composite pattern for dashboard statistics
+- Added comprehensive coverage of Dynamic Pricing Engine with Strategy, Decorator, and Proxy patterns
+- Updated system architecture diagrams to reflect current implementation
+- Expanded technical details on Singleton pattern implementation for RestTemplate
 
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
 3. [Core Components](#core-components)
 4. [Architecture Overview](#architecture-overview)
-5. [Detailed Component Analysis](#detailed-component-analysis)
-6. [Dependency Analysis](#dependency-analysis)
-7. [Performance Considerations](#performance-considerations)
-8. [Troubleshooting Guide](#troubleshooting-guide)
-9. [Conclusion](#conclusion)
+5. [Design Patterns Implementation](#design-patterns-implementation)
+6. [Detailed Component Analysis](#detailed-component-analysis)
+7. [Dependency Analysis](#dependency-analysis)
+8. [Performance Considerations](#performance-considerations)
+9. [Troubleshooting Guide](#troubleshooting-guide)
+10. [Conclusion](#conclusion)
 
 ## Introduction
 This project is a full-stack online movie ticket booking platform designed to resemble industry leaders such as CGV, Lotte Cinema, and Galaxy. It provides a complete cinema experience with three primary user roles: Customer, Staff, and Admin. The system supports the full booking workflow, real-time seat locking, dynamic pricing, integrated payments, and robust administrative dashboards for managing movies, showtimes, facilities, and promotions.
 
 Key goals:
-- Enable customers to browse movies, select showtimes and seats, order food and beverages (F&B), apply vouchers, and pay securely.
-- Provide staff with POS capabilities for box office sales and order lookup.
-- Offer admin dashboards for operational management, reporting, and content administration.
+- Enable customers to browse movies, select showtimes and seats, order food and beverages (F&B), apply vouchers, and pay securely
+- Provide staff with POS capabilities for box office sales and order lookup
+- Offer admin dashboards for operational management, reporting, and content administration
 
 Business rules and UX highlights:
-- Force-login requirement for booking ensures user retention and reduces lost tickets.
-- Refund freeze window prevents cancellations too close to showtime.
-- Real-time seat locking via Redis prevents double bookings.
-- Dynamic pricing engine adjusts base prices based on occupancy, time, and promotions.
+- Force-login requirement for booking ensures user retention and reduces lost tickets
+- Refund freeze window prevents cancellations too close to showtime
+- Real-time seat locking via Redis prevents double bookings
+- Dynamic pricing engine adjusts base prices based on occupancy, time, and promotions
 
 ## Project Structure
 The system follows a layered architecture with a Spring Boot backend and a React frontend. The backend exposes REST APIs secured by JWT and RBAC, while the frontend organizes routes by role (customer, admin, staff) and state management for booking flows.
@@ -86,22 +114,22 @@ BE_App --> BE_Config
 
 ## Core Components
 - Roles and Identity
-  - User hierarchy with polymorphic inheritance and role-specific Spring Security mappings.
-  - Roles: Customer (USER), Staff (STAFF), Admin (ADMIN).
+  - User hierarchy with polymorphic inheritance and role-specific Spring Security mappings
+  - Roles: Customer (USER), Staff (STAFF), Admin (ADMIN)
 - Authentication and Authorization
-  - JWT-based authentication with method-level security and role-based access control.
-  - Google OAuth registration flow integrated.
+  - JWT-based authentication with method-level security and role-based access control
+  - Google OAuth registration flow integrated
 - Booking Engine
-  - Seat status retrieval, Redis-backed seat locking/unlocking, price calculation, booking state transitions (pending, confirmed, refunded, cancelled), and printing tickets.
+  - Seat status retrieval, Redis-backed seat locking/unlocking, price calculation, booking state transitions (pending, confirmed, refunded, cancelled), and printing tickets
 - Content and Catalog Management
-  - Movies, genres, cast/crew, showtimes, rooms, seats, and F&B items with categories and inventory.
+  - Movies, genres, cast/crew, showtimes, rooms, seats, and F&B items with categories and inventory
 - Payments and Promotions
-  - Voucher application, MoMo sandbox integration, and email notifications for confirmations.
+  - Voucher application, MoMo sandbox integration, and email notifications for confirmations
 
 Practical examples:
-- Customer booking flow: choose city → select cinema → pick showtime → select seats (with real-time lock) → add F&B → calculate price → apply voucher → pay → receive e-ticket.
-- Admin dashboard: manage movies, schedule showtimes, configure rooms/seats, manage F&B inventory, create vouchers, and monitor revenue.
-- Staff POS: process cash or digital payments at the box office, print tickets, and look up orders by ID, phone, or email.
+- Customer booking flow: choose city → select cinema → pick showtime → select seats (with real-time lock) → add F&B → calculate price → apply voucher → pay → receive e-ticket
+- Admin dashboard: manage movies, schedule showtimes, configure rooms/seats, manage F&B inventory, create vouchers, and monitor revenue
+- Staff POS: process cash or digital payments at the box office, print tickets, and look up orders by ID, phone, or email
 
 **Section sources**
 - [User.java:13-37](file://backend/src/main/java/com/cinema/booking/entities/User.java#L13-L37)
@@ -141,18 +169,151 @@ Svc --> Cache
 - [application.properties:61-66](file://backend/src/main/resources/application.properties#L61-L66)
 
 Technology stack:
-- Frontend: React with Redux Toolkit for state management.
-- Backend: Java Spring Boot with Spring Security, JWT, and Spring Data JPA.
-- Database: MySQL with Hibernate/JPA.
-- Caching/Locking: Redis for seat locking and caching.
-- Payments: MoMo sandbox integration.
-- Image storage: Cloudinary via backend controller.
-- DevOps: Docker Compose (referenced in repository).
+- Frontend: React with Redux Toolkit for state management
+- Backend: Java Spring Boot with Spring Security, JWT, and Spring Data JPA
+- Database: MySQL with Hibernate/JPA
+- Caching/Locking: Redis for seat locking and caching
+- Payments: MoMo sandbox integration
+- Image storage: Cloudinary via backend controller
+- DevOps: Docker Compose (referenced in repository)
 
 **Section sources**
 - [README.md:155-173](file://README.md#L155-L173)
 - [application.properties:8-24](file://backend/src/main/resources/application.properties#L8-L24)
 - [application.properties:61-76](file://backend/src/main/resources/application.properties#L61-L76)
+
+## Design Patterns Implementation
+
+### Composite Pattern for Dashboard Statistics
+The Composite pattern is used to aggregate various statistics across different domains (movies, users, showtimes, F&B, vouchers, revenue) into a unified dashboard view.
+
+```mermaid
+classDiagram
+class StatsComponent {
+<<interface>>
++collect(target : Map) void
+}
+class DashboardStatsComposite {
+-children : StatsComponent[]
++collect(target : Map) void
+}
+class MovieStatsLeaf {
+- movieRepository : MovieRepository
++collect(target : Map) void
+}
+class UserStatsLeaf {
+- userRepository : UserRepository
++collect(target : Map) void
+}
+class ShowtimeStatsLeaf {
+- showtimeRepository : ShowtimeRepository
++collect(target : Map) void
+class FnbStatsLeaf {
+- fnbRepository : FnbRepository
++collect(target : Map) void
+}
+class VoucherStatsLeaf {
+- voucherRepository : VoucherRepository
++collect(target : Map) void
+}
+class RevenueStatsLeaf {
+- revenueRepository : RevenueRepository
++collect(target : Map) void
+}
+StatsComponent <|.. DashboardStatsComposite
+StatsComponent <|.. MovieStatsLeaf
+StatsComponent <|.. UserStatsLeaf
+StatsComponent <|.. ShowtimeStatsLeaf
+StatsComponent <|.. FnbStatsLeaf
+StatsComponent <|.. VoucherStatsLeaf
+StatsComponent <|.. RevenueStatsLeaf
+DashboardStatsComposite --> StatsComponent : composes
+```
+
+**Diagram sources**
+- [StatsComponent.java:1-12](file://backend/src/main/java/com/cinema/booking/patterns/composite/StatsComponent.java#L1-L12)
+- [DashboardStatsComposite.java:1-44](file://backend/src/main/java/com/cinema/booking/patterns/composite/DashboardStatsComposite.java#L1-L44)
+- [MovieStatsLeaf.java:1-20](file://backend/src/main/java/com/cinema/booking/patterns/composite/MovieStatsLeaf.java#L1-L20)
+- [UserStatsLeaf.java:1-20](file://backend/src/main/java/com/cinema/booking/patterns/composite/UserStatsLeaf.java#L1-L20)
+- [ShowtimeStatsLeaf.java:1-20](file://backend/src/main/java/com/cinema/booking/patterns/composite/ShowtimeStatsLeaf.java#L1-L20)
+- [FnbStatsLeaf.java:1-20](file://backend/src/main/java/com/cinema/booking/patterns/composite/FnbStatsLeaf.java#L1-L20)
+- [VoucherStatsLeaf.java:1-20](file://backend/src/main/java/com/cinema/booking/patterns/composite/VoucherStatsLeaf.java#L1-L20)
+- [RevenueStatsLeaf.java:1-20](file://backend/src/main/java/com/cinema/booking/patterns/composite/RevenueStatsLeaf.java#L1-L20)
+
+The DashboardStatsComposite orchestrates six leaf components that collect domain-specific metrics and aggregates them into a single statistics map for the admin dashboard.
+
+**Section sources**
+- [DashboardStatsComposite.java:10-44](file://backend/src/main/java/com/cinema/booking/patterns/composite/DashboardStatsComposite.java#L10-L44)
+- [StatsComponent.java:5-12](file://backend/src/main/java/com/cinema/booking/patterns/composite/StatsComponent.java#L5-L12)
+
+### Singleton Pattern for RestTemplate
+The Singleton pattern is implemented through Spring IoC container to ensure a single RestTemplate instance is shared across the entire application, optimizing resource usage and providing centralized configuration.
+
+```mermaid
+sequenceDiagram
+participant App as "Spring Application"
+participant Config as "RestTemplateConfig"
+participant Container as "ApplicationContext"
+participant Service1 as "MomoServiceImpl"
+participant Service2 as "AnotherService"
+App->>Config : Load configuration
+Config->>Container : Register RestTemplate bean
+Container->>Container : Create singleton instance
+Service1->>Container : Request RestTemplate dependency
+Container->>Service1 : Inject singleton instance
+Service2->>Container : Request RestTemplate dependency
+Container->>Service2 : Inject same singleton instance
+Note over Service1,Service2 : Both services share identical RestTemplate instance
+```
+
+**Diagram sources**
+- [RestTemplateConfig.java:65-73](file://backend/src/main/java/com/cinema/booking/config/RestTemplateConfig.java#L65-L73)
+
+The RestTemplateConfig defines a singleton bean that is injected wherever HTTP communication is needed, eliminating the overhead of creating multiple RestTemplate instances and enabling centralized configuration management.
+
+**Section sources**
+- [RestTemplateConfig.java:58-101](file://backend/src/main/java/com/cinema/booking/config/RestTemplateConfig.java#L58-L101)
+
+### Dynamic Pricing Engine
+The Dynamic Pricing Engine implements a sophisticated pricing calculation system using Strategy, Decorator, and Proxy patterns to handle complex pricing scenarios with flexibility and maintainability.
+
+```mermaid
+flowchart TD
+Start["PricingContext Input"] --> Strategy["Strategy Layer"]
+Strategy --> Ticket["TicketPricingStrategy"]
+Strategy --> Fnb["FnbPricingStrategy"]
+Strategy --> Time["TimeBasedPricingStrategy"]
+Ticket --> Subtotal["Calculate Subtotal"]
+Fnb --> Subtotal
+Time --> Subtotal
+Subtotal --> Decorator["Decorator Chain"]
+Decorator --> NoDisc["NoDiscount"]
+Decorator --> Promo["PromotionDiscountDecorator"]
+Decorator --> Member["MemberDiscountDecorator"]
+Promo --> Result["Final Discount Result"]
+Member --> Result
+NoDisc --> Result
+Result --> Validation["Price Validation & Rounding"]
+Validation --> Output["PriceBreakdownDTO"]
+```
+
+**Diagram sources**
+- [PricingEngine.java:23-84](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingEngine.java#L23-L84)
+- [TicketPricingStrategy.java:17-33](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/TicketPricingStrategy.java#L17-L33)
+- [FnbPricingStrategy.java:20-32](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/FnbPricingStrategy.java#L20-L32)
+- [TimeBasedPricingStrategy.java:35-69](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/TimeBasedPricingStrategy.java#L35-L69)
+- [NoDiscount.java:10-15](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/decorator/NoDiscount.java#L10-L15)
+- [PromotionDiscountDecorator.java:21-50](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/decorator/PromotionDiscountDecorator.java#L21-L50)
+- [MemberDiscountDecorator.java:28-53](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/decorator/MemberDiscountDecorator.java#L28-L53)
+
+The pricing engine consists of three main layers:
+1. **Strategy Layer**: Calculates individual pricing components (tickets, F&B, time-based surcharges)
+2. **Decorator Chain**: Applies sequential discounts (promotion first, then membership)
+3. **Validation & Output**: Ensures non-negative results and formats the final breakdown
+
+**Section sources**
+- [PricingEngine.java:23-126](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingEngine.java#L23-L126)
+- [IPricingEngine.java:6-12](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/proxy/IPricingEngine.java#L6-L12)
 
 ## Detailed Component Analysis
 
@@ -325,21 +486,25 @@ CloudinaryCtrl["CloudinaryController"] --> Cloudinary["Cloudinary"]
 - [application.properties:61-76](file://backend/src/main/resources/application.properties#L61-L76)
 
 ## Performance Considerations
-- Real-time seat locking with Redis prevents race conditions during high-concurrency events.
-- Caching showtime seat layouts reduces repeated database queries.
-- Asynchronous background tasks offload PDF generation and email notifications.
-- JWT stateless sessions reduce server memory footprint.
-- Proper indexing and query optimization recommended for frequently accessed entities (Showtime, Booking, Ticket).
-
-[No sources needed since this section provides general guidance]
+- Real-time seat locking with Redis prevents race conditions during high-concurrency events
+- Caching showtime seat layouts reduces repeated database queries
+- Asynchronous background tasks offload PDF generation and email notifications
+- JWT stateless sessions reduce server memory footprint
+- Proper indexing and query optimization recommended for frequently accessed entities (Showtime, Booking, Ticket)
+- Singleton RestTemplate instance reduces memory overhead and connection pool creation
+- Dynamic pricing engine uses caching proxy to minimize repeated calculations
+- Composite pattern enables efficient batch statistics collection
 
 ## Troubleshooting Guide
 Common issues and resolutions:
-- Authentication failures: Verify JWT secret and frontend local storage token persistence.
-- CORS errors: Confirm frontend URL and CORS configuration.
-- Redis seat lock errors: Ensure Redis TTL and connectivity; seat locks auto-release after expiration.
-- Payment callback/webhook: Validate MoMo endpoint credentials and webhook URLs.
-- Authorization errors: Check role-based route mappings and user roles in the database.
+- Authentication failures: Verify JWT secret and frontend local storage token persistence
+- CORS errors: Confirm frontend URL and CORS configuration
+- Redis seat lock errors: Ensure Redis TTL and connectivity; seat locks auto-release after expiration
+- Payment callback/webhook: Validate MoMo endpoint credentials and webhook URLs
+- Authorization errors: Check role-based route mappings and user roles in the database
+- Pricing engine errors: Verify all pricing strategies are registered and no duplicate line types exist
+- Singleton bean conflicts: Ensure RestTemplate is properly configured as a singleton bean
+- Composite pattern failures: Check all leaf components are properly registered as Spring beans
 
 **Section sources**
 - [application.properties:37](file://backend/src/main/resources/application.properties#L37)
@@ -348,4 +513,4 @@ Common issues and resolutions:
 - [SecurityConfig.java:57-74](file://backend/src/main/java/com/cinema/booking/config/SecurityConfig.java#L57-L74)
 
 ## Conclusion
-This cinema booking system delivers a robust, scalable, and secure platform for customers, staff, and administrators. Its layered architecture, strong identity and access control, real-time seat locking, and comprehensive admin/POS tooling align with enterprise standards. The documented workflows and diagrams provide a clear blueprint for development, testing, and deployment.
+This cinema booking system delivers a robust, scalable, and secure platform for customers, staff, and administrators. Its layered architecture, strong identity and access control, real-time seat locking, and comprehensive admin/POS tooling align with enterprise standards. The implementation of Composite, Singleton, and Dynamic Pricing Engine patterns demonstrates advanced software engineering practices that ensure maintainability, performance, and extensibility. The documented workflows and diagrams provide a clear blueprint for development, testing, and deployment while showcasing modern design pattern applications in a production environment.

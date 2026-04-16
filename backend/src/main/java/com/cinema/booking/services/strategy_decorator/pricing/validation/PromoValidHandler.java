@@ -9,15 +9,15 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 
 /**
- * Validate promotion nếu promoCode được cung cấp:
+ * Validate promotion nếu promoCode được cung cấp (fail-fast — ném RuntimeException nếu không hợp lệ):
  * <ul>
- *   <li>Promo phải tồn tại trong DB</li>
- *   <li>Chưa hết hạn ({@code validTo} null hoặc sau thời điểm hiện tại)</li>
- *   <li>Còn số lượng ({@code quantity} null hoặc > 0)</li>
+ *   <li>Promo phải tồn tại trong DB — ném RuntimeException nếu không tìm thấy</li>
+ *   <li>Chưa hết hạn ({@code validTo} null hoặc sau thời điểm hiện tại) — ném RuntimeException nếu đã hết hạn</li>
+ *   <li>Còn lượt sử dụng (resolved qua {@link PromotionInventoryService}) — ném RuntimeException nếu hết lượt</li>
  * </ul>
  *
- * <p>Nếu không có promoCode hoặc promo hợp lệ, {@link PricingValidationContext#promotion} = null.
- * Không ném exception khi promoCode không hợp lệ — chỉ bỏ qua (graceful degradation).
+ * <p>Nếu không có promoCode trong request, handler bỏ qua validation và delegate sang handler tiếp theo.
+ * Nếu promo hợp lệ, {@link PricingValidationContext#promotion} được set với promotion đã resolve.
  */
 @Component
 @RequiredArgsConstructor

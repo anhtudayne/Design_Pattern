@@ -1,0 +1,99 @@
+package com.cinema.booking.services.strategy_decorator.pricing.proxy;
+
+import com.cinema.booking.dtos.PriceBreakdownDTO;
+import com.cinema.booking.services.strategy_decorator.pricing.core.PricingContext;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Primary;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Component;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
+/**
+ * Proxy Pattern — wraps PricingEngine để thêm Redis caching.
+ *
+ * <p>Đánh dấu {@code @Primary} để Spring inject proxy này vào mọi caller
+ * (BookingServiceImpl) mà không cần thay đổi caller code (ngoài việc inject interface).
+ *
+ * <p>Cache key: {@code pricing:{showtimeId}:{seats}:{fnb}:{promo}:{customer}}
+ * (ghế và F&amp;B sorted để tránh collision).
+ * TTL: {@code cinema.app.redisTtlSeconds} (mặc định 600s).
+ *
+ * <p>Không cần invalidate thủ công vì pricing là read-only snapshot tại thời điểm tính.
+ */
+@Primary
+@Component("cachingPricingEngineProxy")
+public class CachingPricingEngineProxy implements IPricingEngine {
+
+    private static final String KEY_PREFIX = "pricing:";
+
+    private final IPricingEngine delegate;
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final long ttlSeconds;
+
+    public CachingPricingEngineProxy(
+            @Qualifier("pricingEngine") IPricingEngine delegate,
+            RedisTemplate<String, Object> redisTemplate,
+            @Value("${cinema.app.redisTtlSeconds:600}") long ttlSeconds) {
+        this.delegate = delegate;
+        this.redisTemplate = redisTemplate;
+        this.ttlSeconds = ttlSeconds;
+    }
+
+    @Override
+    public PriceBreakdownDTO calculateTotalPrice(PricingContext context) {
+        String cacheKey = buildCacheKey(context);
+
+        Object cached = redisTemplate.opsForValue().get(cacheKey);
+        if (cached instanceof PriceBreakdownDTO dto) {
+            return dto;
+        }
+
+        PriceBreakdownDTO result = delegate.calculateTotalPrice(context);
+        redisTemplate.opsForValue().set(cacheKey, result, ttlSeconds, TimeUnit.SECONDS);
+        return result;
+    }
+
+    /**
+     * Cache key: showtime + ghế (sorted seatId) + F&amp;B (sorted itemId:qty) + promo + customer.
+     * Customer null → "anon".
+     */
+    private String buildCacheKey(PricingContext context) {
+        Integer showtimeId = context.getShowtime() != null ? context.getShowtime().getShowtimeId() : 0;
+
+        String seatPart = "seats:none";
+        if (context.getSeats() != null && !context.getSeats().isEmpty()) {
+            List<Integer> sortedIds = context.getSeats().stream()
+                    .map(s -> s.getSeatId())
+                    .sorted()
+                    .collect(Collectors.toList());
+            seatPart = "seats:" + sortedIds.stream()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(","));
+        }
+
+        String promoPart = (context.getPromotion() != null && context.getPromotion().getCode() != null)
+                ? "promo:" + context.getPromotion().getCode()
+                : "promo:none";
+
+        String customerPart = (context.getCustomer() != null && context.getCustomer().getUserId() != null)
+                ? "cust:" + context.getCustomer().getUserId()
+                : "cust:anon";
+
+        String fnbPart = "fnb:none";
+        if (context.getResolvedFnbs() != null && !context.getResolvedFnbs().isEmpty()) {
+            List<PricingContext.ResolvedFnbItem> sorted = context.getResolvedFnbs().stream()
+                    .sorted(Comparator.comparing(PricingContext.ResolvedFnbItem::itemId))
+                    .collect(Collectors.toList());
+            fnbPart = "fnb:" + sorted.stream()
+                    .map(i -> i.itemId() + ":" + i.quantity())
+                    .collect(Collectors.joining(","));
+        }
+
+        return KEY_PREFIX + showtimeId + ":" + seatPart + ":" + fnbPart + ":" + promoPart + ":" + customerPart;
+    }
+}

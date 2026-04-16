@@ -2,8 +2,6 @@ package com.cinema.booking.services.impl;
 
 import com.cinema.booking.entities.Booking;
 import com.cinema.booking.entities.Ticket;
-import com.cinema.booking.patterns.prototype.TicketEmailPrototype;
-import com.cinema.booking.patterns.prototype.WelcomeEmailPrototype;
 import com.cinema.booking.repositories.BookingRepository;
 import com.cinema.booking.repositories.TicketRepository;
 import com.cinema.booking.services.EmailService;
@@ -29,12 +27,7 @@ public class EmailServiceImpl implements EmailService {
     @Autowired
     private TicketRepository ticketRepository;
 
-    // Prototype singletons — Spring manages their lifecycle
-    @Autowired
-    private TicketEmailPrototype ticketEmailPrototype;
-
-    @Autowired
-    private WelcomeEmailPrototype welcomeEmailPrototype;
+    // Prototype pattern removed - using inline templates now
 
     @Override
     @Transactional(readOnly = true)
@@ -61,15 +54,20 @@ public class EmailServiceImpl implements EmailService {
                 .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Prototype — copy() → populate → toMessage()
-        SimpleMailMessage message = ((TicketEmailPrototype) ticketEmailPrototype.copy())
-                .to(email)
-                .bookingId(bookingId)
-                .customerName(booking.getCustomer().getFullname())
-                .movieTitle(movieTitle)
-                .showtime(showtimeStr)
-                .totalAmount(total)
-                .toMessage();
+        // Build email message inline (prototype pattern removed)
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(email);
+        message.setSubject("Vé xem phim StarCine của bạn #" + bookingId);
+        message.setText(
+            "Chào " + booking.getCustomer().getFullname() + ",\n\n" +
+            "Cảm ơn bạn đã đặt vé tại StarCine.\n" +
+            "Mã số đặt vé: " + bookingId + "\n" +
+            "Phim: " + movieTitle + "\n" +
+            "Suất chiếu: " + showtimeStr + "\n" +
+            "Tổng tiền: " + total + " VNĐ\n\n" +
+            "Dùng mã booking để nhận vé tại quầy.\n\n" +
+            "Trân trọng,\nStarCine Team"
+        );
 
         try {
             mailSender.send(message);
@@ -81,11 +79,16 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     public void sendWelcomeEmail(String email, String fullname) {
-        // Prototype — copy() → populate → toMessage()
-        SimpleMailMessage message = ((WelcomeEmailPrototype) welcomeEmailPrototype.copy())
-                .to(email)
-                .fullname(fullname)
-                .toMessage();
+        // Build email message inline (prototype pattern removed)
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(email);
+        message.setSubject("Chào mừng bạn đến với StarCine!");
+        message.setText(
+            "Chào " + fullname + ",\n\n" +
+            "Cảm ơn bạn đã đăng ký tài khoản tại StarCine.\n" +
+            "Chúc bạn có những trải nghiệm xem phim tuyệt vời!\n\n" +
+            "Trân trọng,\nStarCine Team"
+        );
 
         try {
             mailSender.send(message);

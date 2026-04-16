@@ -12,8 +12,8 @@ import com.cinema.booking.services.BookingService;
 import com.cinema.booking.services.FnbItemInventoryService;
 import com.cinema.booking.services.PromotionInventoryService;
 import com.cinema.booking.services.seatlock.SeatLockProvider;
-import com.cinema.booking.services.strategy_decorator.pricing.IPricingEngine;
-import com.cinema.booking.services.strategy_decorator.pricing.PricingContextBuilder;
+import com.cinema.booking.services.strategy_decorator.pricing.builder.PricingContextBuilder;
+import com.cinema.booking.services.strategy_decorator.pricing.proxy.IPricingEngine;
 import com.cinema.booking.services.strategy_decorator.pricing.validation.PricingValidationContext;
 import com.cinema.booking.services.strategy_decorator.pricing.validation.PricingValidationHandler;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -138,13 +138,6 @@ public class BookingServiceImpl implements BookingService {
 
         pricingValidationChain.validate(validationCtx);
 
-        // Promotion availability is now managed by promotion_inventory.
-        if (request.getPromoCode() != null && !request.getPromoCode().isBlank()) {
-            validationCtx.setPromotion(
-                    promotionInventoryService.resolvePromotionForPricing(request.getPromoCode())
-            );
-        }
-
         return pricingEngine.calculateTotalPrice(pricingContextBuilder.build(validationCtx, request));
     }
 
@@ -159,9 +152,14 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public List<BookingDTO> searchBookings(String query) {
-        return bookingRepository.findAll(
-                com.cinema.booking.patterns.specification.BookingSpecificationBuilder.searchBookings(query)
-        ).stream().map(this::mapToDTO).collect(Collectors.toList());
+        // TODO: Re-implement with custom repository query
+        // Specification pattern (BookingSpecificationBuilder) has been removed
+        return bookingRepository.findAll().stream()
+                .filter(b -> query == null || query.isEmpty() 
+                        || b.getBookingCode().toLowerCase().contains(query.toLowerCase())
+                        || (b.getCustomer() != null && b.getCustomer().getFullname().toLowerCase().contains(query.toLowerCase())))
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
     }
 
     @Override

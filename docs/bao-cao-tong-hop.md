@@ -33,13 +33,8 @@ backend/src/main/java/com/cinema/booking/
 ├── entities/           Domain model (JPA entities)
 ├── dtos/               Data Transfer Objects
 ├── config/             Spring configuration
-└── patterns/           Design Pattern implementations (patterns 01–07)
-    ├── chainofresponsibility/   Pattern 01
-    ├── mediator/                Pattern 02
-    ├── proxy/                   Pattern 03 (CachingMovieServiceProxy)
-    ├── specification/           Pattern 04 (BookingSpecificationBuilder)
+└── patterns/           Remaining Design Pattern implementations
     ├── composite/               Pattern 05
-    ├── prototype/               Pattern 07
     └── state/                   Pattern: State (BookingContext, BookingState, ...)
 ```
 
@@ -60,14 +55,9 @@ backend/src/main/java/com/cinema/booking/
 
 | # | Pattern | Loại (GoF) | Bài toán giải quyết | Package |
 |---|---------|-----------|---------------------|---------|
-| 01 | **Chain of Responsibility** | Behavioral | Validate checkout request theo chuỗi rule | `patterns.chainofresponsibility` |
-| 02 | **Mediator** | Behavioral | Điều phối các tác vụ sau thanh toán thành công | `patterns.mediator` |
-| 03 | **Proxy** | Structural | Cache danh sách phim bằng Redis | `patterns.proxy` |
-| 04 | **Specification** | Behavioral | Lọc suất chiếu theo nhiều điều kiện linh hoạt | `patterns.specification` |
 | 05 | **Composite** | Structural | Tổng hợp số liệu dashboard từ nhiều nguồn | `patterns.composite` |
 | 06 | **Singleton** | Creational | Chia sẻ `RestTemplate` bean qua Spring IoC | `config` |
-| 07 | **Prototype** | Creational | Tạo email template theo từng loại giao tiếp | `patterns.prototype` |
-| 08 | **Dynamic Pricing Engine** | Tổng hợp 5 pattern | Tính giá vé: CoR validation + Proxy cache + Strategy + Decorator + Specification | `services.strategy_decorator.pricing` + `patterns.specification` |
+| 08 | **Dynamic Pricing Engine** | Tổng hợp nhiều pattern | Tính giá vé: Strategy + Decorator + Specification | `services.strategy_decorator.pricing` |
 
 ---
 
@@ -112,10 +102,11 @@ Thời gian chạy: ~1 giây (không cần DB/Redis)
 
 | File | Nội dung |
 |------|---------|
-| [`docs/bao-cao-pattern-1-7.md`](bao-cao-pattern-1-7.md) | Chi tiết 7 pattern (01-07): bài toán, thiết kế, code, test |
-| [`docs/bao-cao-dynamic-pricing.md`](bao-cao-dynamic-pricing.md) | Dynamic Pricing Engine (08): 5 pattern kết hợp, 9 test |
+| [`docs/bao-cao-dynamic-pricing.md`](bao-cao-dynamic-pricing.md) | Dynamic Pricing Engine (08): nhiều pattern kết hợp |
 | [`UML/08-dynamic-pricing-engine.md`](../UML/08-dynamic-pricing-engine.md) | UML Class Diagram đầy đủ (Mermaid) |
 | [`docs/patterns/08-dynamic-pricing-engine.md`](patterns/08-dynamic-pricing-engine.md) | Tài liệu kỹ thuật chi tiết |
+
+**Lưu ý:** Các pattern 01-04 và 07 đã được xóa khỏi dự án. Chỉ còn lại pattern 05 (Composite), 06 (Singleton), và 08 (Dynamic Pricing Engine).
 
 ---
 
@@ -123,15 +114,13 @@ Thời gian chạy: ~1 giây (không cần DB/Redis)
 
 ### 6.1 Dynamic Pricing Engine (tính năng nâng cao)
 
-Kết hợp **5 GoF design pattern** hoạt động thực sự trong production path:
+Kết hợp **nhiều GoF design pattern** hoạt động thực sự trong production path:
 
-- **Chain of Responsibility** (`ShowtimeFutureHandler → SeatsAvailableHandler → PromoValidHandler`): validate trước khi tính giá, populate data tái dùng
-- **Proxy** (`CachingPricingEngineProxy`): Redis cache transparent qua `@Primary` + `IPricingEngine` interface — TTL 600s
 - **Specification** (`PricingConditions`): 4 predicate điều kiện — tích hợp thực sự qua `TimeBasedPricingStrategy`
 - **Strategy** (`TicketPricingStrategy`, `FnbPricingStrategy`, `TimeBasedPricingStrategy`): tách biệt từng loại tính giá, không gọi DB trong engine
 - **Decorator** (`DiscountComponent` chain): `NoDiscount` → `PromotionDiscountDecorator` → `MemberDiscountDecorator` — validation ở đúng tầng CoR
 
-**Orchestrator thực tế:** `BookingServiceImpl → CoR chain → CachingPricingEngineProxy → PricingEngine`.
+**Orchestrator thực tế:** `BookingServiceImpl → PricingEngine`.
 
 **`PriceBreakdownDTO` 7 trường:** `ticketTotal`, `timeBasedSurcharge`, `fnbTotal`, `membershipDiscount`, `discountAmount`, `appliedStrategy`, `finalTotal`.
 
@@ -151,20 +140,13 @@ Test unit `PricingConditionsTest` (9 test) chạy trong **dưới 1 giây** mà 
 Design_Pattern/
 ├── docs/
 │   ├── bao-cao-tong-hop.md          ← File này (tổng quan)
-│   ├── bao-cao-pattern-1-7.md       ← Chi tiết 7 pattern cơ bản
 │   ├── bao-cao-dynamic-pricing.md   ← Chi tiết Dynamic Pricing Engine
 │   └── patterns/
-│       ├── 01-chain-of-responsibility.md
-│       ├── 02-mediator.md
-│       ├── ...
 │       └── 08-dynamic-pricing-engine.md
 ├── UML/
-│   ├── 01-chain-of-responsibility.md
-│   ├── ...
 │   └── 08-dynamic-pricing-engine.md
 ├── plans/
 │   ├── 00-patterns-conventions.md   ← Quy ước chung
-│   ├── 01 → 07 ...                 ← Plan cho từng pattern
 │   └── 08 → 13 ...                 ← Plan cho Dynamic Pricing (6 phase)
 └── backend/
     └── src/

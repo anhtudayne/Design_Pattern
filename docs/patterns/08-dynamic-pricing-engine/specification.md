@@ -1,7 +1,7 @@
 # Dynamic Pricing Engine — Specification
 
 > Tài liệu tổng quan: [../08-dynamic-pricing-engine.md](../08-dynamic-pricing-engine.md)  
-> Pattern chung trong repo: [../04-specification.md](../04-specification.md)
+> **Lưu ý:** Pattern Specification chung (showtime filtering) đã được xóa khỏi dự án. Đây là phiên bản Specification riêng cho pricing engine.
 
 ## Giới thiệu
 

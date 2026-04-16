@@ -6,8 +6,6 @@ import com.cinema.booking.dtos.CheckoutResult;
 import com.cinema.booking.dtos.MomoCallbackRequest;
 import com.cinema.booking.entities.Booking;
 import com.cinema.booking.entities.Payment;
-import com.cinema.booking.patterns.mediator.MomoCallbackContext;
-import com.cinema.booking.patterns.mediator.PostPaymentMediator;
 import com.cinema.booking.repositories.BookingRepository;
 import com.cinema.booking.services.CheckoutService;
 import com.cinema.booking.services.MomoService;
@@ -37,8 +35,9 @@ public class CheckoutServiceImpl implements CheckoutService {
     @Autowired
     private PaymentStrategyFactory paymentStrategyFactory;
 
-    @Autowired
-    private PostPaymentMediator postPaymentMediator;
+    // Mediator pattern removed - post-payment tasks need to be re-implemented
+    // @Autowired
+    // private PostPaymentMediator postPaymentMediator;
 
     @Override
     @Transactional
@@ -66,6 +65,20 @@ public class CheckoutServiceImpl implements CheckoutService {
     @Override
     @Transactional
     public void processMomoCallback(MomoCallbackRequest callback) throws Exception {
+        // TODO: Re-implement post-payment tasks without Mediator pattern
+        // The following tasks need to be handled:
+        // 1. Update Booking status to CONFIRMED
+        // 2. Update Customer totalSpending
+        // 3. Create Tickets for each seat
+        // 4. Update Payment status to COMPLETED
+        // 5. Send ticket email to customer
+        
+        throw new UnsupportedOperationException(
+            "Post-payment processing needs to be re-implemented after Mediator pattern removal. " +
+            "Please implement the 5 post-payment tasks directly in this method."
+        );
+        
+        /* Original code with Mediator pattern:
         if (!momoService.verifySignature(callback)) {
             throw new RuntimeException("Chữ ký MoMo không hợp lệ");
         }
@@ -127,6 +140,7 @@ public class CheckoutServiceImpl implements CheckoutService {
                     + " (resultCode=" + callback.getResultCode() + ")");
             postPaymentMediator.settleFailure(context);
         }
+        */
     }
 
     @Override

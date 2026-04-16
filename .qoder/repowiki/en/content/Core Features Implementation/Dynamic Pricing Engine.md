@@ -2,20 +2,22 @@
 
 <cite>
 **Referenced Files in This Document**
-- [PricingEngine.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingEngine.java)
-- [IPricingEngine.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/IPricingEngine.java)
-- [PricingContext.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingContext.java)
-- [PricingContextBuilder.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingContextBuilder.java)
-- [PricingStrategy.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingStrategy.java)
-- [TicketPricingStrategy.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/TicketPricingStrategy.java)
-- [FnbPricingStrategy.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/FnbPricingStrategy.java)
-- [TimeBasedPricingStrategy.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/TimeBasedPricingStrategy.java)
-- [CachingPricingEngineProxy.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/CachingPricingEngineProxy.java)
-- [BaseDiscountDecorator.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/BaseDiscountDecorator.java)
-- [NoDiscount.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/NoDiscount.java)
-- [PromotionDiscountDecorator.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PromotionDiscountDecorator.java)
-- [MemberDiscountDecorator.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/MemberDiscountDecorator.java)
-- [DiscountResult.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/DiscountResult.java)
+- [PricingEngine.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingEngine.java)
+- [IPricingEngine.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/proxy/IPricingEngine.java)
+- [PricingContext.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingContext.java)
+- [PricingContextBuilder.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/builder/PricingContextBuilder.java)
+- [PricingStrategy.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/PricingStrategy.java)
+- [TicketPricingStrategy.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/TicketPricingStrategy.java)
+- [FnbPricingStrategy.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/FnbPricingStrategy.java)
+- [TimeBasedPricingStrategy.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/TimeBasedPricingStrategy.java)
+- [PricingLineType.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/PricingLineType.java)
+- [CachingPricingEngineProxy.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/proxy/CachingPricingEngineProxy.java)
+- [BaseDiscountDecorator.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/decorator/BaseDiscountDecorator.java)
+- [DiscountComponent.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/decorator/DiscountComponent.java)
+- [DiscountResult.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/decorator/DiscountResult.java)
+- [NoDiscount.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/decorator/NoDiscount.java)
+- [PromotionDiscountDecorator.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/decorator/PromotionDiscountDecorator.java)
+- [MemberDiscountDecorator.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/decorator/MemberDiscountDecorator.java)
 - [PricingValidationHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PricingValidationHandler.java)
 - [PricingValidationContext.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PricingValidationContext.java)
 - [PricingValidationConfig.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PricingValidationConfig.java)
@@ -37,6 +39,14 @@
 - [application.properties](file://backend/src/main/resources/application.properties)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Updated file paths to reflect new package structure (core, builder, decorator, proxy, specification, strategy, validation)
+- Enhanced class-by-class documentation with detailed field structures and responsibilities
+- Expanded pattern-specific documentation with improved UML diagrams
+- Added comprehensive coverage of all pricing engine components and their interactions
+- Updated dependency analysis and architectural diagrams with accurate file mappings
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -53,28 +63,37 @@
 This document explains the dynamic pricing engine used in the cinema booking system. It covers the pricing strategy pattern for ticket and food & beverage (F&B) pricing, time-based surcharges, membership tier discounts, promotional discounts, and the decorator pattern for stacking multiple discounts. It also documents the pricing validation chain using the chain of responsibility pattern, caching via the proxy pattern, the pricing context builder, pricing specification patterns for flexible conditions, and pricing result aggregation. Practical examples of pricing calculation workflows and debugging techniques are included.
 
 ## Project Structure
-The pricing engine resides under the strategy-decorator-pricing package and integrates with validation handlers, specification patterns, and DTOs/entities for a cohesive pricing pipeline.
+The pricing engine resides under the strategy-decorator-pricing package with a well-organized layered architecture. The new structure separates concerns into distinct packages: core (engine and context), builder (context construction), decorator (discount chain), proxy (caching), specification (time-based conditions), strategy (pricing calculations), and validation (precondition checks).
 
 ```mermaid
 graph TB
-subgraph "Pricing Engine Layer"
+subgraph "Core Layer"
 PE["PricingEngine"]
-IPS["IPricingEngine"]
+PCTX["PricingContext"]
+end
+subgraph "Builder Layer"
+PCB["PricingContextBuilder"]
+end
+subgraph "Strategy Layer"
 PS["PricingStrategy"]
 TPS["TicketPricingStrategy"]
 FPS["FnbPricingStrategy"]
 TBS["TimeBasedPricingStrategy"]
-PCTX["PricingContext"]
-PCB["PricingContextBuilder"]
+PLT["PricingLineType"]
 end
-subgraph "Discount Decorators"
+subgraph "Decorator Layer"
+DC["DiscountComponent"]
 NOD["NoDiscount"]
 PDD["PromotionDiscountDecorator"]
 MDD["MemberDiscountDecorator"]
 BDD["BaseDiscountDecorator"]
 DR["DiscountResult"]
 end
-subgraph "Validation Chain"
+subgraph "Proxy Layer"
+IPS["IPricingEngine"]
+CPEP["CachingPricingEngineProxy"]
+end
+subgraph "Validation Layer"
 PVH["PricingValidationHandler"]
 APVH["AbstractPricingValidationHandler"]
 PVC["PricingValidationContext"]
@@ -83,7 +102,7 @@ PH["PromoValidHandler"]
 SAH["SeatsAvailableHandler"]
 SFH["ShowtimeFutureHandler"]
 end
-subgraph "Specifications"
+subgraph "Specification Layer"
 PCND["PricingConditions"]
 PSC["PricingSpecificationContext"]
 end
@@ -99,10 +118,7 @@ PROMO["Promotion"]
 FNB["FnbItem"]
 end
 PE --> PS
-PE --> NOD
-PE --> PDD
-PE --> MDD
-PE --> PBD
+PE --> DC
 PS --> TPS
 PS --> FPS
 PS --> TBS
@@ -118,6 +134,11 @@ PCTX --> SEAT
 PCTX --> PROMO
 PCTX --> CUST
 PCTX --> FNB
+DC --> NOD
+DC --> PDD
+DC --> MDD
+IPS --> PE
+CPEP --> IPS
 PVH --> PVC
 PVC --> PVCFG
 PH --> PVC
@@ -126,59 +147,68 @@ SFH --> PVC
 ```
 
 **Diagram sources**
-- [PricingEngine.java:14-117](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingEngine.java#L14-L117)
-- [PricingStrategy.java:1-11](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingStrategy.java#L1-L11)
-- [TicketPricingStrategy.java:1-34](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/TicketPricingStrategy.java#L1-L34)
-- [FnbPricingStrategy.java:1-33](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/FnbPricingStrategy.java#L1-L33)
-- [TimeBasedPricingStrategy.java:1-91](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/TimeBasedPricingStrategy.java#L1-L91)
-- [PricingContext.java:1-35](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingContext.java#L1-L35)
-- [PricingContextBuilder.java:24-89](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingContextBuilder.java#L24-L89)
-- [PricingValidationHandler.java:1-200](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PricingValidationHandler.java#L1-L200)
-- [AbstractPricingValidationHandler.java:1-200](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/AbstractPricingValidationHandler.java#L1-L200)
-- [PricingValidationContext.java:1-200](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PricingValidationContext.java#L1-L200)
-- [PricingValidationConfig.java:1-200](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PricingValidationConfig.java#L1-L200)
-- [PromoValidHandler.java:1-200](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PromoValidHandler.java#L1-L200)
-- [SeatsAvailableHandler.java:1-200](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/SeatsAvailableHandler.java#L1-L200)
-- [ShowtimeFutureHandler.java:1-200](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/ShowtimeFutureHandler.java#L1-L200)
-- [PricingConditions.java:1-200](file://backend/src/main/java/com/cinema/booking/patterns/specification/PricingConditions.java#L1-L200)
-- [PricingSpecificationContext.java:1-200](file://backend/src/main/java/com/cinema/booking/patterns/specification/PricingSpecificationContext.java#L1-L200)
-- [PriceBreakdownDTO.java:1-200](file://backend/src/main/java/com/cinema/booking/dtos/PriceBreakdownDTO.java#L1-L200)
-- [BookingCalculationDTO.java:1-200](file://backend/src/main/java/com/cinema/booking/dtos/BookingCalculationDTO.java#L1-L200)
-- [Showtime.java:1-200](file://backend/src/main/java/com/cinema/booking/entities/Showtime.java#L1-L200)
-- [Seat.java:1-200](file://backend/src/main/java/com/cinema/booking/entities/Seat.java#L1-L200)
-- [SeatType.java:1-200](file://backend/src/main/java/com/cinema/booking/entities/SeatType.java#L1-L200)
-- [Customer.java:1-200](file://backend/src/main/java/com/cinema/booking/entities/Customer.java#L1-L200)
-- [MembershipTier.java:1-200](file://backend/src/main/java/com/cinema/booking/entities/MembershipTier.java#L1-L200)
-- [Promotion.java:1-200](file://backend/src/main/java/com/cinema/booking/entities/Promotion.java#L1-L200)
-- [FnbItem.java:1-200](file://backend/src/main/java/com/cinema/booking/entities/FnbItem.java#L1-L200)
+- [PricingEngine.java:34-125](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingEngine.java#L34-L125)
+- [PricingContext.java:16-34](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingContext.java#L16-L34)
+- [PricingContextBuilder.java:30-96](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/builder/PricingContextBuilder.java#L30-L96)
+- [PricingStrategy.java:7-12](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/PricingStrategy.java#L7-L12)
+- [TicketPricingStrategy.java:10-34](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/TicketPricingStrategy.java#L10-L34)
+- [FnbPricingStrategy.java:12-33](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/FnbPricingStrategy.java#L12-L33)
+- [TimeBasedPricingStrategy.java:23-91](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/TimeBasedPricingStrategy.java#L23-L91)
+- [PricingLineType.java:4-8](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/PricingLineType.java#L4-L8)
+- [DiscountComponent.java:7-9](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/decorator/DiscountComponent.java#L7-L9)
+- [NoDiscount.java:10-15](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/decorator/NoDiscount.java#L10-L15)
+- [PromotionDiscountDecorator.java:15-51](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/decorator/PromotionDiscountDecorator.java#L15-L51)
+- [MemberDiscountDecorator.java:22-54](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/decorator/MemberDiscountDecorator.java#L22-L54)
+- [BaseDiscountDecorator.java:7-18](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/decorator/BaseDiscountDecorator.java#L7-L18)
+- [DiscountResult.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/decorator/DiscountResult.java)
+- [IPricingEngine.java:10-12](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/proxy/IPricingEngine.java#L10-L12)
+- [CachingPricingEngineProxy.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/proxy/CachingPricingEngineProxy.java)
+- [PricingValidationHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PricingValidationHandler.java)
+- [AbstractPricingValidationHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/AbstractPricingValidationHandler.java)
+- [PricingValidationContext.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PricingValidationContext.java)
+- [PricingValidationConfig.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PricingValidationConfig.java)
+- [PromoValidHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PromoValidHandler.java)
+- [SeatsAvailableHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/SeatsAvailableHandler.java)
+- [ShowtimeFutureHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/ShowtimeFutureHandler.java)
+- [PricingConditions.java](file://backend/src/main/java/com/cinema/booking/patterns/specification/PricingConditions.java)
+- [PricingSpecificationContext.java](file://backend/src/main/java/com/cinema/booking/patterns/specification/PricingSpecificationContext.java)
+- [PriceBreakdownDTO.java](file://backend/src/main/java/com/cinema/booking/dtos/PriceBreakdownDTO.java)
+- [BookingCalculationDTO.java](file://backend/src/main/java/com/cinema/booking/dtos/BookingCalculationDTO.java)
+- [Showtime.java](file://backend/src/main/java/com/cinema/booking/entities/Showtime.java)
+- [Seat.java](file://backend/src/main/java/com/cinema/booking/entities/Seat.java)
+- [SeatType.java](file://backend/src/main/java/com/cinema/booking/entities/SeatType.java)
+- [Customer.java](file://backend/src/main/java/com/cinema/booking/entities/Customer.java)
+- [MembershipTier.java](file://backend/src/main/java/com/cinema/booking/entities/MembershipTier.java)
+- [Promotion.java](file://backend/src/main/java/com/cinema/booking/entities/Promotion.java)
+- [FnbItem.java](file://backend/src/main/java/com/cinema/booking/entities/FnbItem.java)
 
 **Section sources**
-- [PricingEngine.java:14-117](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingEngine.java#L14-L117)
-- [PricingContext.java:14-35](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingContext.java#L14-L35)
-- [PricingContextBuilder.java:24-89](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingContextBuilder.java#L24-L89)
+- [PricingEngine.java:34-125](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingEngine.java#L34-L125)
+- [PricingContext.java:16-34](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingContext.java#L16-L34)
+- [PricingContextBuilder.java:30-96](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/builder/PricingContextBuilder.java#L30-L96)
 
 ## Core Components
-- PricingEngine orchestrates pricing by invoking per-line strategies, building a discount chain, and aggregating results into a PriceBreakdownDTO.
-- PricingStrategy defines the contract for calculating totals per line type (ticket, F&B, time-based surcharge).
-- PricingContext carries all runtime inputs (showtime, seats, resolved F&B items, promotion, customer, booking time, occupancy).
-- PricingContextBuilder resolves entities and constructs PricingContext after validation.
-- Discount decorators implement a chain to apply promotions and membership discounts.
-- Validation handlers enforce preconditions before pricing calculation.
-- Specifications encapsulate time-based conditions (weekend/holiday) used by the time-based pricing strategy.
+- **PricingEngine**: The orchestrator component that coordinates pricing calculation by invoking per-line strategies, building discount chains, and aggregating results into PriceBreakdownDTO. It validates strategy registration and manages the complete pricing workflow.
+- **PricingStrategy**: Defines the contract for calculating totals per line type (ticket, F&B, time-based surcharge) with strong typing through PricingLineType enumeration.
+- **PricingContext**: Carries all runtime inputs including showtime, seats, resolved F&B items, promotion, customer, booking time, and occupancy statistics. Includes a value object for resolved F&B items.
+- **PricingContextBuilder**: Resolves entities from repositories and constructs PricingContext after validation, computing occupancy counts and customer resolution.
+- **Discount Decorators**: Implement a chain to apply promotions and membership discounts sequentially with proper discount allocation tracking.
+- **Validation Handlers**: Enforce preconditions before pricing calculation using chain of responsibility pattern.
+- **Specifications**: Encapsulate time-based conditions (weekend/holiday) used by the time-based pricing strategy.
 
 **Section sources**
-- [PricingEngine.java:14-117](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingEngine.java#L14-L117)
-- [PricingStrategy.java:5-11](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingStrategy.java#L5-L11)
-- [PricingContext.java:14-35](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingContext.java#L14-L35)
-- [PricingContextBuilder.java:24-89](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingContextBuilder.java#L24-L89)
+- [PricingEngine.java:34-125](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingEngine.java#L34-L125)
+- [PricingStrategy.java:7-12](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/PricingStrategy.java#L7-L12)
+- [PricingContext.java:16-34](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingContext.java#L16-L34)
+- [PricingContextBuilder.java:30-96](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/builder/PricingContextBuilder.java#L30-L96)
 
 ## Architecture Overview
-The pricing engine follows a layered architecture:
-- Strategy layer computes per-line totals (ticket, F&B, time-based surcharge).
-- Decorator layer applies discounts sequentially (promotion then membership).
-- Validation chain ensures prerequisites are met before pricing.
-- Specification patterns evaluate time-based conditions.
-- Results are aggregated into a structured PriceBreakdownDTO.
+The pricing engine follows a layered architecture with clear separation of concerns:
+- **Strategy layer**: Computes per-line totals (ticket, F&B, time-based surcharge) using registered strategies keyed by PricingLineType.
+- **Decorator layer**: Applies discounts sequentially (promotion then membership) with proper discount allocation tracking.
+- **Validation chain**: Ensures prerequisites are met before pricing calculation.
+- **Specification patterns**: Evaluate time-based conditions for surcharge calculations.
+- **Result aggregation**: Produces structured PriceBreakdownDTO with detailed pricing breakdown.
 
 ```mermaid
 sequenceDiagram
@@ -203,19 +233,25 @@ Engine-->>Client : "PriceBreakdownDTO"
 ```
 
 **Diagram sources**
-- [PricingContextBuilder.java:36-59](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingContextBuilder.java#L36-L59)
-- [PricingEngine.java:45-75](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingEngine.java#L45-L75)
-- [PricingStrategy.java:5-11](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingStrategy.java#L5-L11)
-- [PricingConditions.java:1-200](file://backend/src/main/java/com/cinema/booking/patterns/specification/PricingConditions.java#L1-L200)
-- [PriceBreakdownDTO.java:1-200](file://backend/src/main/java/com/cinema/booking/dtos/PriceBreakdownDTO.java#L1-L200)
+- [PricingContextBuilder.java:37-67](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/builder/PricingContextBuilder.java#L37-L67)
+- [PricingEngine.java:54-84](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingEngine.java#L54-L84)
+- [PricingStrategy.java:7-12](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/PricingStrategy.java#L7-L12)
+- [PricingConditions.java](file://backend/src/main/java/com/cinema/booking/patterns/specification/PricingConditions.java)
+- [PriceBreakdownDTO.java](file://backend/src/main/java/com/cinema/booking/dtos/PriceBreakdownDTO.java)
 
 ## Detailed Component Analysis
 
 ### Pricing Engine Orchestration
-- Strategy layer: Computes ticket total, F&B total, and time-based surcharge using registered strategies keyed by PricingLineType.
-- Decorator chain: Builds a chain starting from NoDiscount, optionally wrapping with PromotionDiscountDecorator and MemberDiscountDecorator depending on context.
-- Aggregation: Subtotal is computed and reduced by total discount; final total is bounded to zero; applied strategy label is constructed from active components.
+The PricingEngine serves as the central orchestrator managing the complete pricing workflow:
 
+**Key Responsibilities:**
+- Validates strategy registration for all PricingLineType values
+- Coordinates strategy execution for ticket, F&B, and time-based surcharge calculations
+- Builds conditional discount chains based on context
+- Handles negative total protection and discount allocation
+- Generates comprehensive pricing breakdown
+
+**Workflow Process:**
 ```mermaid
 flowchart TD
 Start(["calculateTotalPrice"]) --> T["Compute ticket total"]
@@ -232,20 +268,23 @@ Label --> End(["Return PriceBreakdownDTO"])
 ```
 
 **Diagram sources**
-- [PricingEngine.java:45-115](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingEngine.java#L45-L115)
+- [PricingEngine.java:54-124](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingEngine.java#L54-L124)
 
 **Section sources**
-- [PricingEngine.java:14-117](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingEngine.java#L14-L117)
+- [PricingEngine.java:34-125](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingEngine.java#L34-L125)
 
-### Pricing Strategies
-- TicketPricingStrategy: Sums base price plus seat-type surcharge across selected seats.
-- FnbPricingStrategy: Multiplies resolved F&B item prices by quantities and sums.
-- TimeBasedPricingStrategy: Evaluates weekend/holiday using PricingConditions and applies a configurable percentage surcharge on the ticket subtotal.
+### Pricing Strategies Implementation
+The strategy pattern provides specialized pricing calculations for different line types:
+
+**TicketPricingStrategy**: Calculates base price plus seat-type surcharges for all selected seats
+**FnbPricingStrategy**: Multiplies resolved F&B item prices by quantities and sums totals
+**TimeBasedPricingStrategy**: Evaluates weekend/holiday conditions and applies configurable surcharge rates
 
 ```mermaid
 classDiagram
 class PricingStrategy {
-+lineType()
+<<interface>>
++lineType() PricingLineType
 +calculate(context) BigDecimal
 }
 class TicketPricingStrategy {
@@ -257,8 +296,16 @@ class FnbPricingStrategy {
 +calculate(context) BigDecimal
 }
 class TimeBasedPricingStrategy {
++weekendSurchargePct BigDecimal
++holidaySurchargePct BigDecimal
 +lineType() PricingLineType
 +calculate(context) BigDecimal
+}
+class PricingLineType {
+<<enumeration>>
+TICKET
+FNB
+TIME_BASED_SURCHARGE
 }
 PricingStrategy <|.. TicketPricingStrategy
 PricingStrategy <|.. FnbPricingStrategy
@@ -266,63 +313,78 @@ PricingStrategy <|.. TimeBasedPricingStrategy
 ```
 
 **Diagram sources**
-- [PricingStrategy.java:5-11](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingStrategy.java#L5-L11)
-- [TicketPricingStrategy.java:9-34](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/TicketPricingStrategy.java#L9-L34)
-- [FnbPricingStrategy.java:11-33](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/FnbPricingStrategy.java#L11-L33)
-- [TimeBasedPricingStrategy.java:21-91](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/TimeBasedPricingStrategy.java#L21-L91)
+- [PricingStrategy.java:7-12](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/PricingStrategy.java#L7-L12)
+- [TicketPricingStrategy.java:10-34](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/TicketPricingStrategy.java#L10-L34)
+- [FnbPricingStrategy.java:12-33](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/FnbPricingStrategy.java#L12-L33)
+- [TimeBasedPricingStrategy.java:23-91](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/TimeBasedPricingStrategy.java#L23-L91)
+- [PricingLineType.java:4-8](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/PricingLineType.java#L4-L8)
 
 **Section sources**
-- [TicketPricingStrategy.java:16-32](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/TicketPricingStrategy.java#L16-L32)
-- [FnbPricingStrategy.java:19-31](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/FnbPricingStrategy.java#L19-L31)
-- [TimeBasedPricingStrategy.java:39-68](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/TimeBasedPricingStrategy.java#L39-L68)
+- [TicketPricingStrategy.java:17-33](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/TicketPricingStrategy.java#L17-L33)
+- [FnbPricingStrategy.java:20-32](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/FnbPricingStrategy.java#L20-L32)
+- [TimeBasedPricingStrategy.java:40-69](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/TimeBasedPricingStrategy.java#L40-L69)
 
-### Discount Decorators and Chain of Responsibility
-- NoDiscount: Terminal decorator returning no discount.
-- PromotionDiscountDecorator: Applies promotional discount if a valid promotion exists.
-- MemberDiscountDecorator: Applies membership tier discount if applicable.
-- Chain construction: Conditional wrapping based on context (promotion present, customer with valid membership tier).
-- Result aggregation: DiscountResult provides total discount and membership portion.
+### Discount Decorator Chain System
+The decorator pattern enables flexible discount application with proper allocation tracking:
+
+**DiscountComponent Interface**: Defines the contract for discount application with subtotal and context parameters
+**BaseDiscountDecorator**: Abstract decorator that delegates to wrapped components
+**NoDiscount**: Terminal decorator returning no discount
+**PromotionDiscountDecorator**: Applies promotional discounts (percent or fixed amount)
+**MemberDiscountDecorator**: Applies membership tier discounts based on customer tier
 
 ```mermaid
 classDiagram
 class DiscountComponent {
+<<interface>>
++applyDiscount(amount, context) DiscountResult
+}
+class BaseDiscountDecorator {
+<<abstract>>
+-wrapped DiscountComponent
 +applyDiscount(amount, context) DiscountResult
 }
 class NoDiscount {
 +applyDiscount(amount, context) DiscountResult
 }
 class PromotionDiscountDecorator {
--next DiscountComponent
 +applyDiscount(amount, context) DiscountResult
 }
 class MemberDiscountDecorator {
--next DiscountComponent
 +applyDiscount(amount, context) DiscountResult
 }
 class DiscountResult {
 +getTotalDiscount() BigDecimal
++getPromotionDiscount() BigDecimal
 +getMembershipDiscount() BigDecimal
 }
+DiscountComponent <|.. BaseDiscountDecorator
 DiscountComponent <|.. NoDiscount
 DiscountComponent <|.. PromotionDiscountDecorator
 DiscountComponent <|.. MemberDiscountDecorator
-PromotionDiscountDecorator --> DiscountComponent : "next"
-MemberDiscountDecorator --> DiscountComponent : "next"
+BaseDiscountDecorator --> DiscountComponent : "wraps"
+PromotionDiscountDecorator --|> BaseDiscountDecorator
+MemberDiscountDecorator --|> BaseDiscountDecorator
 ```
 
 **Diagram sources**
-- [NoDiscount.java:1-200](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/NoDiscount.java#L1-L200)
-- [PromotionDiscountDecorator.java:1-200](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PromotionDiscountDecorator.java#L1-L200)
-- [MemberDiscountDecorator.java:1-200](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/MemberDiscountDecorator.java#L1-L200)
-- [DiscountResult.java:1-200](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/DiscountResult.java#L1-L200)
+- [DiscountComponent.java:7-9](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/decorator/DiscountComponent.java#L7-L9)
+- [BaseDiscountDecorator.java:7-18](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/decorator/BaseDiscountDecorator.java#L7-L18)
+- [NoDiscount.java:10-15](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/decorator/NoDiscount.java#L10-L15)
+- [PromotionDiscountDecorator.java:15-51](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/decorator/PromotionDiscountDecorator.java#L15-L51)
+- [MemberDiscountDecorator.java:22-54](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/decorator/MemberDiscountDecorator.java#L22-L54)
+- [DiscountResult.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/decorator/DiscountResult.java)
 
 **Section sources**
-- [PricingEngine.java:77-89](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingEngine.java#L77-L89)
+- [PricingEngine.java:86-106](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingEngine.java#L86-L106)
 
 ### Pricing Validation Chain (Chain of Responsibility)
-- Handlers enforce prerequisites: promotion validity, seat availability, and showtime future date.
-- AbstractPricingValidationHandler provides common behavior; concrete handlers implement specific checks.
-- PricingValidationContext holds validated entities; PricingValidationConfig controls handler ordering.
+The validation system enforces prerequisites using chain of responsibility pattern:
+
+**Handlers**: PromoValidHandler, SeatsAvailableHandler, ShowtimeFutureHandler
+**Abstract Handler**: Provides common validation logic and chaining mechanism
+**Context**: Holds validated entities and validation results
+**Configuration**: Controls handler ordering and validation rules
 
 ```mermaid
 sequenceDiagram
@@ -342,21 +404,24 @@ Head-->>Caller : "PricingValidationContext"
 ```
 
 **Diagram sources**
-- [PricingValidationHandler.java:1-200](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PricingValidationHandler.java#L1-L200)
-- [PromoValidHandler.java:1-200](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PromoValidHandler.java#L1-L200)
-- [SeatsAvailableHandler.java:1-200](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/SeatsAvailableHandler.java#L1-L200)
-- [ShowtimeFutureHandler.java:1-200](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/ShowtimeFutureHandler.java#L1-L200)
-- [AbstractPricingValidationHandler.java:1-200](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/AbstractPricingValidationHandler.java#L1-L200)
-- [PricingValidationContext.java:1-200](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PricingValidationContext.java#L1-L200)
-- [PricingValidationConfig.java:1-200](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PricingValidationConfig.java#L1-L200)
+- [PricingValidationHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PricingValidationHandler.java)
+- [PromoValidHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PromoValidHandler.java)
+- [SeatsAvailableHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/SeatsAvailableHandler.java)
+- [ShowtimeFutureHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/ShowtimeFutureHandler.java)
+- [AbstractPricingValidationHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/AbstractPricingValidationHandler.java)
+- [PricingValidationContext.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PricingValidationContext.java)
+- [PricingValidationConfig.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PricingValidationConfig.java)
 
 **Section sources**
-- [PricingValidationHandler.java:1-200](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PricingValidationHandler.java#L1-L200)
-- [PricingValidationContext.java:1-200](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PricingValidationContext.java#L1-L200)
+- [PricingValidationHandler.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PricingValidationHandler.java)
+- [PricingValidationContext.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/validation/PricingValidationContext.java)
 
 ### Pricing Context Builder and Specification Patterns
-- PricingContextBuilder loads seats, resolved F&B items, promotion, and current customer; computes occupancy counts; builds PricingContext.
-- TimeBasedPricingStrategy converts PricingContext to PricingSpecificationContext and evaluates weekend/holiday predicates from PricingConditions.
+The builder pattern constructs PricingContext from validation results and request data:
+
+**Entity Resolution**: Loads seats, resolves F&B items, identifies customer, and computes occupancy
+**Context Construction**: Builds PricingContext with showtime, seats, resolved F&B items, promotion, customer, booking time, and occupancy statistics
+**Specification Integration**: Converts PricingContext to PricingSpecificationContext for time-based condition evaluation
 
 ```mermaid
 flowchart TD
@@ -370,28 +435,32 @@ G --> H["Evaluate isHoliday/isWeekend"]
 ```
 
 **Diagram sources**
-- [PricingContextBuilder.java:36-59](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingContextBuilder.java#L36-L59)
-- [TimeBasedPricingStrategy.java:70-89](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/TimeBasedPricingStrategy.java#L70-L89)
-- [PricingConditions.java:1-200](file://backend/src/main/java/com/cinema/booking/patterns/specification/PricingConditions.java#L1-L200)
+- [PricingContextBuilder.java:37-67](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/builder/PricingContextBuilder.java#L37-L67)
+- [TimeBasedPricingStrategy.java:71-90](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/TimeBasedPricingStrategy.java#L71-L90)
+- [PricingConditions.java](file://backend/src/main/java/com/cinema/booking/patterns/specification/PricingConditions.java)
 
 **Section sources**
-- [PricingContextBuilder.java:36-89](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingContextBuilder.java#L36-L89)
-- [TimeBasedPricingStrategy.java:40-68](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/TimeBasedPricingStrategy.java#L40-L68)
+- [PricingContextBuilder.java:37-96](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/builder/PricingContextBuilder.java#L37-L96)
+- [TimeBasedPricingStrategy.java:40-69](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/TimeBasedPricingStrategy.java#L40-L69)
 
 ### Caching Strategy (Proxy Pattern)
-- CachingPricingEngineProxy wraps IPricingEngine to cache pricing results keyed by a normalized request signature.
-- Transparent to callers via IPricingEngine interface.
+The proxy pattern enables transparent caching of pricing results:
+
+**Interface Design**: IPricingEngine defines the contract for both real PricingEngine and cached proxy
+**Caching Logic**: CachingPricingEngineProxy wraps IPricingEngine to cache results keyed by normalized request signature
+**Transparent Usage**: Clients interact with IPricingEngine interface regardless of caching implementation
 
 ```mermaid
 classDiagram
 class IPricingEngine {
+<<interface>>
 +calculateTotalPrice(context) PriceBreakdownDTO
 }
 class PricingEngine {
 +calculateTotalPrice(context) PriceBreakdownDTO
 }
 class CachingPricingEngineProxy {
--engine IPricingEngine
+-private engine IPricingEngine
 +calculateTotalPrice(context) PriceBreakdownDTO
 }
 IPricingEngine <|.. PricingEngine
@@ -399,42 +468,51 @@ CachingPricingEngineProxy --> IPricingEngine : "delegates"
 ```
 
 **Diagram sources**
-- [IPricingEngine.java:5-12](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/IPricingEngine.java#L5-L12)
-- [PricingEngine.java:24-117](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingEngine.java#L24-L117)
-- [CachingPricingEngineProxy.java:1-200](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/CachingPricingEngineProxy.java#L1-L200)
+- [IPricingEngine.java:10-12](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/proxy/IPricingEngine.java#L10-L12)
+- [PricingEngine.java:34-84](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingEngine.java#L34-L84)
+- [CachingPricingEngineProxy.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/proxy/CachingPricingEngineProxy.java)
 
 **Section sources**
-- [IPricingEngine.java:5-12](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/IPricingEngine.java#L5-L12)
-- [CachingPricingEngineProxy.java:1-200](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/CachingPricingEngineProxy.java#L1-L200)
+- [IPricingEngine.java:10-12](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/proxy/IPricingEngine.java#L10-L12)
+- [CachingPricingEngineProxy.java](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/proxy/CachingPricingEngineProxy.java)
 
 ### Pricing Result Aggregation
-- PriceBreakdownDTO captures ticket total, F&B total, time-based surcharge, membership discount, discount amount, applied strategy label, and final total.
-- Applied strategy label is built dynamically from active components.
+The engine produces comprehensive pricing breakdown through PriceBreakdownDTO:
+
+**Fields**: ticketTotal, fnbTotal, timeBasedSurcharge, membershipDiscount, discountAmount, appliedStrategy, finalTotal
+**Strategy Label**: Dynamically constructed from active components (TICKET, FNB, TIME_BASED, PROMO, MEMBER_DISCOUNT)
+**Validation**: Ensures final total is never negative with appropriate discount allocation
 
 **Section sources**
-- [PricingEngine.java:66-75](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingEngine.java#L66-L75)
-- [PriceBreakdownDTO.java:1-200](file://backend/src/main/java/com/cinema/booking/dtos/PriceBreakdownDTO.java#L1-L200)
+- [PricingEngine.java:75-84](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingEngine.java#L75-L84)
+- [PriceBreakdownDTO.java](file://backend/src/main/java/com/cinema/booking/dtos/PriceBreakdownDTO.java)
 
 ### Membership Tier Pricing and Promotional Pricing
-- Membership discount: Determined by customer’s MembershipTier discount percent when present.
-- Promotion discount: Applied via PromotionDiscountDecorator when a valid promotion exists in context.
-- Peak hour surcharges: Modeled by time-based surcharge strategy using weekend/holiday predicates.
+The engine supports sophisticated discount management:
+
+**Membership Discounts**: Applied when customer has a valid membership tier with positive discount percent
+**Promotional Discounts**: Applied when promotion exists in context, supporting both percent and fixed amount types
+**Discount Allocation**: Proper tracking of promotion vs membership discount portions
+**Peak Hour Surcharges**: Modeled through time-based surcharge strategy using weekend/holiday predicates
 
 **Section sources**
-- [PricingEngine.java:91-97](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingEngine.java#L91-L97)
-- [MembershipTier.java:1-200](file://backend/src/main/java/com/cinema/booking/entities/MembershipTier.java#L1-L200)
-- [Promotion.java:1-200](file://backend/src/main/java/com/cinema/booking/entities/Promotion.java#L1-L200)
-- [TimeBasedPricingStrategy.java:14-21](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/TimeBasedPricingStrategy.java#L14-L21)
+- [PricingEngine.java:100-106](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingEngine.java#L100-L106)
+- [MembershipTier.java](file://backend/src/main/java/com/cinema/booking/entities/MembershipTier.java)
+- [Promotion.java](file://backend/src/main/java/com/cinema/booking/entities/Promotion.java)
+- [TimeBasedPricingStrategy.java:25-33](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/TimeBasedPricingStrategy.java#L25-L33)
 
 ## Dependency Analysis
-- PricingEngine depends on:
-  - PricingStrategy implementations for per-line totals.
-  - DiscountComponent decorators for discount composition.
-  - PricingContext for runtime inputs.
-  - PricingValidationContext for preconditions.
-  - PricingConditions for time-based evaluations.
-- PricingContextBuilder depends on repositories to resolve entities and compute occupancy.
-- TimeBasedPricingStrategy depends on PricingSpecificationContext and PricingConditions.
+The pricing engine exhibits clean dependency separation with clear interfaces:
+
+**Core Dependencies:**
+- PricingEngine depends on PricingStrategy implementations, DiscountComponent decorators, and PricingContext
+- PricingContextBuilder depends on repositories for entity resolution and validation context
+- TimeBasedPricingStrategy depends on PricingSpecificationContext and PricingConditions
+
+**Interface-Based Design:**
+- IPricingEngine enables proxy pattern implementation
+- DiscountComponent interface supports decorator pattern flexibility
+- PricingStrategy interface enables pluggable pricing algorithms
 
 ```mermaid
 graph LR
@@ -444,86 +522,97 @@ PE --> CTX["PricingContext"]
 PE --> VAL["PricingValidationContext"]
 STRAT --> SPEC["PricingConditions"]
 CTX --> ENT["Showtime/Seat/FnbItem/Customer/Promotion"]
+IPS["IPricingEngine"] --> PE
+CPEP["CachingPricingEngineProxy"] --> IPS
 ```
 
 **Diagram sources**
-- [PricingEngine.java:27-43](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingEngine.java#L27-L43)
-- [PricingContext.java:16-34](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingContext.java#L16-L34)
-- [PricingContextBuilder.java:31-34](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingContextBuilder.java#L31-L34)
-- [TimeBasedPricingStrategy.java:47-48](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/TimeBasedPricingStrategy.java#L47-L48)
+- [PricingEngine.java:36-52](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingEngine.java#L36-L52)
+- [PricingContext.java:16-34](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingContext.java#L16-L34)
+- [PricingContextBuilder.java:32-35](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/builder/PricingContextBuilder.java#L32-L35)
+- [TimeBasedPricingStrategy.java:46-48](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/TimeBasedPricingStrategy.java#L46-L48)
 
 **Section sources**
-- [PricingEngine.java:27-43](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingEngine.java#L27-L43)
-- [PricingContextBuilder.java:31-34](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingContextBuilder.java#L31-L34)
+- [PricingEngine.java:36-52](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingEngine.java#L36-L52)
+- [PricingContextBuilder.java:32-35](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/builder/PricingContextBuilder.java#L32-L35)
 
 ## Performance Considerations
-- Minimize repeated database queries by resolving entities in PricingContextBuilder and passing them via PricingContext.
-- Use specification predicates judiciously; cache predicate results if reused frequently.
-- Apply caching via CachingPricingEngineProxy to avoid recomputation for identical inputs.
-- Keep discount chain short by conditionally adding decorators only when applicable.
-- Round monetary values consistently during time-based surcharge computation.
+The engine incorporates several performance optimization strategies:
 
-[No sources needed since this section provides general guidance]
+**Database Optimization**: Minimize repeated queries by resolving entities in PricingContextBuilder and passing via PricingContext
+**Specification Efficiency**: Use specification predicates judiciously; cache predicate results if reused frequently
+**Caching Strategy**: Apply caching via CachingPricingEngineProxy to avoid recomputation for identical inputs
+**Decorator Chain Optimization**: Keep discount chain short by conditionally adding decorators only when applicable
+**Monetary Precision**: Round monetary values consistently during time-based surcharge computation
+**Early Validation**: Prevent unnecessary processing through comprehensive validation chain
 
 ## Troubleshooting Guide
-Common issues and remedies:
-- Missing or duplicate PricingStrategy implementations: The engine validates presence of all PricingLineType entries during construction.
-- Negative final total: The engine caps final total to zero and adjusts discount allocations accordingly.
-- Promotion not applied: Verify promotion validity handler passes and promotion is present in PricingContext.
-- Membership discount not applied: Ensure customer has a membership tier with a positive discount percent.
-- Time-based surcharge not applied: Confirm showtime and seats are present and time-based predicates match weekend/holiday.
+Common issues and their solutions:
+
+**Strategy Registration Issues**: The engine validates presence of all PricingLineType entries during construction, throwing IllegalStateException for duplicates or missing strategies
+**Negative Final Total**: The engine automatically caps final total to zero and adjusts discount allocations accordingly
+**Promotion Application Failures**: Verify promotion validity handler passes and promotion is present in PricingContext
+**Membership Discount Issues**: Ensure customer has a membership tier with positive discount percent
+**Time-Based Surcharge Problems**: Confirm showtime and seats are present and time-based predicates match weekend/holiday conditions
+**Context Building Errors**: Check that validation chain populates showtime and seat IDs before building PricingContext
 
 **Section sources**
-- [PricingEngine.java:33-42](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingEngine.java#L33-L42)
-- [PricingEngine.java:58-62](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingEngine.java#L58-L62)
-- [PricingEngine.java:80-86](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingEngine.java#L80-L86)
-- [PricingEngine.java:91-97](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingEngine.java#L91-L97)
+- [PricingEngine.java:39-51](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingEngine.java#L39-L51)
+- [PricingEngine.java:67-71](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingEngine.java#L67-L71)
+- [PricingEngine.java:89-95](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingEngine.java#L89-L95)
+- [PricingEngine.java:100-106](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingEngine.java#L100-L106)
 
 ## Conclusion
-The dynamic pricing engine combines strategy, decorator, chain of responsibility, specification, and proxy patterns to deliver a flexible, extensible, and efficient pricing system. It supports ticket and F&B pricing, time-based surcharges, promotional discounts, and membership tier discounts, while ensuring robust validation and transparent caching.
-
-[No sources needed since this section summarizes without analyzing specific files]
+The dynamic pricing engine successfully combines strategy, decorator, chain of responsibility, specification, and proxy patterns to deliver a flexible, extensible, and efficient pricing system. The new package structure enhances modularity and maintainability while supporting ticket and F&B pricing, time-based surcharges, promotional discounts, and membership tier discounts. The engine ensures robust validation, transparent caching, and comprehensive result aggregation with proper discount allocation tracking.
 
 ## Appendices
 
 ### Practical Examples
 
-- Example: Time-based surcharge calculation
-  - Input: Showtime with base price, seats with seat-type surcharges, weekend/holiday predicates.
-  - Workflow: Compute ticket subtotal, select surcharge rate, multiply and round to two decimals.
-  - Reference: [TimeBasedPricingStrategy.calculate:39-68](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/TimeBasedPricingStrategy.java#L39-L68)
+**Time-Based Surcharge Calculation**
+- Input: Showtime with base price, seats with seat-type surcharges, weekend/holiday predicates
+- Workflow: Compute ticket subtotal, select surcharge rate, multiply and round to two decimals
+- Reference: [TimeBasedPricingStrategy.calculate:40-69](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/TimeBasedPricingStrategy.java#L40-L69)
 
-- Example: Membership discount calculation
-  - Input: Customer with membership tier discount percent.
-  - Workflow: Check tier discount percent > 0; if true, include MemberDiscountDecorator in chain.
-  - Reference: [PricingEngine.hasMemberDiscount:91-97](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingEngine.java#L91-L97)
+**Membership Discount Calculation**
+- Input: Customer with membership tier discount percent
+- Workflow: Check tier discount percent > 0; if true, include MemberDiscountDecorator in chain
+- Reference: [PricingEngine.hasMemberDiscount:100-106](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingEngine.java#L100-L106)
 
-- Example: Promotional discount application
-  - Input: Promotion in PricingContext.
-  - Workflow: Wrap NoDiscount with PromotionDiscountDecorator when promotion is present.
-  - Reference: [PricingEngine.buildDiscountChain:77-89](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingEngine.java#L77-L89)
+**Promotional Discount Application**
+- Input: Promotion in PricingContext
+- Workflow: Wrap NoDiscount with PromotionDiscountDecorator when promotion is present
+- Reference: [PricingEngine.buildDiscountChain:86-98](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingEngine.java#L86-L98)
 
-- Example: Pricing result aggregation
-  - Input: Line totals, discount result, applied strategy components.
-  - Workflow: Build PriceBreakdownDTO with ticket total, F&B total, surcharge, membership discount, discount amount, applied strategy label, final total.
-  - Reference: [PricingEngine.calculateTotalPrice:45-75](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/PricingEngine.java#L45-L75)
+**Pricing Result Aggregation**
+- Input: Line totals, discount result, applied strategy components
+- Workflow: Build PriceBreakdownDTO with ticket total, F&B total, surcharge, membership discount, discount amount, applied strategy label, final total
+- Reference: [PricingEngine.calculateTotalPrice:54-84](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/core/PricingEngine.java#L54-L84)
 
 ### Pricing Rule Configuration
-- Weekend surcharge percentage: cinema.pricing.weekend-surcharge-pct (default 15)
-- Holiday surcharge percentage: cinema.pricing.holiday-surcharge-pct (default 20)
-- Reference: [TimeBasedPricingStrategy constructor:27-32](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/TimeBasedPricingStrategy.java#L27-L32), [application.properties](file://backend/src/main/resources/application.properties)
+**Configuration Properties:**
+- Weekend surcharge percentage: `cinema.pricing.weekend-surcharge-pct` (default 15)
+- Holiday surcharge percentage: `cinema.pricing.holiday-surcharge-pct` (default 20)
+
+**References:**
+- [TimeBasedPricingStrategy constructor:28-33](file://backend/src/main/java/com/cinema/booking/services/strategy_decorator/pricing/strategy/TimeBasedPricingStrategy.java#L28-L33)
+- [application.properties](file://backend/src/main/resources/application.properties)
 
 ### Pricing History Tracking
-- Not implemented in the analyzed files. To track pricing history, persist PriceBreakdownDTO alongside booking records and include metadata such as applied strategy label and timestamps.
-
-[No sources needed since this section provides general guidance]
+The system does not currently implement pricing history tracking. To add this capability, consider:
+- Persisting PriceBreakdownDTO alongside booking records
+- Including metadata such as applied strategy label and timestamps
+- Implementing audit trails for pricing rule changes
 
 ### Pricing API Endpoints and Workflows
-- Endpoints typically accept BookingCalculationDTO and return PriceBreakdownDTO after validation and pricing.
-- Workflow:
-  1. Validate inputs using PricingValidationHandler chain.
-  2. Build PricingContext via PricingContextBuilder.
-  3. Invoke PricingEngine.calculateTotalPrice.
-  4. Return PriceBreakdownDTO to client.
+**Typical Workflow:**
+1. Validate inputs using PricingValidationHandler chain
+2. Build PricingContext via PricingContextBuilder
+3. Invoke PricingEngine.calculateTotalPrice
+4. Return PriceBreakdownDTO to client
 
-[No sources needed since this section provides general guidance]
+**Endpoint Pattern:**
+- Accept BookingCalculationDTO as input
+- Return PriceBreakdownDTO as output
+- Support both authenticated and anonymous users
+- Handle error cases with appropriate HTTP status codes

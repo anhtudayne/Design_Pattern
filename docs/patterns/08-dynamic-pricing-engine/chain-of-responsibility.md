@@ -1,7 +1,7 @@
 # Dynamic Pricing Engine — Chain of Responsibility
 
 > Tài liệu tổng quan: [../08-dynamic-pricing-engine.md](../08-dynamic-pricing-engine.md)  
-> Pattern chung trong repo (ví dụ checkout): [../01-chain-of-responsibility.md](../01-chain-of-responsibility.md)
+> **Lưu ý:** Pattern CoR chung (checkout validation) đã được xóa khỏi dự án. Đây là phiên bản CoR riêng cho pricing engine.
 
 ## Giới thiệu
 

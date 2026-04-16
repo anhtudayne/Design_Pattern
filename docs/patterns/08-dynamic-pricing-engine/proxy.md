@@ -1,7 +1,7 @@
 # Dynamic Pricing Engine — Proxy
 
 > Tài liệu tổng quan: [../08-dynamic-pricing-engine.md](../08-dynamic-pricing-engine.md)  
-> Pattern chung trong repo: [../03-proxy.md](../03-proxy.md)
+> **Lưu ý:** Pattern Proxy chung (movie caching) đã được xóa khỏi dự án. Đây là phiên bản Proxy riêng cho pricing engine với Redis cache.
 
 ## Giới thiệu
 

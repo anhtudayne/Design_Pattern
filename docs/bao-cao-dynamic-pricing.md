@@ -117,6 +117,8 @@ NoDiscount (Spring @Component base)
 
 **Validation tách biệt:** `PromoValidHandler` (CoR) validate trước. Decorator chỉ tính discount thuần.
 
+**Thứ tự áp dụng (code hiện tại):** giảm theo promo tính trên `subtotal`; giảm theo hạng thành viên tính trên phần còn lại sau promo. `discountAmount` là tổng hai khoản; `membershipDiscount` trong response phản ánh mức giảm từ tier.
+
 ---
 
 ## 3. Kết Quả Unit Test — 9 Test PASS

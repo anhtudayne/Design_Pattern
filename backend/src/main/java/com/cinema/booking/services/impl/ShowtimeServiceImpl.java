@@ -4,13 +4,11 @@ import com.cinema.booking.dtos.ShowtimeDTO;
 import com.cinema.booking.entities.Movie;
 import com.cinema.booking.entities.Room;
 import com.cinema.booking.entities.Showtime;
-import com.cinema.booking.patterns.specification.ShowtimeSpecifications;
 import com.cinema.booking.repositories.MovieRepository;
 import com.cinema.booking.repositories.RoomRepository;
 import com.cinema.booking.repositories.ShowtimeRepository;
 import com.cinema.booking.services.ShowtimeService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -114,11 +112,12 @@ public class ShowtimeServiceImpl implements ShowtimeService {
 
     @Override
     public List<ShowtimeDTO> searchPublicShowtimes(Integer cinemaId, Integer movieId, LocalDate date) {
-        Specification<Showtime> spec = Specification
-                .where(ShowtimeSpecifications.hasCinemaId(cinemaId))
-                .and(ShowtimeSpecifications.hasMovieId(movieId))
-                .and(ShowtimeSpecifications.onDate(date));
-        return showtimeRepository.findAll(spec).stream()
+        // TODO: Re-implement with custom repository query or simple filtering
+        // Specification pattern has been removed
+        return showtimeRepository.findAll().stream()
+                .filter(s -> cinemaId == null || s.getRoom().getCinema().getCinemaId().equals(cinemaId))
+                .filter(s -> movieId == null || s.getMovie().getMovieId().equals(movieId))
+                .filter(s -> date == null || s.getStartTime().toLocalDate().equals(date))
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
     }

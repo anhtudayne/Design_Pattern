@@ -7,7 +7,7 @@
 
 ## Các pattern áp dụng
 
-Trong hệ thống đặt vé, nhóm xử lý **tính giá động (dynamic pricing)** sử dụng **năm pattern bổ trợ cho nhau** trên cùng một đường đi production: **Chain of Responsibility** (chuỗi kiểm tra điều kiện trước khi tính), **Proxy** (bọc engine tính giá để thêm cache Redis), **Specification** (đóng gói điều kiện nghiệp vụ dạng predicate cho phụ phí thời gian), **Strategy** (tách ba công thức: tiền vé, F&B, phụ phí thời gian), và **Decorator** (chuỗi giảm giá có thể kết hợp theo runtime). Các pattern này không đứng riêng lẻ: CoR chạy trước để đảm bảo dữ liệu hợp lệ và tái dùng kết quả truy vấn; Proxy chặn mọi lời gọi tính giá để tránh tính lặp; bên trong engine, Strategy và Specification phối hợp (strategy gọi predicate khi cần); cuối cùng Decorator cộng dồn các khoản giảm sau khi đã có subtotal.
+Trong hệ thống đặt vé, nhóm xử lý **tính giá động (dynamic pricing)** sử dụng **năm pattern bổ trợ cho nhau** trên cùng một đường đi production: **Chain of Responsibility** (chuỗi kiểm tra điều kiện trước khi tính), **Proxy** (bọc engine tính giá để thêm cache Redis), **Specification** (đóng gói điều kiện nghiệp vụ dạng predicate cho phụ phí thời gian), **Strategy** (tách ba công thức: tiền vé, F&B, phụ phí thời gian), và **Decorator** (chuỗi giảm giá có thể kết hợp theo runtime). Các pattern này không đứng riêng lẻ: CoR chạy trước để đảm bảo dữ liệu hợp lệ và tái dùng kết quả truy vấn; Proxy chặn mọi lời gọi tính giá để tránh tính lặp; bên trong engine, Strategy và Specification phối hợp (strategy gọi predicate khi cần); cuối cùng Decorator áp discount theo thứ tự runtime (promo trước, member sau trên phần còn lại).
 
 ---
 
@@ -23,7 +23,7 @@ Luồng tính giá trong ứng dụng rạp chiếu phim cần vừa **an toàn 
 
 **Strategy** cho phép ba cách tính tiền khác nhau (vé, F&B, phụ phí thời gian) cùng chung một hợp đồng `calculate(context)` mà không switch theo loại trong một method khổng lồ; đồng thời F&B được tính trên dữ liệu đã resolve sẵn từ service, tránh N+1 truy vấn trong engine.
 
-**Decorator** giải quyết việc có nhiều loại giảm giá có thể đồng thời tồn tại (promo + hạng thành viên) với tập phụ thuộc runtime: thay vì bùng nổ lớp kế thừa kiểu “chỉ promo / chỉ member / cả hai”, chuỗi decorator được dựng động quanh `NoDiscount`, mỗi lớp chỉ cộng thêm một loại chiết khấu và ủy quyền phần còn lại cho lớp bọc bên trong; phần validate promo đã được tách sang CoR nên tầng giảm giá chỉ tính thuần, đúng phân tầng trách nhiệm.
+**Decorator** giải quyết việc có nhiều loại giảm giá có thể đồng thời tồn tại (promo + hạng thành viên) với tập phụ thuộc runtime: thay vì bùng nổ lớp kế thừa kiểu “chỉ promo / chỉ member / cả hai”, chuỗi decorator được dựng động quanh `NoDiscount`, mỗi lớp chỉ cộng thêm một loại chiết khấu và ủy quyền phần còn lại cho lớp bọc bên trong; phần validate promo đã được tách sang CoR nên tầng giảm giá chỉ tính thuần, đúng phân tầng trách nhiệm. Trong implementation hiện tại, promo áp trước và member áp trên phần còn lại nên kết quả gần với nghiệp vụ thực tế hơn.
 
 ---
 

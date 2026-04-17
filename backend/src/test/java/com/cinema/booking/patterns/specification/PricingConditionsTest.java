@@ -1,4 +1,4 @@
-package com.cinema.booking.patterns.specification;
+package com.cinema.booking.services.strategy_decorator.pricing.specification;
 
 import com.cinema.booking.entities.Room;
 import com.cinema.booking.entities.Showtime;

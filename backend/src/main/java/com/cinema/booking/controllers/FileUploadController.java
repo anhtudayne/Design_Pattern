@@ -1,6 +1,7 @@
 package com.cinema.booking.controllers;
 
 import com.cinema.booking.services.FileUploadService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +14,7 @@ import java.util.Map;
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
 @RequestMapping("/api/upload")
+@Slf4j
 public class FileUploadController {
 
     @Autowired
@@ -21,20 +23,15 @@ public class FileUploadController {
     // POST /api/upload
     // Chế độ nhận Body: form-data, trường 'file' (MultipartFile)
     @PostMapping
-    public ResponseEntity<?> uploadImage(@RequestParam("file") MultipartFile file) {
-        try {
-            // Đẩy vô máy bơm Service
-            String imageUrl = fileUploadService.uploadFile(file);
-            
-            // Lấy được link thì bọc JSON lại nhả ra
-            Map<String, String> response = new HashMap<>();
-            response.put("url", imageUrl);
-            response.put("message", "Đã chèn ảnh lên Cloudinary thành công rực rỡ!");
-            
-            return ResponseEntity.ok(response);
-            
-        } catch (IOException e) {
-            return ResponseEntity.badRequest().body("Sập cổng Upload ảnh: " + e.getMessage());
-        }
+    public ResponseEntity<?> uploadImage(@RequestParam("file") MultipartFile file) throws IOException {
+        // Đẩy vô máy bơm Service
+        String imageUrl = fileUploadService.uploadFile(file);
+        
+        // Lấy được link thì bọc JSON lại nhả ra
+        Map<String, String> response = new HashMap<>();
+        response.put("url", imageUrl);
+        response.put("message", "Đã chèn ảnh lên Cloudinary thành công rực rỡ!");
+        
+        return ResponseEntity.ok(response);
     }
 }

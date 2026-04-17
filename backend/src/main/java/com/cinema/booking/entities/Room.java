@@ -2,26 +2,34 @@ package com.cinema.booking.entities;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.util.List;
 
 @Entity
 @Table(name = "rooms")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class Room {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
-    private Integer roomId;
+    private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cinema_id", nullable = false)
-    private Cinema cinema;
-
-    @Column(nullable = false, length = 50)
+    @Column(nullable = false)
     private String name;
 
+    @ManyToOne
+    @JoinColumn(name = "cinema_id")
+    private Cinema cinema;
+
+    @OneToMany(mappedBy = "room", cascade = CascadeType.ALL)
+    private List<Seat> seatList;
+
     @Column(name = "screen_type")
-    private String screenType; // 2D, 3D, IMAX
+    private String screen_type;
+
+    @OneToMany(mappedBy = "room", cascade = CascadeType.ALL)
+    private List<Showtime> showtimes;
 }

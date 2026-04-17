@@ -1,9 +1,9 @@
 package com.cinema.booking.entities;
 
 import jakarta.persistence.*;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "bookings")
@@ -12,53 +12,34 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Booking {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
-    private Integer bookingId;
+    private Integer id;
 
-    @Column(name = "booking_code", nullable = false, unique = true, length = 50)
-    private String bookingCode;
+    @ManyToOne
+    @JoinColumn(name = "user_ID")
+    private User customer;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "customer_id", nullable = false)
-    private Customer customer;
+    @Column(name = "booking_code", nullable = false, unique = true)
+    private String booking_code;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    private String status;
+
+    @Column(name = "created_at")
+    private LocalDateTime created_at;
+
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL)
+    private List<Ticket> TicketList;
+
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL)
+    private List<FnBLine> fnBLines;
+
+    @ManyToOne
     @JoinColumn(name = "promotion_id")
     private Promotion promotion;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "ENUM('PENDING', 'CONFIRMED', 'CANCELLED') DEFAULT 'PENDING'")
-    private BookingStatus status;
-
-    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
-    private java.util.List<FnBLine> fnBLines;
-
-    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL)
-    private java.util.List<Ticket> tickets;
-
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
-
-    public enum BookingStatus {
-        PENDING, CONFIRMED, CANCELLED, REFUNDED
-    }
-
-    public void confirm() {
-        this.status = BookingStatus.CONFIRMED;
-    }
-
-    public void cancel() {
-        this.status = BookingStatus.CANCELLED;
-    }
-
-    @PrePersist
-    public void ensureBookingCode() {
-        if (this.bookingCode == null || this.bookingCode.isBlank()) {
-            this.bookingCode = "BK-" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
-        }
-    }
+    @OneToOne(mappedBy = "booking", cascade = CascadeType.ALL)
+    private Payment payment;
 }

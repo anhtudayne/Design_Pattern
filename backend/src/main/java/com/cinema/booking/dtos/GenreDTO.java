@@ -6,9 +6,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CinemaDTO {
+public class GenreDTO {
     private Integer id;
     private String name;
-    private String address;
-    private Integer location_id;
 }

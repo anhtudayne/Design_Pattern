@@ -5,16 +5,17 @@ import lombok.*;
 
 @Entity
 @Table(name = "locations")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class Location {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
-    private Integer locationId;
+    private Integer id;
 
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false)
     private String name;
 }

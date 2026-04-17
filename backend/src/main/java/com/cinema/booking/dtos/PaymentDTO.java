@@ -8,12 +8,11 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class TicketDTO {
+public class PaymentDTO {
     private Integer id;
-    private Integer movie_ID;
-    private Integer showtime_ID;
-    private Integer seat_ID;
-    private BigDecimal unit_price;
-    private LocalDateTime hold_expires_at;
     private Integer booking_id;
+    private String payment_method;
+    private BigDecimal amount;
+    private LocalDateTime paid_at;
+    private String status;
 }

@@ -1,37 +1,42 @@
 package com.cinema.booking.entities;
 
 import jakarta.persistence.*;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
+import java.time.LocalDateTime;
 import java.math.BigDecimal;
 
 @Entity
 @Table(name = "tickets")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Ticket {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
-    private Integer ticketId;
+    private Integer id;
 
-    @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "booking_id", nullable = false)
-    private Booking booking;
+    @ManyToOne
+    @JoinColumn(name = "movie_ID")
+    private Movie movie;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "seat_id", nullable = false)
-    private Seat seat;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "showtime_id", nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "showtime_ID")
     private Showtime showtime;
 
-    @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal price;
+    @ManyToOne
+    @JoinColumn(name = "seat_ID")
+    private Seat seat;
+
+    @Column(name = "unit_price", precision = 10, scale = 2)
+    private BigDecimal unit_price;
+
+    @Column(name = "hold_expires_at")
+    private LocalDateTime hold_expires_at;
+
+    @ManyToOne
+    @JoinColumn(name = "booking_id")
+    private Booking booking;
 }

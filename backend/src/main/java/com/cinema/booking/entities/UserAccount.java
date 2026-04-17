@@ -16,12 +16,11 @@ public class UserAccount {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @com.fasterxml.jackson.annotation.JsonIgnore
-    @OneToOne(optional = false)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @OneToOne
+    @JoinColumn(name = "user_ID", nullable = false)
     private User user;
 
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(nullable = false, unique = true)
     private String email;
 
     @Column(name = "password_hash", nullable = false)

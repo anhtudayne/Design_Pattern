@@ -6,9 +6,9 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserDTO {
+public class NotificationDTO {
+    private Integer notification_ID;
+    private String title;
+    private String message;
     private Integer user_ID;
-    private String fullname;
-    private String phone;
-    private String email;
 }

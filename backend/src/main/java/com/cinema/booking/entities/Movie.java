@@ -1,10 +1,7 @@
 package com.cinema.booking.entities;
 
 import jakarta.persistence.*;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
-
 import java.time.LocalDate;
 import java.util.List;
 
@@ -15,12 +12,12 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Movie {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
-    private Integer movieId;
+    @Column(name = "movie_ID")
+    private Integer movie_ID;
 
     @Column(nullable = false)
     private String title;
@@ -28,37 +25,24 @@ public class Movie {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "duration_minutes", nullable = false)
-    private Integer durationMinutes;
+    @Column(name = "duration_minutes")
+    private int duration_minutes;
 
     @Column(name = "release_date")
-    private LocalDate releaseDate;
+    private LocalDate release_date;
 
-    @Column(length = 50)
     private String language;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "age_rating")
-    private AgeRating ageRating;
+    private String status;
 
-    @Column(name = "poster_url")
-    private String posterUrl;
+    @OneToMany(mappedBy = "movie", cascade = CascadeType.ALL)
+    private List<MovieCast> movieCastList;
 
-    @Column(name = "trailer_url")
-    private String trailerUrl;
-
-    @Enumerated(EnumType.STRING)
-    private MovieStatus status;
-
-    @OneToMany(mappedBy = "movie", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnore
-    private List<MovieCast> movieCasts;
-
-    public enum AgeRating {
-        P, K, C13, C16, C18
-    }
-
-    public enum MovieStatus {
-        NOW_SHOWING, COMING_SOON, STOPPED
-    }
+    @ManyToMany
+    @JoinTable(
+        name = "movie_genres",
+        joinColumns = @JoinColumn(name = "movie_id"),
+        inverseJoinColumns = @JoinColumn(name = "genre_id")
+    )
+    private List<Genre> genres;
 }

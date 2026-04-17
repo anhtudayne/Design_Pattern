@@ -2,39 +2,31 @@ package com.cinema.booking.entities;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "promotions")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class Promotion {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
     private Integer id;
 
-    @Column(nullable = false, unique = true, length = 50)
+    @Column(nullable = false, unique = true)
     private String code;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "discount_type", nullable = false, length = 10)
-    private DiscountType discountType;
+    @Column(name = "discount_type")
+    private String discount_type;
 
-    @Column(name = "discount_value", nullable = false, precision = 10, scale = 2)
-    private BigDecimal discountValue;
+    @Column(name = "discount_value", precision = 10, scale = 2)
+    private BigDecimal discount_value;
 
-    @Column(name = "valid_to", nullable = false)
-    private LocalDateTime validTo;
-
-    @OneToOne(mappedBy = "promotion", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    private PromotionInventory inventory;
-
-    public enum DiscountType {
-        PERCENT,
-        FIXED
-    }
+    @Column(name = "valid_to")
+    private LocalDateTime valid_to;
 }

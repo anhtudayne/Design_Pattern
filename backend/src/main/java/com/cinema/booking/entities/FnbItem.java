@@ -6,42 +6,24 @@ import java.math.BigDecimal;
 
 @Entity
 @Table(name = "fnb_items")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class FnbItem {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
-    private Integer itemId;
+    @Column(name = "FnbItem_ID")
+    private Integer FnbItem_ID;
 
-    @Column(nullable = false, length = 150)
+    @Column(nullable = false)
     private String name;
 
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(nullable = false, precision = 10, scale = 2)
+    @Column(precision = 10, scale = 2)
     private BigDecimal price;
-
-    @Column(name = "is_active")
-    @Builder.Default
-    private Boolean isActive = true;
-
-    @Column(name = "image_url")
-    private String imageUrl;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id")
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
-    private FnbCategory category;
-
-    /** Rạp / chi nhánh — menu F&B theo từng cụm rạp */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cinema_id", nullable = false)
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
-    private Cinema cinema;
 }

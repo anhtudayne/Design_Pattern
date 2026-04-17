@@ -5,14 +5,9 @@ import lombok.*;
 
 @Entity
 @Table(name = "admins")
-@PrimaryKeyJoinColumn(name = "user_id", referencedColumnName = "id")
+@PrimaryKeyJoinColumn(name = "user_ID")
 @Getter
 @Setter
 @NoArgsConstructor
 public class Admin extends User {
-
-    @Override
-    public String getSpringSecurityRole() {
-        return "ADMIN";
-    }
 }

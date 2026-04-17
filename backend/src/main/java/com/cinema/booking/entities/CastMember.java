@@ -15,22 +15,17 @@ public class CastMember {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
-    private Integer id;
+    @Column(name = "cast_memberID")
+    private Integer cast_memberID;
 
-    @Column(name = "full_name", nullable = false, length = 150)
-    private String fullName;
+    @Column(name = "full_name", nullable = false)
+    private String full_name;
 
-    @Column(name = "bio", columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String bio;
 
     @Column(name = "birth_date")
-    private LocalDate birthDate;
+    private LocalDate birth_date;
 
-    @Column(name = "nationality", length = 100)
     private String nationality;
-
-    @Column(name = "image_url")
-    private String imageUrl;
 }
-

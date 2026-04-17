@@ -1,10 +1,9 @@
 package com.cinema.booking.entities;
 
 import jakarta.persistence.*;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "payments")
@@ -13,31 +12,24 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Payment {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
-    private Integer paymentId;
+    private Integer id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "booking_id", nullable = false, unique = true)
+    @OneToOne
+    @JoinColumn(name = "booking_id")
     private Booking booking;
 
-    @Column(name = "method", nullable = false, length = 20)
-    private String paymentMethod;
+    @Column(name = "payment_method")
+    private String payment_method;
 
-    @Column(nullable = false, precision = 10, scale = 2)
+    @Column(precision = 10, scale = 2)
     private BigDecimal amount;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "ENUM('SUCCESS', 'FAILED', 'PENDING') DEFAULT 'PENDING'")
-    private PaymentStatus status;
-
     @Column(name = "paid_at")
-    private LocalDateTime paidAt;
+    private LocalDateTime paid_at;
 
-    public enum PaymentStatus {
-        SUCCESS, FAILED, PENDING
-    }
+    private String status;
 }

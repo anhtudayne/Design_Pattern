@@ -1,20 +1,14 @@
 package com.cinema.booking.dtos;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import lombok.Data;
+import lombok.*;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class RoomDTO {
-    private Integer roomId;
-    
-    @NotNull(message = "Mã rạp (Cinema ID) không được trống")
-    private Integer cinemaId;
-    
-    private String cinemaName; // Gói kèm tên rạp theo ID
-
-    @NotBlank(message = "Tên phòng chiếu không được trống")
+    private Integer id;
     private String name;
-
-    private String screenType;
+    private Integer cinema_id;
+    private String screen_type;
 }

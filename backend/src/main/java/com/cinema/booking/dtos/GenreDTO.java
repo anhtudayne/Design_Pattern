@@ -7,6 +7,6 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class GenreDTO {
-    private Integer id;
+    private Integer genreId;
     private String name;
 }

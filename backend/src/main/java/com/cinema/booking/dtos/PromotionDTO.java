@@ -1,5 +1,6 @@
 package com.cinema.booking.dtos;
 
+import com.cinema.booking.entities.Promotion.DiscountType;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -11,7 +12,7 @@ import java.time.LocalDateTime;
 public class PromotionDTO {
     private Integer id;
     private String code;
-    private String discount_type;
-    private BigDecimal discount_value;
-    private LocalDateTime valid_to;
+    private DiscountType discountType;
+    private BigDecimal discountValue;
+    private LocalDateTime validTo;
 }

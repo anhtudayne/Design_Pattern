@@ -8,9 +8,10 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Builder
 public class CastMemberDTO {
-    private Integer cast_memberID;
-    private String full_name;
+    private Integer castMemberId;
+    private String fullName;
     private String bio;
-    private LocalDate birth_date;
+    private LocalDate birthDate;
     private String nationality;
+    private String imageUrl;
 }

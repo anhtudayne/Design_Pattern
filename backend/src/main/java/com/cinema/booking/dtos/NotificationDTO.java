@@ -7,8 +7,9 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class NotificationDTO {
-    private Integer notification_ID;
+    private Integer notificationId;
+    private Integer userId;
     private String title;
     private String message;
-    private Integer user_ID;
+    private Boolean isRead;
 }

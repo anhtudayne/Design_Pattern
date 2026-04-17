@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 public class SeatTypeDTO {
-    private Integer seat_ID;
+    private Integer seatId;
     private String name;
-    private BigDecimal price_surcharge;
+    private BigDecimal priceSurcharge;
 }

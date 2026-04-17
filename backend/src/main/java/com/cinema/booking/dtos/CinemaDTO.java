@@ -7,8 +7,8 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class CinemaDTO {
-    private Integer id;
+    private Integer cinemaId;
     private String name;
     private String address;
-    private Integer location_id;
+    private Integer locationId;
 }

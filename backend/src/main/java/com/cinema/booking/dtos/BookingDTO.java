@@ -1,7 +1,7 @@
 package com.cinema.booking.dtos;
 
+import com.cinema.booking.entities.Booking.BookingStatus;
 import lombok.*;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -10,27 +10,26 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class BookingDTO {
-    private Integer id;
-    private Integer user_ID;
-    private String booking_code;
-    private String status;
-    private LocalDateTime created_at;
-    private List<TicketLineDTO> TicketList;
-    private List<FnBLineDTO> fnBLines;
-    private Integer promotion_id;
-    private Integer payment_id;
+    private Integer bookingId;
+    private String bookingCode;
+    private Integer userId;
+    private Integer promotionId;
+    private BookingStatus status;
+    private LocalDateTime createdAt;
+    private List<TicketLineDTO> ticketList;
+    private List<FnBLineDTO> fnbLines;
 
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
     public static class TicketLineDTO {
-        private Integer id;
-        private Integer movie_ID;
-        private Integer showtime_ID;
-        private Integer seat_ID;
-        private BigDecimal unit_price;
-        private LocalDateTime hold_expires_at;
+        private Integer ticketId;
+        private Integer movieId;
+        private Integer showtimeId;
+        private Integer seatId;
+        private java.math.BigDecimal unitPrice;
+        private LocalDateTime holdExpiresAt;
     }
 
     @Data
@@ -39,7 +38,7 @@ public class BookingDTO {
     @Builder
     public static class FnBLineDTO {
         private Integer id;
-        private Integer FnbItem_ID;
-        private int quantity;
+        private Integer fnbItemId;
+        private Integer quantity;
     }
 }

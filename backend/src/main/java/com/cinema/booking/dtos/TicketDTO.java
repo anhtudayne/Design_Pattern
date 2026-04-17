@@ -9,11 +9,11 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class TicketDTO {
-    private Integer id;
-    private Integer movie_ID;
-    private Integer showtime_ID;
-    private Integer seat_ID;
-    private BigDecimal unit_price;
-    private LocalDateTime hold_expires_at;
-    private Integer booking_id;
+    private Integer ticketId;
+    private Integer movieId;
+    private Integer showtimeId;
+    private Integer seatId;
+    private BigDecimal unitPrice;
+    private LocalDateTime holdExpiresAt;
+    private Integer bookingId;
 }

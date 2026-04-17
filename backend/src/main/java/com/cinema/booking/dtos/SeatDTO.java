@@ -7,8 +7,8 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class SeatDTO {
-    private Integer id;
-    private String seat_code;
-    private Integer room_id;
-    private Integer seat_type_id;
+    private Integer seatId;
+    private String seatCode;
+    private Integer roomId;
+    private Integer seatTypeId;
 }

@@ -5,6 +5,8 @@ import com.cinema.booking.dtos.FnbItemDTO;
 import com.cinema.booking.dtos.MovieDTO;
 import com.cinema.booking.dtos.ShowtimeDTO;
 import com.cinema.booking.dtos.LocationDTO;
+import com.cinema.booking.dtos.BookingPageDTO;
+import com.cinema.booking.dtos.MovieDetailDTO;
 import com.cinema.booking.repositories.FnbItemRepository;
 import com.cinema.booking.services.CinemaService;
 import com.cinema.booking.services.LocationService;
@@ -12,6 +14,7 @@ import com.cinema.booking.services.MovieService;
 import com.cinema.booking.services.builder.filter.ShowtimeFilter;
 import com.cinema.booking.services.builder.filter.ShowtimeFilterBuilder;
 import com.cinema.booking.services.builder.filter.ShowtimeQueryService;
+import com.cinema.booking.services.facade.BookingFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +50,12 @@ public class PublicController {
     // ──────────────────────────────────────────────────────────────────
     @Autowired
     private ShowtimeQueryService showtimeQueryService;
+
+    // ──────────────────────────────────────────────────────────────────
+    //  Facade Pattern: BookingFacade gom gọn nhiều service
+    // ──────────────────────────────────────────────────────────────────
+    @Autowired
+    private BookingFacade bookingFacade;
 
     // 4.1 API Đổ danh sách "Phim đang chiếu"
     @Operation(summary = "Lấy danh sách phim đang chiếu", description = "Trả về danh sách các bộ phim có trạng thái NOW_SHOWING")
@@ -140,5 +149,30 @@ public class PublicController {
             return dto;
         }).toList();
         return ResponseEntity.ok(response);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  4.7 Facade Pattern — API gom gọn cho trang đặt vé Customer
+    //  1 API thay vì 5 API riêng lẻ (movies + cinemas + locations + showtimes + fnb)
+    // ═══════════════════════════════════════════════════════════════════
+    @Operation(summary = "Lấy toàn bộ dữ liệu trang đặt vé (Facade Pattern)",
+            description = "Trả về 1 response gom gọn: phim đang chiếu, danh sách rạp, tỉnh/thành, lịch chiếu (có lọc), F&B. " +
+                    "Frontend chỉ cần gọi 1 API thay vì 5 API riêng lẻ.")
+    @GetMapping("/booking-page")
+    public ResponseEntity<BookingPageDTO> getBookingPageData(
+            @RequestParam(required = false) Integer locationId,
+            @RequestParam(required = false) Integer cinemaId,
+            @RequestParam(required = false) Integer movieId,
+            @RequestParam(required = false) String date) {
+
+        LocalDate parsedDate = (date != null && !date.isBlank()) ? LocalDate.parse(date) : null;
+        return ResponseEntity.ok(bookingFacade.getBookingPageData(locationId, cinemaId, movieId, parsedDate));
+    }
+
+    @Operation(summary = "Lấy chi tiết phim + lịch chiếu (Facade Pattern)",
+            description = "Trả về thông tin chi tiết 1 phim kèm danh sách suất chiếu và rạp có chiếu phim đó.")
+    @GetMapping("/movie-detail/{movieId}")
+    public ResponseEntity<MovieDetailDTO> getMovieDetailWithShowtimes(@PathVariable Integer movieId) {
+        return ResponseEntity.ok(bookingFacade.getMovieDetailWithShowtimes(movieId));
     }
 }

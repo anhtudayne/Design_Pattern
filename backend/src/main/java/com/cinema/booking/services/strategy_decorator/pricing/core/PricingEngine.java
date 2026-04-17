@@ -1,6 +1,13 @@
-package com.cinema.booking.services.strategy_decorator.pricing;
+package com.cinema.booking.services.strategy_decorator.pricing.core;
 
 import com.cinema.booking.dtos.PriceBreakdownDTO;
+import com.cinema.booking.services.strategy_decorator.pricing.decorator.DiscountComponent;
+import com.cinema.booking.services.strategy_decorator.pricing.decorator.DiscountResult;
+import com.cinema.booking.services.strategy_decorator.pricing.decorator.NoDiscount;
+import com.cinema.booking.services.strategy_decorator.pricing.decorator.PromotionDiscountDecorator;
+import com.cinema.booking.services.strategy_decorator.pricing.proxy.IPricingEngine;
+import com.cinema.booking.services.strategy_decorator.pricing.strategy.PricingLineType;
+import com.cinema.booking.services.strategy_decorator.pricing.strategy.PricingStrategy;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;

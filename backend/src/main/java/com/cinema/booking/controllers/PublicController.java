@@ -128,22 +128,18 @@ public class PublicController {
     @Operation(summary = "Lấy sản phẩm F&B", description = "Lọc theo cinemaId (rạp).")
     @GetMapping("/fnb/items")
     public ResponseEntity<List<FnbItemDTO>> getPublicFnbItems(@RequestParam(required = false) Integer cinemaId) {
-        List<FnbItem> items = cinemaId != null
-                ? fnbItemRepository.findByCinema_CinemaId(cinemaId)
-                : fnbItemRepository.findAll();
+        // FnbItem no longer has Cinema FK in strict entity model.
+        List<FnbItem> items = fnbItemRepository.findAll();
 
         List<FnbItemDTO> response = items.stream().map(item -> {
             FnbItemDTO dto = new FnbItemDTO();
-            dto.setItemId(item.getItemId());
+            dto.setItemId(item.getFnbItemId());
             dto.setName(item.getName());
             dto.setDescription(item.getDescription());
             dto.setPrice(item.getPrice());
             dto.setImageUrl(item.getImageUrl());
-            
-            if (item.getCinema() != null) {
-                dto.setCinemaId(item.getCinema().getCinemaId());
-                dto.setCinemaName(item.getCinema().getName());
-            }
+            dto.setCinemaId(null);
+            dto.setCinemaName(null);
             return dto;
         }).toList();
         return ResponseEntity.ok(response);

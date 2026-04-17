@@ -10,8 +10,8 @@ import com.cinema.booking.entities.*;
 import com.cinema.booking.repositories.*;
 import com.cinema.booking.services.BookingService;
 import com.cinema.booking.services.seatlock.SeatLockProvider;
-import com.cinema.booking.services.strategy_decorator.pricing.IPricingEngine;
-import com.cinema.booking.services.strategy_decorator.pricing.PricingContextBuilder;
+import com.cinema.booking.services.strategy_decorator.pricing.builder.PricingContextBuilder;
+import com.cinema.booking.services.strategy_decorator.pricing.proxy.IPricingEngine;
 import com.cinema.booking.services.strategy_decorator.pricing.validation.PricingValidationContext;
 import com.cinema.booking.services.strategy_decorator.pricing.validation.PricingValidationHandler;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -148,9 +148,14 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public List<BookingDTO> searchBookings(String query) {
-        return bookingRepository.findAll(
-                com.cinema.booking.patterns.specification.BookingSpecificationBuilder.searchBookings(query)
-        ).stream().map(this::mapToDTO).collect(Collectors.toList());
+        String q = query == null ? "" : query.trim().toLowerCase();
+        return bookingRepository.findAll().stream()
+                .filter(b -> q.isEmpty()
+                        || (b.getBookingCode() != null && b.getBookingCode().toLowerCase().contains(q))
+                        || (b.getUser() != null && b.getUser().getFullname() != null
+                        && b.getUser().getFullname().toLowerCase().contains(q)))
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
     }
 
     @Override

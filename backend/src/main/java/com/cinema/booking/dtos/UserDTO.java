@@ -32,9 +32,10 @@ public class UserDTO {
         Integer loyalty = null;
         String tierName = null;
         if (user instanceof Customer c) {
-            spending = c.getTotalSpending();
-            loyalty = c.getLoyaltyPoints();
-            tierName = c.getTier() != null ? c.getTier().getName() : "Vô danh";
+            // Strict entity model removed membership fields from Customer.
+            spending = null;
+            loyalty = null;
+            tierName = "USER";
         }
 
         return UserDTO.builder()

@@ -1,9 +1,9 @@
 package com.cinema.booking.services.strategy_decorator.pricing.specification;
 
-import com.cinema.booking.entities.Customer;
 import com.cinema.booking.entities.Promotion;
 import com.cinema.booking.entities.Seat;
 import com.cinema.booking.entities.Showtime;
+import com.cinema.booking.entities.User;
 import jakarta.annotation.Nullable;
 import lombok.Value;
 
@@ -23,7 +23,7 @@ public class PricingSpecificationContext {
 
     List<Seat> seats;
 
-    @Nullable Customer customer;
+    @Nullable User customer;
 
     @Nullable Promotion promotion;
 

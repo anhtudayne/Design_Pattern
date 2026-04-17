@@ -42,7 +42,6 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         Movie movie = showtime.getMovie();
         dto.setMovieTitle(movie.getTitle());
         dto.setMoviePosterUrl(movie.getPosterUrl());
-        dto.setMovieAgeRating(movie.getAgeRating());
         dto.setMovieDurationMinutes(movie.getDurationMinutes());
 
         Room room = showtime.getRoom();

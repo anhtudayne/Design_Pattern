@@ -2,8 +2,6 @@ package com.cinema.booking.services.impl;
 
 import com.cinema.booking.entities.Booking;
 import com.cinema.booking.entities.Ticket;
-import com.cinema.booking.patterns.prototype.TicketEmailPrototype;
-import com.cinema.booking.patterns.prototype.WelcomeEmailPrototype;
 import com.cinema.booking.repositories.BookingRepository;
 import com.cinema.booking.repositories.TicketRepository;
 import com.cinema.booking.services.EmailService;
@@ -28,13 +26,6 @@ public class EmailServiceImpl implements EmailService {
 
     @Autowired
     private TicketRepository ticketRepository;
-
-    // Prototype singletons — Spring manages their lifecycle
-    @Autowired
-    private TicketEmailPrototype ticketEmailPrototype;
-
-    @Autowired
-    private WelcomeEmailPrototype welcomeEmailPrototype;
 
     @Override
     @Transactional(readOnly = true)
@@ -61,15 +52,18 @@ public class EmailServiceImpl implements EmailService {
                 .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Prototype — copy() → populate → toMessage()
-        SimpleMailMessage message = ((TicketEmailPrototype) ticketEmailPrototype.copy())
-                .to(email)
-                .bookingId(bookingId)
-                .customerName(booking.getUser().getFullname())
-                .movieTitle(movieTitle)
-                .showtime(showtimeStr)
-                .totalAmount(total)
-                .toMessage();
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(email);
+        message.setSubject("Ve dien tu - Booking #" + bookingId);
+        message.setText(
+                "Xin chao " + booking.getUser().getFullname() + ",\n\n" +
+                "Cam on ban da dat ve tai StarCine.\n" +
+                "- Ma booking: " + bookingId + "\n" +
+                "- Phim: " + movieTitle + "\n" +
+                "- Suat chieu: " + showtimeStr + "\n" +
+                "- Tong tien: " + total + "\n\n" +
+                "Chuc ban xem phim vui ve!"
+        );
 
         try {
             mailSender.send(message);
@@ -81,11 +75,10 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     public void sendWelcomeEmail(String email, String fullname) {
-        // Prototype — copy() → populate → toMessage()
-        SimpleMailMessage message = ((WelcomeEmailPrototype) welcomeEmailPrototype.copy())
-                .to(email)
-                .fullname(fullname)
-                .toMessage();
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(email);
+        message.setSubject("Chao mung ban den voi StarCine");
+        message.setText("Xin chao " + fullname + ",\n\nCam on ban da dang ky tai khoan StarCine.");
 
         try {
             mailSender.send(message);

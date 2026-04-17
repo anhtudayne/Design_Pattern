@@ -1,9 +1,7 @@
 package com.cinema.booking.controllers;
 
-import com.cinema.booking.entities.Artist;
 import com.cinema.booking.entities.CastMember;
 import com.cinema.booking.entities.Genre;
-import com.cinema.booking.repositories.ArtistRepository;
 import com.cinema.booking.repositories.CastMemberRepository;
 import com.cinema.booking.repositories.GenreRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -16,7 +14,7 @@ import java.util.List;
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
 @RequestMapping("/api/admin/metadata")
-@Tag(name = "9. Quản lý Metadata (Phim)", description = "Các API CRUD cho Thể loại, Nhân sự điện ảnh và Nghệ sĩ")
+@Tag(name = "9. Quản lý Metadata (Phim)", description = "Các API CRUD cho Thể loại và Nhân sự điện ảnh")
 public class MetadataController {
 
     @Autowired
@@ -24,9 +22,6 @@ public class MetadataController {
 
     @Autowired
     private CastMemberRepository castMemberRepository;
-
-    @Autowired
-    private ArtistRepository artistRepository;
 
     // --- GENRES ---
 
@@ -88,35 +83,4 @@ public class MetadataController {
         castMemberRepository.deleteById(id);
     }
 
-    // --- ARTISTS ---
-
-    @Operation(summary = "Lấy danh sách nghệ sĩ")
-    @GetMapping("/artists")
-    public List<Artist> getAllArtists() {
-        return artistRepository.findAll();
-    }
-
-    @Operation(summary = "Thêm nghệ sĩ mới")
-    @PostMapping("/artists")
-    public Artist createArtist(@RequestBody Artist artist) {
-        return artistRepository.save(artist);
-    }
-
-    @Operation(summary = "Cập nhật nghệ sĩ")
-    @PutMapping("/artists/{id}")
-    public Artist updateArtist(@PathVariable Integer id, @RequestBody Artist details) {
-        Artist artist = artistRepository.findById(id).orElseThrow();
-        artist.setFullName(details.getFullName());
-        artist.setBio(details.getBio());
-        artist.setBirthDate(details.getBirthDate());
-        artist.setNationality(details.getNationality());
-        artist.setImageUrl(details.getImageUrl());
-        return artistRepository.save(artist);
-    }
-
-    @Operation(summary = "Xóa nghệ sĩ")
-    @DeleteMapping("/artists/{id}")
-    public void deleteArtist(@PathVariable Integer id) {
-        artistRepository.deleteById(id);
-    }
 }

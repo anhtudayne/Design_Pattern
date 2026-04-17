@@ -172,6 +172,19 @@ public class CheckoutServiceImpl implements CheckoutService {
         );
     }
 
+    /**
+     * Factory Method: {@link PaymentMethod#CASH} → {@link CashPaymentStrategy} (template {@code StaffCashCheckoutProcess}).
+     */
+    private java.util.Map<String, Object> executeCashCheckout(CheckoutRequest request) throws Exception {
+        CashPaymentStrategy cashStrategy = paymentStrategyFactory.getStrategy(PaymentMethod.CASH, CashPaymentStrategy.class);
+        CheckoutResult result = cashStrategy.checkout(request);
+        return cashStrategy.buildResult(
+                result.getBooking(),
+                (Payment) result.getPaymentResult(),
+                result.getPrice()
+        );
+    }
+
     @Override
     @Transactional
     public java.util.Map<String, Object> processStaffCashCheckout(
@@ -185,14 +198,22 @@ public class CheckoutServiceImpl implements CheckoutService {
                 .promoCode(promoCode)
                 .demoSuccess(true)
                 .build();
+        return executeCashCheckout(request);
+    }
 
-        CashPaymentStrategy cashStrategy = (CashPaymentStrategy) paymentStrategyFactory.getStrategy(PaymentMethod.CASH);
-        CheckoutResult result = cashStrategy.checkout(request);
-
-        return cashStrategy.buildResult(
-                result.getBooking(),
-                (Payment) result.getPaymentResult(),
-                result.getPrice()
-        );
+    @Override
+    @Transactional
+    public java.util.Map<String, Object> processCustomerCashCheckout(
+            Integer userId, Integer showtimeId, List<Integer> seatIds,
+            List<BookingCalculationDTO.FnbOrderDTO> fnbs, String promoCode) throws Exception {
+        CheckoutRequest request = CheckoutRequest.builder()
+                .userId(userId)
+                .showtimeId(showtimeId)
+                .seatIds(seatIds)
+                .fnbs(fnbs)
+                .promoCode(promoCode)
+                .demoSuccess(true)
+                .build();
+        return executeCashCheckout(request);
     }
 }

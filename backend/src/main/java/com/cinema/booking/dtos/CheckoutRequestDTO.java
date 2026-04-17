@@ -10,6 +10,6 @@ public class CheckoutRequestDTO {
     private List<Integer> seatIds;
     private List<BookingCalculationDTO.FnbOrderDTO> fnbs;
     private String promoCode;
-    /** MOMO (mặc định). Giá trị khác DEMO không dùng ở /checkout — dùng /checkout/demo. */
+    /** MOMO (mặc định) cho POST /checkout. DEMO: /checkout/demo. Tiền mặt khách web: POST /checkout/cash. */
     private String paymentMethod;
 }

@@ -141,11 +141,16 @@ public class PublicController {
         return ResponseEntity.ok(fnbCategoryRepository.findAll());
     }
 
-    // 4.7 Menu F&B công khai (sản phẩm)
-    @Operation(summary = "Lấy sản phẩm F&B", description = "Trả về danh sách sản phẩm bắp nước kèm giá cho khách hàng")
+    // 4.7 Menu F&B công khai (sản phẩm) — theo chi nhánh (cinemaId)
+    @Operation(summary = "Lấy sản phẩm F&B", description = "Lọc theo cinemaId (rạp). Chỉ trả món đang active.")
     @GetMapping("/fnb/items")
-    public ResponseEntity<List<FnbItemDTO>> getPublicFnbItems() {
-        List<FnbItem> items = fnbItemRepository.findAll();
+    public ResponseEntity<List<FnbItemDTO>> getPublicFnbItems(@RequestParam(required = false) Integer cinemaId) {
+        List<FnbItem> items = cinemaId != null
+                ? fnbItemRepository.findByCinema_CinemaId(cinemaId)
+                : fnbItemRepository.findAll();
+        items = items.stream()
+                .filter(i -> Boolean.TRUE.equals(i.getIsActive()))
+                .toList();
         Map<Integer, Integer> quantityMap = fnbItemInventoryService.getQuantityMap(
                 items.stream().map(FnbItem::getItemId).toList()
         );
@@ -159,6 +164,11 @@ public class PublicController {
             dto.setIsActive(item.getIsActive());
             dto.setImageUrl(item.getImageUrl());
             dto.setCategoryId(item.getCategory() != null ? item.getCategory().getCategoryId() : null);
+            dto.setCategoryName(item.getCategory() != null ? item.getCategory().getName() : null);
+            if (item.getCinema() != null) {
+                dto.setCinemaId(item.getCinema().getCinemaId());
+                dto.setCinemaName(item.getCinema().getName());
+            }
             return dto;
         }).toList();
         return ResponseEntity.ok(response);

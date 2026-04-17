@@ -11,8 +11,8 @@ import org.springframework.stereotype.Component;
 import java.util.Map;
 
 /**
- * Strategy Pattern: Chiến lược thanh toán tiền mặt tại quầy bán vé Staff.
- * Delegate toàn bộ logic xuống {@link StaffCashCheckoutProcess}.
+ * Strategy Pattern: thanh toán tiền mặt (quầy Staff hoặc khách web qua {@code /api/payment/checkout/cash}).
+ * Delegate xuống {@link StaffCashCheckoutProcess} (Template Method).
  */
 @Component
 public class CashPaymentStrategy implements PaymentStrategy {

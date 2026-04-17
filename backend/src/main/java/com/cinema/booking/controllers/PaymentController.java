@@ -3,13 +3,16 @@ package com.cinema.booking.controllers;
 import com.cinema.booking.dtos.CheckoutRequestDTO;
 import com.cinema.booking.dtos.MomoCallbackRequest;
 import com.cinema.booking.entities.Payment;
+import com.cinema.booking.security.UserDetailsImpl;
 import com.cinema.booking.services.CheckoutService;
 import com.cinema.booking.services.PaymentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
 
@@ -67,6 +70,34 @@ public class PaymentController {
             ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Lỗi Demo Checkout: " + e.getMessage());
+        }
+    }
+
+    @Operation(
+            summary = "Checkout tiền mặt (khách web)",
+            description = "Dùng CashPaymentStrategy + StaffCashCheckoutProcess: booking CONFIRMED, payment CASH SUCCESS. JWT phải trùng userId trong body."
+    )
+    @PostMapping("/checkout/cash")
+    public ResponseEntity<?> customerCashCheckout(
+            @RequestBody CheckoutRequestDTO request,
+            Authentication authentication
+    ) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof UserDetailsImpl principal)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Chưa đăng nhập.");
+        }
+        if (request.getUserId() == null || !request.getUserId().equals(principal.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Không được đặt vé thay tài khoản khác.");
+        }
+        try {
+            return ResponseEntity.ok(checkoutService.processCustomerCashCheckout(
+                    request.getUserId(),
+                    request.getShowtimeId(),
+                    request.getSeatIds(),
+                    request.getFnbs(),
+                    request.getPromoCode()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Lỗi Checkout tiền mặt: " + e.getMessage());
         }
     }
 

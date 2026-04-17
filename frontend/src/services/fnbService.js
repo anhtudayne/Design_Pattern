@@ -8,8 +8,13 @@ export const fetchFnBCategories = async () => {
   return res.json();
 };
 
-export const fetchFnBItems = async () => {
-  const res = await fetch(`${BASE_URL}/public/fnb/items`);
+/** @param {number} [cinemaId] - lọc menu theo chi nhánh / rạp */
+export const fetchFnBItems = async (cinemaId) => {
+  const qs =
+    cinemaId != null && cinemaId !== ''
+      ? `?cinemaId=${encodeURIComponent(cinemaId)}`
+      : '';
+  const res = await fetch(`${BASE_URL}/public/fnb/items${qs}`);
   if (!res.ok) throw new Error('Không thể tải sản phẩm F&B');
   return res.json();
 };

@@ -45,6 +45,20 @@ export const demoCheckout = async (body, success = true) => {
   return res.json();
 };
 
+/** Checkout tiền mặt (khách web) — backend: CashPaymentStrategy / StaffCashCheckoutProcess */
+export const cashCheckout = async (body) => {
+  const res = await fetch(`${BASE_URL}/payment/checkout/cash`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const msg = await res.text();
+    throw new Error(msg || 'Thanh toán tiền mặt thất bại');
+  }
+  return res.json();
+};
+
 export const getPaymentDetail = async (paymentId) => {
   const res = await fetch(`${BASE_URL}/payment/details/${paymentId}`, {
     headers: getAuthHeaders(),

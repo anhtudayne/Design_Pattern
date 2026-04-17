@@ -2,8 +2,10 @@ package com.cinema.booking.controllers;
 
 import com.cinema.booking.dtos.FnbItemDTO;
 import com.cinema.booking.dtos.FnbCategoryDTO;
+import com.cinema.booking.entities.Cinema;
 import com.cinema.booking.entities.FnbItem;
 import com.cinema.booking.entities.FnbCategory;
+import com.cinema.booking.repositories.CinemaRepository;
 import com.cinema.booking.repositories.FnbItemRepository;
 import com.cinema.booking.repositories.FnbCategoryRepository;
 import com.cinema.booking.services.FnbItemInventoryService;
@@ -31,12 +33,17 @@ public class FnbController {
     @Autowired
     private FnbItemInventoryService fnbItemInventoryService;
 
+    @Autowired
+    private CinemaRepository cinemaRepository;
+
     // --- ITEM CRUD ---
 
-    @Operation(summary = "Lấy danh sách tất cả sản phẩm F&B", description = "Trả về toàn bộ danh sách bắp nước kèm thông tin giá và danh mục")
+    @Operation(summary = "Lấy danh sách sản phẩm F&B", description = "Theo chi nhánh nếu truyền cinemaId; không truyền thì trả về toàn hệ thống (admin).")
     @GetMapping("/items")
-    public List<FnbItemDTO> getAllItems() {
-        List<FnbItem> items = itemRepository.findAll();
+    public List<FnbItemDTO> getAllItems(@RequestParam(required = false) Integer cinemaId) {
+        List<FnbItem> items = cinemaId != null
+                ? itemRepository.findByCinema_CinemaId(cinemaId)
+                : itemRepository.findAll();
         Map<Integer, Integer> quantityMap = fnbItemInventoryService.getQuantityMap(
                 items.stream().map(FnbItem::getItemId).toList()
         );
@@ -46,6 +53,11 @@ public class FnbController {
     @Operation(summary = "Tạo sản phẩm F&B mới", description = "Thêm một món ăn/nước uống mới theo schema hiện tại.")
     @PostMapping("/items")
     public ResponseEntity<FnbItemDTO> createItem(@RequestBody FnbItemDTO dto) {
+        if (dto.getCinemaId() == null) {
+            throw new RuntimeException("cinemaId là bắt buộc");
+        }
+        Cinema cinema = cinemaRepository.findById(dto.getCinemaId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy rạp (cinema)"));
         FnbCategory category = null;
         if (dto.getCategoryId() != null) {
             category = categoryRepository.findById(dto.getCategoryId())
@@ -58,6 +70,7 @@ public class FnbController {
                 .isActive(dto.getIsActive() != null ? dto.getIsActive() : true)
                 .imageUrl(dto.getImageUrl())
                 .category(category)
+                .cinema(cinema)
                 .build();
 
         FnbItem saved = itemRepository.save(item);
@@ -70,6 +83,12 @@ public class FnbController {
     public ResponseEntity<FnbItemDTO> updateItem(@PathVariable Integer id, @RequestBody FnbItemDTO dto) {
         FnbItem item = itemRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Item not found"));
+
+        if (dto.getCinemaId() != null) {
+            Cinema cinema = cinemaRepository.findById(dto.getCinemaId())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy rạp (cinema)"));
+            item.setCinema(cinema);
+        }
 
         if (dto.getCategoryId() != null) {
             FnbCategory category = categoryRepository.findById(dto.getCategoryId())
@@ -150,6 +169,11 @@ public class FnbController {
         dto.setIsActive(item.getIsActive());
         dto.setImageUrl(item.getImageUrl());
         dto.setCategoryId(item.getCategory() != null ? item.getCategory().getCategoryId() : null);
+        dto.setCategoryName(item.getCategory() != null ? item.getCategory().getName() : null);
+        if (item.getCinema() != null) {
+            dto.setCinemaId(item.getCinema().getCinemaId());
+            dto.setCinemaName(item.getCinema().getName());
+        }
         return dto;
     }
 }

@@ -128,24 +128,46 @@ function ImageUpload({ folder = 'fnb', value, onChange }) {
 // ── Item Tab ──────────────────────────────────────────────────────────────────
 function ItemTab({ categories, notify }) {
   const [items, setItems]       = useState([]);
+  const [cinemas, setCinemas]   = useState([]);
+  const [selectedCinemaId, setSelectedCinemaId] = useState('');
   const [loading, setLoading]   = useState(true);
   const [saving, setSaving]     = useState(false);
   const [modal, setModal]       = useState(null);
-  const [form, setForm]         = useState({ name: '', description: '', price: 0, stockQuantity: 0, categoryId: '', imageUrl: '', isActive: true });
+  const [form, setForm]         = useState({ name: '', description: '', price: 0, stockQuantity: 0, categoryId: '', cinemaId: '', imageUrl: '', isActive: true });
   const [search, setSearch]     = useState('');
 
+  useEffect(() => {
+    fetch(`${BASE_URL}/public/cinemas`)
+      .then(r => r.ok ? r.json() : [])
+      .then(list => {
+        setCinemas(list);
+        if (list?.length) setSelectedCinemaId(String(list[0].cinemaId));
+      })
+      .catch(() => {});
+  }, []);
+
   const load = useCallback(async () => {
+    if (selectedCinemaId === '') return;
     setLoading(true);
     try {
-      const r = await fetch(`${API}/items`, { headers: getAuthHeaders() });
+      const r = await fetch(`${API}/items?cinemaId=${encodeURIComponent(selectedCinemaId)}`, { headers: getAuthHeaders() });
       if (r.ok) setItems(await r.json());
     } finally { setLoading(false); }
-  }, []);
+  }, [selectedCinemaId]);
 
   useEffect(() => { load(); }, [load]);
 
   const openAdd = () => {
-    setForm({ name: '', description: '', price: 0, stockQuantity: 0, categoryId: categories[0]?.categoryId || '', imageUrl: '', isActive: true });
+    setForm({
+      name: '',
+      description: '',
+      price: 0,
+      stockQuantity: 0,
+      categoryId: categories[0]?.categoryId || '',
+      cinemaId: selectedCinemaId || (cinemas[0]?.cinemaId != null ? String(cinemas[0].cinemaId) : ''),
+      imageUrl: '',
+      isActive: true,
+    });
     setModal('add');
   };
 
@@ -155,7 +177,8 @@ function ItemTab({ categories, notify }) {
       description: item.description || '',
       price: item.price,
       stockQuantity: Number(item.stockQuantity || 0),
-      categoryId: item.category?.categoryId || '',
+      categoryId: item.categoryId != null ? String(item.categoryId) : '',
+      cinemaId: item.cinemaId != null ? String(item.cinemaId) : '',
       imageUrl: item.imageUrl || '',
       isActive: item.isActive
     });
@@ -175,7 +198,8 @@ function ItemTab({ categories, notify }) {
           ...form,
           price: Number(form.price),
           stockQuantity: Number(form.stockQuantity),
-          categoryId: Number(form.categoryId)
+          categoryId: form.categoryId ? Number(form.categoryId) : null,
+          cinemaId: Number(form.cinemaId),
         })
       });
       if (r.ok) {
@@ -196,17 +220,33 @@ function ItemTab({ categories, notify }) {
     else notify('Xóa thất bại', 'error');
   };
 
-  const filtered = items.filter(i => 
-    i.name.toLowerCase().includes(search.toLowerCase()) || 
-    i.category?.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = items.filter(i => {
+    const q = search.toLowerCase();
+    return (
+      i.name.toLowerCase().includes(q) ||
+      (i.categoryName || '').toLowerCase().includes(q) ||
+      (i.cinemaName || '').toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="flex items-center gap-2 min-w-[220px]">
+          <span className="material-symbols-outlined text-slate-400">storefront</span>
+          <select
+            className={selectCls + ' py-2.5 font-bold text-slate-700'}
+            value={selectedCinemaId}
+            onChange={e => setSelectedCinemaId(e.target.value)}
+          >
+            {cinemas.map(c => (
+              <option key={c.cinemaId} value={c.cinemaId}>{c.name}</option>
+            ))}
+          </select>
+        </div>
         <div className="flex-1 relative group">
           <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-orange-500">search</span>
-          <input className="w-full pl-11 pr-4 py-2.5 rounded-2xl border border-slate-200 bg-white text-sm focus:outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100 transition-all font-medium" placeholder="Tìm kiếm bắp, nước, combo..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input className="w-full pl-11 pr-4 py-2.5 rounded-2xl border border-slate-200 bg-white text-sm focus:outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100 transition-all font-medium" placeholder="Tìm theo tên, danh mục..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <button onClick={openAdd} className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-orange-500 text-white text-sm font-bold hover:bg-orange-600 transition-all shadow-lg shadow-orange-100 whitespace-nowrap active:scale-95">
           <span className="material-symbols-outlined text-lg">add</span>
@@ -247,8 +287,9 @@ function ItemTab({ categories, notify }) {
               <div className="px-1">
                 <div className="flex justify-between items-start gap-2 mb-1">
                   <h4 className="font-bold text-slate-800 line-clamp-1 group-hover:text-orange-600 transition-colors uppercase tracking-tight text-xs">{item.name}</h4>
-                  <span className="flex-shrink-0 px-2 py-0.5 rounded-lg bg-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{item.category?.name}</span>
+                  <span className="flex-shrink-0 px-2 py-0.5 rounded-lg bg-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{item.categoryName || '—'}</span>
                 </div>
+                <p className="text-[10px] font-bold text-orange-600/80 uppercase tracking-tight mb-0.5">{item.cinemaName || 'Chi nhánh'}</p>
                 <p className="text-[11px] text-slate-400 line-clamp-2 min-h-[32px] font-medium leading-relaxed">{item.description || 'Chưa có mô tả cho sản phẩm này.'}</p>
                 <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between">
                    <p className="font-black text-orange-500">{item.price.toLocaleString('vi-VN')}đ</p>
@@ -271,6 +312,19 @@ function ItemTab({ categories, notify }) {
             <ImageUpload folder="fnb" value={form.imageUrl} onChange={val => setForm({ ...form, imageUrl: val })} />
             <FormField label="Tên sản phẩm" required>
               <input className={inputCls} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ví dụ: Bắp rang bơ phô mai..." required />
+            </FormField>
+            <FormField label="Chi nhánh / Rạp" required>
+              <select
+                className={selectCls}
+                value={form.cinemaId}
+                onChange={e => setForm({ ...form, cinemaId: e.target.value })}
+                required
+              >
+                <option value="">-- Chọn rạp --</option>
+                {cinemas.map(c => (
+                  <option key={c.cinemaId} value={c.cinemaId}>{c.name}</option>
+                ))}
+              </select>
             </FormField>
             <div className="grid grid-cols-2 gap-3">
               <FormField label="Giá bán (VNĐ)" required>

@@ -8,4 +8,10 @@ public interface CheckoutService {
     void processMomoCallback(com.cinema.booking.dtos.MomoCallbackRequest callback) throws Exception;
     java.util.Map<String, Object> processDemoCheckout(Integer userId, Integer showtimeId, java.util.List<Integer> seatIds, java.util.List<com.cinema.booking.dtos.BookingCalculationDTO.FnbOrderDTO> fnbs, String promoCode, boolean success) throws Exception;
     java.util.Map<String, Object> processStaffCashCheckout(Integer customerId, Integer showtimeId, java.util.List<Integer> seatIds, java.util.List<com.cinema.booking.dtos.BookingCalculationDTO.FnbOrderDTO> fnbs, String promoCode) throws Exception;
+
+    /**
+     * Khách đặt vé web chọn tiền mặt — dùng chung {@link com.cinema.booking.services.payment.CashPaymentStrategy}
+     * (cùng template {@code StaffCashCheckoutProcess} như quầy POS).
+     */
+    java.util.Map<String, Object> processCustomerCashCheckout(Integer userId, Integer showtimeId, java.util.List<Integer> seatIds, java.util.List<com.cinema.booking.dtos.BookingCalculationDTO.FnbOrderDTO> fnbs, String promoCode) throws Exception;
 }

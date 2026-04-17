@@ -28,4 +28,15 @@ public class FnbItem {
 
     @Column(name = "image_url")
     private String imageUrl;
+
+    @Column(name = "is_active", nullable = false)
+    @Builder.Default
+    private Boolean isActive = true;
+
+    @PrePersist
+    private void prePersist() {
+        if (isActive == null) {
+            isActive = true;
+        }
+    }
 }

@@ -7,7 +7,19 @@ export const fetchSeatStatuses = async (showtimeId) => {
   const res = await ApiProxy(`${BASE_URL}/booking/seats/${showtimeId}`, {
     headers: getAuthHeaders(),
   });
-  if (!res.ok) throw new Error('Không thể tải sơ đồ ghế');
+  if (!res.ok) {
+    let message = 'Không thể tải sơ đồ ghế';
+    try {
+      const data = await res.json();
+      if (data?.message) {
+        message = data.message;
+      }
+    } catch {
+      const text = await res.text().catch(() => '');
+      if (text) message = text;
+    }
+    throw new Error(message);
+  }
   return res.json();
 };
 
@@ -45,7 +57,19 @@ export const calculatePrice = async (body) => {
     headers: getAuthHeaders(),
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error('Không thể tính giá');
+  if (!res.ok) {
+    let message = 'Không thể tính giá';
+    try {
+      const data = await res.json();
+      if (data?.message) {
+        message = data.message;
+      }
+    } catch {
+      const text = await res.text().catch(() => '');
+      if (text) message = text;
+    }
+    throw new Error(message);
+  }
   return res.json();
 };
 

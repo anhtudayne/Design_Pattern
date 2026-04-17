@@ -36,6 +36,7 @@ public class FnbController {
                 .description(dto.getDescription())
                 .price(dto.getPrice())
                 .imageUrl(dto.getImageUrl())
+                .isActive(dto.getIsActive() != null ? dto.getIsActive() : true)
                 .build();
 
         FnbItem saved = itemRepository.save(item);
@@ -51,6 +52,9 @@ public class FnbController {
         item.setDescription(dto.getDescription());
         item.setPrice(dto.getPrice());
         item.setImageUrl(dto.getImageUrl());
+        if (dto.getIsActive() != null) {
+            item.setIsActive(dto.getIsActive());
+        }
 
         FnbItem saved = itemRepository.save(item);
         return ResponseEntity.ok(toDto(saved));
@@ -70,6 +74,7 @@ public class FnbController {
         dto.setDescription(item.getDescription());
         dto.setPrice(item.getPrice());
         dto.setImageUrl(item.getImageUrl());
+        dto.setIsActive(item.getIsActive());
         return dto;
     }
 }

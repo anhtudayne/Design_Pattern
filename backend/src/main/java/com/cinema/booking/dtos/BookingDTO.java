@@ -13,6 +13,8 @@ public class BookingDTO {
     private Integer bookingId;
     private String bookingCode;
     private Integer userId;
+    private String customerName;
+    private String customerPhone;
     private Integer promotionId;
     private BookingStatus status;
     private LocalDateTime createdAt;
@@ -28,6 +30,8 @@ public class BookingDTO {
         private Integer movieId;
         private Integer showtimeId;
         private Integer seatId;
+        private String seatCode;
+        private String seatType;
         private java.math.BigDecimal unitPrice;
         private LocalDateTime holdExpiresAt;
     }
@@ -39,6 +43,8 @@ public class BookingDTO {
     public static class FnBLineDTO {
         private Integer id;
         private Integer fnbItemId;
+        private String itemName;
+        private java.math.BigDecimal unitPrice;
         private Integer quantity;
     }
 }

@@ -136,6 +136,7 @@ public class PublicController {
             dto.setDescription(item.getDescription());
             dto.setPrice(item.getPrice());
             dto.setImageUrl(item.getImageUrl());
+            dto.setIsActive(item.getIsActive());
             return dto;
         }).toList();
         return ResponseEntity.ok(response);

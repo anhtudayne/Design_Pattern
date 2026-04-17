@@ -89,9 +89,10 @@ export default function OrderLookup() {
   const BookingDetailModal = ({ booking, onClose }) => {
     if (!booking) return null;
     const status = STATUS_MAP[booking.status] || STATUS_MAP.PENDING;
+    const tickets = booking.ticketList || booking.tickets || [];
     
-    const ticketTotal = booking.tickets?.reduce((s, t) => s + t.price, 0) || 0;
-    const fnbTotal = booking.fnBLines?.reduce((s, f) => s + (f.unitPrice * f.quantity), 0) || 0;
+    const ticketTotal = tickets.reduce((s, t) => s + Number(t.unitPrice || t.price || 0), 0);
+    const fnbTotal = booking.fnBLines?.reduce((s, f) => s + (Number(f.unitPrice || 0) * Number(f.quantity || 0)), 0) || 0;
     const totalAmount = ticketTotal + fnbTotal;
 
     return (
@@ -133,7 +134,7 @@ export default function OrderLookup() {
                     <span className="material-symbols-outlined text-sm">chair</span> Danh sách ghế đặt
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {booking.tickets?.map(ticket => (
+                    {tickets.map(ticket => (
                       <div key={ticket.ticketId} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center gap-4 hover:border-orange-500/30 transition-colors">
                         <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-700 flex flex-col items-center justify-center text-slate-400 border border-slate-100 dark:border-slate-600">
                           <span className="text-[9px] font-black leading-none">HÀNG</span>
@@ -141,7 +142,7 @@ export default function OrderLookup() {
                         </div>
                         <div>
                           <p className="text-xs font-black text-slate-800 dark:text-white">{ticket.seatType}</p>
-                          <p className="text-[11px] text-orange-500 font-black">{formatMoney(ticket.price)}</p>
+                          <p className="text-[11px] text-orange-500 font-black">{formatMoney(ticket.unitPrice || ticket.price)}</p>
                         </div>
                       </div>
                     ))}
@@ -165,7 +166,7 @@ export default function OrderLookup() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
-                          {booking.fnBLines.map(line => (
+                        {booking.fnBLines.map(line => (
                             <tr key={line.fnbLineId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors">
                               <td className="px-5 py-4 font-bold text-slate-700 dark:text-slate-300">{line.itemName}</td>
                               <td className="px-5 py-4 text-center font-black text-slate-500">x{line.quantity}</td>
@@ -316,7 +317,7 @@ export default function OrderLookup() {
                         {status.label}
                       </span>
                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                        {booking.tickets?.length || 0} vé • {new Date(booking.createdAt).toLocaleDateString()}
+                        {(booking.ticketList?.length || booking.tickets?.length || 0)} vé • {new Date(booking.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>

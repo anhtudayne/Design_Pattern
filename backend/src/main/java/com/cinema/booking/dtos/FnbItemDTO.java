@@ -10,4 +10,5 @@ public class FnbItemDTO {
     private String description;
     private BigDecimal price;
     private String imageUrl;
+    private Boolean isActive;
 }

@@ -77,6 +77,19 @@ export default function ShowtimeManagement() {
 
   const notify = (msg, type = 'info') => setToast({ msg, type });
 
+  const getCinemaIdFromRoom = (room) => {
+    if (!room) return null;
+    return room.cinemaId ?? room.cinema?.cinemaId ?? room.cinema?.id ?? null;
+  };
+
+  const getCinemaNameById = (cinemaId) => {
+    if (cinemaId == null) return null;
+    const cinema = cinemas.find(c => (c.cinemaId ?? c.id) === cinemaId);
+    return cinema?.name ?? cinema?.cinemaName ?? null;
+  };
+
+  const getRoomLabel = (room) => room?.name ?? room?.roomName ?? (room?.roomId != null ? `Phòng #${room.roomId}` : 'Phòng chưa xác định');
+
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
@@ -109,8 +122,8 @@ export default function ShowtimeManagement() {
   useEffect(() => { loadAll(); }, [loadAll]);
 
   const openAdd = () => {
-    const defaultCinemaId = rooms[0]?.cinemaId || rooms[0]?.cinema?.cinemaId || '';
-    const defaultRoom = rooms.find(r => (r.cinemaId || r.cinema?.cinemaId) === defaultCinemaId);
+    const defaultCinemaId = getCinemaIdFromRoom(rooms[0]) || '';
+    const defaultRoom = rooms.find(r => getCinemaIdFromRoom(r) === defaultCinemaId);
     setForm({
       movieId: movies[0]?.movieId || '',
       cinemaId: defaultCinemaId,
@@ -125,7 +138,7 @@ export default function ShowtimeManagement() {
     const room = rooms.find(r => r.roomId === s.roomId);
     setForm({
       movieId: s.movieId,
-      cinemaId: room?.cinemaId ?? room?.cinema?.cinemaId ?? s.cinemaId ?? '',
+      cinemaId: getCinemaIdFromRoom(room) ?? s.cinemaId ?? '',
       roomId: s.roomId,
       startTime: s.startTime.substring(0, 16), // Format for datetime-local
       basePrice: s.basePrice
@@ -177,7 +190,7 @@ export default function ShowtimeManagement() {
       || (cinemas.find(c => c.cinemaId === s.cinemaId)?.name || '').toLowerCase().includes(q);
     return byTitle || byCinema;
   });
-  const filteredRooms = rooms.filter(r => (r.cinemaId || r.cinema?.cinemaId) === Number(form.cinemaId));
+  const filteredRooms = rooms.filter(r => getCinemaIdFromRoom(r) === Number(form.cinemaId));
 
   return (
     <div className="min-h-screen bg-[#FDFDFD] p-6 md:p-10 font-['Space_Grotesk'] antialiased">
@@ -239,13 +252,15 @@ export default function ShowtimeManagement() {
                 {filtered.map(s => {
                   const m = movies.find(m => m.movieId === s.movieId);
                   const r = rooms.find(room => room.roomId === s.roomId);
+                  const roomCinemaId = getCinemaIdFromRoom(r);
                   const cinemaLabel =
                     s.cinemaName
                     ?? (s.cinemaId != null ? cinemas.find(c => c.cinemaId === s.cinemaId)?.name : null)
+                    ?? getCinemaNameById(roomCinemaId)
                     ?? r?.cinemaName
                     ?? r?.cinema?.name
                     ?? '—';
-                  const roomLabel = s.roomName ?? r?.name ?? `Phòng #${s.roomId}`;
+                  const roomLabel = s.roomName ?? getRoomLabel(r) ?? `Phòng #${s.roomId}`;
                   const start = new Date(s.startTime);
                   return (
                     <tr key={s.showtimeId} className="group hover:bg-slate-50/30 transition-all active:bg-orange-50/20">
@@ -317,7 +332,7 @@ export default function ShowtimeManagement() {
                        value={form.cinemaId}
                        onChange={e => {
                          const selectedCinemaId = Number(e.target.value);
-                         const nextRoom = rooms.find(r => (r.cinemaId || r.cinema?.cinemaId) === selectedCinemaId);
+                         const nextRoom = rooms.find(r => getCinemaIdFromRoom(r) === selectedCinemaId);
                          setForm({ ...form, cinemaId: selectedCinemaId, roomId: nextRoom?.roomId || '' });
                        }}
                        required
@@ -331,7 +346,7 @@ export default function ShowtimeManagement() {
                         <option value="">-- Chọn phòng --</option>
                         {filteredRooms.map(r => (
                           <option key={r.roomId} value={r.roomId}>
-                            {(r.cinema?.name || r.cinemaName || 'Chi nhánh chưa rõ')} - {r.name}
+                            {(getCinemaNameById(getCinemaIdFromRoom(r)) || r.cinema?.name || r.cinemaName || 'Chi nhánh chưa xác định')} - {getRoomLabel(r)}
                           </option>
                         ))}
                      </select>

@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.Comparator;
 import java.util.List;
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
  */
 @Primary
 @Component("cachingPricingEngineProxy")
+@Slf4j
 public class CachingPricingEngineProxy implements IPricingEngine {
 
     private static final String KEY_PREFIX = "pricing:";
@@ -39,13 +41,21 @@ public class CachingPricingEngineProxy implements IPricingEngine {
     public PriceBreakdownDTO calculateTotalPrice(PricingContext context) {
         String cacheKey = buildCacheKey(context);
 
-        Object cached = redisTemplate.opsForValue().get(cacheKey);
-        if (cached instanceof PriceBreakdownDTO dto) {
-            return dto;
+        try {
+            Object cached = redisTemplate.opsForValue().get(cacheKey);
+            if (cached instanceof PriceBreakdownDTO dto) {
+                return dto;
+            }
+        } catch (Exception ex) {
+            log.warn("Redis unavailable when reading pricing cache key {}: {}", cacheKey, ex.getMessage());
         }
 
         PriceBreakdownDTO result = delegate.calculateTotalPrice(context);
-        redisTemplate.opsForValue().set(cacheKey, result, ttlSeconds, TimeUnit.SECONDS);
+        try {
+            redisTemplate.opsForValue().set(cacheKey, result, ttlSeconds, TimeUnit.SECONDS);
+        } catch (Exception ex) {
+            log.warn("Redis unavailable when writing pricing cache key {}: {}", cacheKey, ex.getMessage());
+        }
         return result;
     }
 

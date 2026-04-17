@@ -18,6 +18,12 @@ const SEAT_STYLES = {
 };
 
 const formatMoney = (v) => new Intl.NumberFormat('vi-VN').format(v || 0) + 'đ';
+const toLocalDateString = (date = new Date()) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
 
 // ══════════════════════════════════════════════════════════════════════
 //  BOX OFFICE POS — Main Ticket Selling Screen
@@ -91,11 +97,39 @@ export default function BoxOfficePOS() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [showtimeData, cinemaData] = await Promise.all([
+        const [showtimeData, cinemaData, movieData, roomData] = await Promise.all([
           fetchPublicShowtimes({}),
           fetchCinemas(),
+          fetch(`${BASE_URL}/movies`, { headers: getAuthHeaders() }).then(r => (r.ok ? r.json() : [])),
+          fetch(`${BASE_URL}/rooms`, { headers: getAuthHeaders() }).then(r => (r.ok ? r.json() : [])),
         ]);
-        setAllShowtimes(showtimeData);
+
+        const movieById = new Map((movieData || []).map(m => [m.movieId, m]));
+        const roomById = new Map((roomData || []).map(r => [r.roomId, r]));
+        const cinemaById = new Map((cinemaData || []).map(c => [c.cinemaId, c]));
+
+        const enrichedShowtimes = (showtimeData || []).map(st => {
+          const movie = movieById.get(st.movieId);
+          const room = roomById.get(st.roomId);
+          const roomCinemaId = room?.cinemaId ?? room?.cinema?.cinemaId ?? null;
+          const cinema = roomCinemaId != null ? cinemaById.get(roomCinemaId) : null;
+          const showtimeId = st.showtimeId ?? st.id ?? null;
+
+          return {
+            ...st,
+            showtimeId,
+            cinemaId: st.cinemaId ?? roomCinemaId,
+            cinemaName: st.cinemaName ?? cinema?.name ?? room?.cinemaName,
+            roomName: st.roomName ?? room?.name,
+            screenType: st.screenType ?? room?.screenType,
+            movieTitle: st.movieTitle ?? movie?.title,
+            moviePosterUrl: st.moviePosterUrl ?? movie?.posterUrl,
+            movieAgeRating: st.movieAgeRating ?? movie?.ageRating,
+            movieDurationMinutes: st.movieDurationMinutes ?? movie?.durationMinutes,
+          };
+        }).filter(st => Number.isFinite(Number(st.showtimeId)) && Number.isFinite(Number(st.movieId)));
+
+        setAllShowtimes(enrichedShowtimes);
         setCinemas(cinemaData);
       } catch(e) {
         console.error('Failed to load data', e);
@@ -118,7 +152,7 @@ export default function BoxOfficePOS() {
   }, [selectedCinema]);
 
   // ── Derive: movies from showtimes (today only, filtered by cinema) ──
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = toLocalDateString();
 
   const movies = useMemo(() => {
     if (!selectedCinema) return [];
@@ -143,11 +177,13 @@ export default function BoxOfficePOS() {
   // ── Derive: showtimes for selected movie + cinema ───────────────────
   const movieShowtimes = useMemo(() => {
     if (!selectedMovie || !selectedCinema) return [];
+    const now = Date.now();
     return allShowtimes
       .filter(st =>
         st.movieId === selectedMovie.movieId &&
         st.cinemaId === selectedCinema.cinemaId &&
-        st.startTime?.split('T')[0] === todayStr
+        st.startTime?.split('T')[0] === todayStr &&
+        new Date(st.startTime).getTime() >= now
       )
       .sort((a, b) => a.startTime.localeCompare(b.startTime));
   }, [allShowtimes, selectedMovie, selectedCinema, todayStr]);
@@ -156,10 +192,16 @@ export default function BoxOfficePOS() {
   useEffect(() => {
     if (!selectedShowtime) return;
     const loadSeats = async () => {
+      const normalizedShowtimeId = Number(selectedShowtime.showtimeId);
+      if (!Number.isFinite(normalizedShowtimeId)) {
+        setSeats([]);
+        setSeatsError('Không tìm thấy mã suất chiếu hợp lệ.');
+        return;
+      }
       setSeatsLoading(true);
       setSeatsError(null);
       try {
-        const data = await fetchSeatStatuses(selectedShowtime.showtimeId);
+        const data = await fetchSeatStatuses(normalizedShowtimeId);
         setSeats(data);
       } catch(e) {
         console.error('Failed to load seats', e);
@@ -212,7 +254,18 @@ export default function BoxOfficePOS() {
   };
 
   const handleSelectShowtime = (st) => {
-    setSelectedShowtime(st);
+    const normalizedShowtimeId = Number(st?.showtimeId);
+    if (!Number.isFinite(normalizedShowtimeId)) {
+      setSeatsError('Suất chiếu không hợp lệ, vui lòng chọn lại.');
+      return;
+    }
+    if (st?.startTime && new Date(st.startTime).getTime() < Date.now()) {
+      setSeats([]);
+      setSelectedSeats([]);
+      setSeatsError('Suất chiếu đã bắt đầu/kết thúc, vui lòng chọn suất khác.');
+      return;
+    }
+    setSelectedShowtime({ ...st, showtimeId: normalizedShowtimeId });
     setSelectedSeats([]);
     setStep(4);
   };

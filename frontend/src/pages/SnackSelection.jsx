@@ -45,6 +45,15 @@ export default function SnackSelection() {
   const [fnbItems, setFnbItems] = useState([]);
   const [selectedFnB, setSelectedFnB] = useState({}); // { itemId: quantity }
 
+  const getAvailableStock = (item) => {
+    if (!item || item.isActive === false) return 0;
+    const raw = Number(item.stockQuantity);
+    // Public F&B API currently does not provide stockQuantity.
+    // Treat missing/invalid stock as "available" instead of "out of stock".
+    if (!Number.isFinite(raw)) return Number.POSITIVE_INFINITY;
+    return Math.max(0, raw);
+  };
+
   // Redirect if no seats selected
   useEffect(() => {
     if (!selectedSeats || selectedSeats.length === 0) {
@@ -71,7 +80,7 @@ export default function SnackSelection() {
   const updateQuantity = (itemId, delta) => {
     setSelectedFnB(prev => {
       const item = fnbItems.find(i => i.itemId === itemId);
-      const stock = Math.max(0, Number(item?.stockQuantity ?? 0));
+      const stock = getAvailableStock(item);
       const current = prev[itemId] || 0;
       const next = Math.max(0, current + delta);
       const capped = Math.min(next, stock);
@@ -156,8 +165,10 @@ export default function SnackSelection() {
                         <div>
                           <h3 className="font-black text-xl text-slate-800 dark:text-white mb-1">{item.name}</h3>
                           <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">{item.description}</p>
-                          <p className={`text-xs font-bold mt-2 ${(item.stockQuantity || 0) > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                            {(item.stockQuantity || 0) > 0 ? `Còn ${item.stockQuantity}` : 'Hết hàng'}
+                          <p className={`text-xs font-bold mt-2 ${getAvailableStock(item) > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                            {getAvailableStock(item) > 0
+                              ? (Number.isFinite(Number(item.stockQuantity)) ? `Còn ${item.stockQuantity}` : 'Còn hàng')
+                              : 'Hết hàng'}
                           </p>
                         </div>
                         <div className="flex items-center justify-between mt-4">
@@ -167,7 +178,7 @@ export default function SnackSelection() {
                             <span className="w-10 text-center font-black text-slate-800 dark:text-white">{selectedFnB[item.itemId] || 0}</span>
                             <button
                               onClick={() => updateQuantity(item.itemId, 1)}
-                              disabled={(selectedFnB[item.itemId] || 0) >= (item.stockQuantity || 0)}
+                              disabled={(selectedFnB[item.itemId] || 0) >= getAvailableStock(item)}
                               className="w-8 h-8 flex items-center justify-center bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
                             ><span className="material-symbols-outlined text-sm">add</span></button>
                           </div>
@@ -194,8 +205,10 @@ export default function SnackSelection() {
                         />
                       </div>
                       <h4 className="font-black text-lg text-slate-800 dark:text-white mb-2 line-clamp-1">{item.name}</h4>
-                      <p className={`text-xs font-bold mb-2 ${(item.stockQuantity || 0) > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                        {(item.stockQuantity || 0) > 0 ? `Còn ${item.stockQuantity}` : 'Hết hàng'}
+                      <p className={`text-xs font-bold mb-2 ${getAvailableStock(item) > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                        {getAvailableStock(item) > 0
+                          ? (Number.isFinite(Number(item.stockQuantity)) ? `Còn ${item.stockQuantity}` : 'Còn hàng')
+                          : 'Hết hàng'}
                       </p>
                       <div className="flex items-center justify-between">
                         <span className="font-black text-orange-500">{Number(item.price).toLocaleString('vi-VN')}đ</span>
@@ -205,14 +218,14 @@ export default function SnackSelection() {
                             <span className="w-7 text-center font-black text-sm text-slate-800 dark:text-white">{selectedFnB[item.itemId]}</span>
                             <button
                               onClick={() => updateQuantity(item.itemId, 1)}
-                              disabled={(selectedFnB[item.itemId] || 0) >= (item.stockQuantity || 0)}
+                              disabled={(selectedFnB[item.itemId] || 0) >= getAvailableStock(item)}
                               className="w-7 h-7 flex items-center justify-center bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
                             ><span className="material-symbols-outlined text-sm">add</span></button>
                           </div>
                         ) : (
                           <button
                             onClick={() => updateQuantity(item.itemId, 1)}
-                            disabled={(item.stockQuantity || 0) <= 0}
+                            disabled={getAvailableStock(item) <= 0}
                             className="w-9 h-9 flex items-center justify-center bg-slate-50 dark:bg-slate-800 text-slate-500 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:border-orange-500 hover:text-orange-500 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             <span className="material-symbols-outlined text-base">add</span>

@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -29,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional(readOnly = true)
+@Slf4j
 public class BookingServiceImpl implements BookingService {
 
     @Autowired
@@ -81,7 +83,15 @@ public class BookingServiceImpl implements BookingService {
                 .collect(Collectors.toSet());
 
         List<Integer> seatIdsInOrder = allSeats.stream().map(Seat::getSeatId).collect(Collectors.toList());
-        List<Boolean> lockHeld = seatLockProvider.batchLockHeld(showtimeId, seatIdsInOrder);
+        List<Boolean> lockHeldTemp;
+        try {
+            lockHeldTemp = seatLockProvider.batchLockHeld(showtimeId, seatIdsInOrder);
+        } catch (Exception ex) {
+            log.warn("Redis lock check failed for showtime {}. Continue without lock data: {}",
+                    showtimeId, ex.getMessage());
+            lockHeldTemp = java.util.Collections.emptyList();
+        }
+        final List<Boolean> lockHeld = lockHeldTemp;
 
         return IntStream.range(0, allSeats.size()).mapToObj(i -> {
             Seat seat = allSeats.get(i);
@@ -198,6 +208,8 @@ public class BookingServiceImpl implements BookingService {
                 .bookingId(booking.getBookingId())
                 .bookingCode(booking.getBookingCode())
                 .userId(booking.getUser() != null ? booking.getUser().getUserId() : null)
+                .customerName(booking.getUser() != null ? booking.getUser().getFullname() : null)
+                .customerPhone(booking.getUser() != null ? booking.getUser().getPhone() : null)
                 .promotionId(booking.getPromotion() != null ? booking.getPromotion().getId() : null)
                 .status(booking.getStatus())
                 .createdAt(booking.getCreatedAt())
@@ -206,12 +218,16 @@ public class BookingServiceImpl implements BookingService {
                         .movieId(t.getMovie() != null ? t.getMovie().getMovieId() : null)
                         .showtimeId(t.getShowtime() != null ? t.getShowtime().getShowtimeId() : null)
                         .seatId(t.getSeat() != null ? t.getSeat().getSeatId() : null)
+                        .seatCode(t.getSeat() != null ? t.getSeat().getSeatCode() : null)
+                        .seatType(t.getSeat() != null && t.getSeat().getSeatType() != null ? t.getSeat().getSeatType().getName() : null)
                         .unitPrice(t.getUnitPrice())
                         .holdExpiresAt(t.getHoldExpiresAt())
                         .build()).toList())
                 .fnbLines(fnbs.stream().map(l -> BookingDTO.FnBLineDTO.builder()
                         .id(l.getId())
                         .fnbItemId(l.getFnbItem() != null ? l.getFnbItem().getFnbItemId() : null)
+                        .itemName(l.getFnbItem() != null ? l.getFnbItem().getName() : null)
+                        .unitPrice(l.getFnbItem() != null ? l.getFnbItem().getPrice() : null)
                         .quantity(l.getQuantity())
                         .build()).toList())
                 .build();

@@ -1,6 +1,5 @@
 package com.cinema.booking.entities;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -15,28 +14,19 @@ public class MovieCast {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
     private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "movie_id", nullable = false)
-    @JsonIgnore
-    private Movie movie;
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "cast_member_id", nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "cast_member_id")
     private CastMember castMember;
 
-    @Column(name = "role_name", length = 100)
-    private String roleName;
+    @ManyToOne
+    @JoinColumn(name = "movie_id")
+    private Movie movie;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "role_type", nullable = false, length = 20)
-    private RoleType roleType;
+    @Column(name = "role_name")
+    private String role_name;
 
-    public enum RoleType {
-        ACTOR,
-        DIRECTOR
-    }
+    @Column(name = "role_type")
+    private String role_type;
 }
-

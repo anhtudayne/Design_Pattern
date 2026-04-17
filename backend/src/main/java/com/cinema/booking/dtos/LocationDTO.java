@@ -1,12 +1,12 @@
 package com.cinema.booking.dtos;
 
-import jakarta.validation.constraints.NotBlank;
-import lombok.Data;
+import lombok.*;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class LocationDTO {
-    private Integer locationId;
-    
-    @NotBlank(message = "Tên Tỉnh/Thành phố không được bỏ trống")
+    private Integer id;
     private String name;
 }

@@ -186,7 +186,12 @@ export default function MovieManagement() {
         fetch(API, { headers: getAuthHeaders() }),
         fetch(`${BASE_URL}/admin/metadata/genres`, { headers: getAuthHeaders() })
       ]);
-      if (rMovies.ok) setList(await rMovies.json());
+      if (rMovies.ok) {
+        setList(await rMovies.json());
+      } else {
+        setList([]);
+        notify('Khong tai duoc danh sach phim. Hay dang nhap lai tai khoan ADMIN/STAFF.', 'error');
+      }
       if (rGenres.ok) {
         const genres = await rGenres.json();
         setAllGenres(normalizeGenrePayload(genres));

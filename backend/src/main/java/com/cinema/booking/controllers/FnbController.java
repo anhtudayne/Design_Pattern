@@ -24,8 +24,7 @@ public class FnbController {
 
     @Operation(summary = "Lấy danh sách sản phẩm F&B")
     @GetMapping("/items")
-    public List<FnbItemDTO> getAllItems(@RequestParam(required = false) Integer cinemaId) {
-        // Keep cinemaId query param for backward-compatible API contract.
+    public List<FnbItemDTO> getAllItems() {
         return itemRepository.findAll().stream().map(this::toDto).toList();
     }
 
@@ -73,10 +72,6 @@ public class FnbController {
         dto.setStockQuantity(0);
         dto.setIsActive(true);
         dto.setImageUrl(item.getImageUrl());
-        dto.setCategoryId(null);
-        dto.setCategoryName(null);
-        dto.setCinemaId(null);
-        dto.setCinemaName(null);
         return dto;
     }
 }

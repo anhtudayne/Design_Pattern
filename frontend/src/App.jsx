@@ -28,6 +28,18 @@ import BoxOfficePOS from './pages/staff/BoxOfficePOS';
 import FnbConcession from './pages/staff/FnbConcession';
 import OrderLookup from './pages/staff/OrderLookup';
 
+function RequireAuth({ allowedRoles }) {
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
+
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+
+  const roles = user?.roles || [];
+  const hasRole = allowedRoles.some((role) => roles.includes(role));
+  if (!hasRole) return <Navigate to="/" replace />;
+
+  return <Outlet />;
+}
+
 function CustomerRoutes() {
   const { user, isAuthenticated } = useSelector(state => state.auth);
   
@@ -65,23 +77,27 @@ function App() {
           <Route path="/login" element={<Login />} />
 
           {/* Admin Routes */}
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="management" element={<MovieManagement />} />
-            <Route path="showtimes" element={<ShowtimeManagement />} />
-            <Route path="facilities" element={<FacilitiesManagement />} />
-            <Route path="artists" element={<ArtistManagement />} />
-            <Route path="fnb" element={<FnbManagement />} />
-            <Route path="vouchers" element={<VoucherManagement />} />
+          <Route element={<RequireAuth allowedRoles={['ROLE_ADMIN', 'ROLE_STAFF']} />}>
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="management" element={<MovieManagement />} />
+              <Route path="showtimes" element={<ShowtimeManagement />} />
+              <Route path="facilities" element={<FacilitiesManagement />} />
+              <Route path="artists" element={<ArtistManagement />} />
+              <Route path="fnb" element={<FnbManagement />} />
+              <Route path="vouchers" element={<VoucherManagement />} />
+            </Route>
           </Route>
 
           {/* Staff POS Routes */}
-          <Route path="/staff" element={<StaffLayout />}>
-            <Route index element={<Navigate to="pos" replace />} />
-            <Route path="pos" element={<BoxOfficePOS />} />
-            <Route path="fnb" element={<FnbConcession />} />
-            <Route path="lookup" element={<OrderLookup />} />
+          <Route element={<RequireAuth allowedRoles={['ROLE_STAFF']} />}>
+            <Route path="/staff" element={<StaffLayout />}>
+              <Route index element={<Navigate to="pos" replace />} />
+              <Route path="pos" element={<BoxOfficePOS />} />
+              <Route path="fnb" element={<FnbConcession />} />
+              <Route path="lookup" element={<OrderLookup />} />
+            </Route>
           </Route>
         </Routes>
       </BrowserRouter>

@@ -1,4 +1,50 @@
 -- Reset in dependency-safe order
+-- Align legacy column names to current JPA mappings (safe for repeated runs)
+SET @sql := (
+  SELECT IF(
+    EXISTS(
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'cast_members'
+        AND COLUMN_NAME = 'id'
+    ),
+    'ALTER TABLE cast_members CHANGE COLUMN id cast_member_id INT NOT NULL AUTO_INCREMENT',
+    'SELECT 1'
+  )
+);
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @sql := (
+  SELECT IF(
+    EXISTS(
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'seat_types'
+        AND COLUMN_NAME = 'id'
+    ),
+    'ALTER TABLE seat_types CHANGE COLUMN id seat_id INT NOT NULL AUTO_INCREMENT',
+    'SELECT 1'
+  )
+);
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @sql := (
+  SELECT IF(
+    EXISTS(
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'fnb_items'
+        AND COLUMN_NAME = 'id'
+    ),
+    'ALTER TABLE fnb_items CHANGE COLUMN id fnb_item_id INT NOT NULL AUTO_INCREMENT',
+    'SELECT 1'
+  )
+);
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
 DELETE FROM notifications;
 DELETE FROM payments;
 DELETE FROM fnb_lines;

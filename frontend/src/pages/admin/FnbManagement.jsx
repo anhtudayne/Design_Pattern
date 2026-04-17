@@ -126,34 +126,21 @@ function ImageUpload({ folder = 'fnb', value, onChange }) {
 }
 
 // ── Item Tab ──────────────────────────────────────────────────────────────────
-function ItemTab({ categories, notify }) {
+function ItemTab({ notify }) {
   const [items, setItems]       = useState([]);
-  const [cinemas, setCinemas]   = useState([]);
-  const [selectedCinemaId, setSelectedCinemaId] = useState('');
   const [loading, setLoading]   = useState(true);
   const [saving, setSaving]     = useState(false);
   const [modal, setModal]       = useState(null);
-  const [form, setForm]         = useState({ name: '', description: '', price: 0, stockQuantity: 0, categoryId: '', cinemaId: '', imageUrl: '', isActive: true });
+  const [form, setForm]         = useState({ name: '', description: '', price: 0, stockQuantity: 0, imageUrl: '', isActive: true });
   const [search, setSearch]     = useState('');
 
-  useEffect(() => {
-    fetch(`${BASE_URL}/public/cinemas`)
-      .then(r => r.ok ? r.json() : [])
-      .then(list => {
-        setCinemas(list);
-        if (list?.length) setSelectedCinemaId(String(list[0].cinemaId));
-      })
-      .catch(() => {});
-  }, []);
-
   const load = useCallback(async () => {
-    if (selectedCinemaId === '') return;
     setLoading(true);
     try {
-      const r = await fetch(`${API}/items?cinemaId=${encodeURIComponent(selectedCinemaId)}`, { headers: getAuthHeaders() });
+      const r = await fetch(`${API}/items`, { headers: getAuthHeaders() });
       if (r.ok) setItems(await r.json());
     } finally { setLoading(false); }
-  }, [selectedCinemaId]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
@@ -163,8 +150,6 @@ function ItemTab({ categories, notify }) {
       description: '',
       price: 0,
       stockQuantity: 0,
-      categoryId: categories[0]?.categoryId || '',
-      cinemaId: selectedCinemaId || (cinemas[0]?.cinemaId != null ? String(cinemas[0].cinemaId) : ''),
       imageUrl: '',
       isActive: true,
     });
@@ -177,8 +162,6 @@ function ItemTab({ categories, notify }) {
       description: item.description || '',
       price: item.price,
       stockQuantity: Number(item.stockQuantity || 0),
-      categoryId: item.categoryId != null ? String(item.categoryId) : '',
-      cinemaId: item.cinemaId != null ? String(item.cinemaId) : '',
       imageUrl: item.imageUrl || '',
       isActive: item.isActive
     });
@@ -198,8 +181,6 @@ function ItemTab({ categories, notify }) {
           ...form,
           price: Number(form.price),
           stockQuantity: Number(form.stockQuantity),
-          categoryId: form.categoryId ? Number(form.categoryId) : null,
-          cinemaId: Number(form.cinemaId),
         })
       });
       if (r.ok) {
@@ -222,31 +203,15 @@ function ItemTab({ categories, notify }) {
 
   const filtered = items.filter(i => {
     const q = search.toLowerCase();
-    return (
-      i.name.toLowerCase().includes(q) ||
-      (i.categoryName || '').toLowerCase().includes(q) ||
-      (i.cinemaName || '').toLowerCase().includes(q)
-    );
+    return i.name.toLowerCase().includes(q);
   });
 
   return (
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-        <div className="flex items-center gap-2 min-w-[220px]">
-          <span className="material-symbols-outlined text-slate-400">storefront</span>
-          <select
-            className={selectCls + ' py-2.5 font-bold text-slate-700'}
-            value={selectedCinemaId}
-            onChange={e => setSelectedCinemaId(e.target.value)}
-          >
-            {cinemas.map(c => (
-              <option key={c.cinemaId} value={c.cinemaId}>{c.name}</option>
-            ))}
-          </select>
-        </div>
         <div className="flex-1 relative group">
           <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-orange-500">search</span>
-          <input className="w-full pl-11 pr-4 py-2.5 rounded-2xl border border-slate-200 bg-white text-sm focus:outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100 transition-all font-medium" placeholder="Tìm theo tên, danh mục..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input className="w-full pl-11 pr-4 py-2.5 rounded-2xl border border-slate-200 bg-white text-sm focus:outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100 transition-all font-medium" placeholder="Tìm theo tên..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <button onClick={openAdd} className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-orange-500 text-white text-sm font-bold hover:bg-orange-600 transition-all shadow-lg shadow-orange-100 whitespace-nowrap active:scale-95">
           <span className="material-symbols-outlined text-lg">add</span>
@@ -287,9 +252,8 @@ function ItemTab({ categories, notify }) {
               <div className="px-1">
                 <div className="flex justify-between items-start gap-2 mb-1">
                   <h4 className="font-bold text-slate-800 line-clamp-1 group-hover:text-orange-600 transition-colors uppercase tracking-tight text-xs">{item.name}</h4>
-                  <span className="flex-shrink-0 px-2 py-0.5 rounded-lg bg-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{item.categoryName || '—'}</span>
+                  <span className="flex-shrink-0 px-2 py-0.5 rounded-lg bg-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-tighter">F&B</span>
                 </div>
-                <p className="text-[10px] font-bold text-orange-600/80 uppercase tracking-tight mb-0.5">{item.cinemaName || 'Chi nhánh'}</p>
                 <p className="text-[11px] text-slate-400 line-clamp-2 min-h-[32px] font-medium leading-relaxed">{item.description || 'Chưa có mô tả cho sản phẩm này.'}</p>
                 <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between">
                    <p className="font-black text-orange-500">{item.price.toLocaleString('vi-VN')}đ</p>
@@ -313,33 +277,12 @@ function ItemTab({ categories, notify }) {
             <FormField label="Tên sản phẩm" required>
               <input className={inputCls} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ví dụ: Bắp rang bơ phô mai..." required />
             </FormField>
-            <FormField label="Chi nhánh / Rạp" required>
-              <select
-                className={selectCls}
-                value={form.cinemaId}
-                onChange={e => setForm({ ...form, cinemaId: e.target.value })}
-                required
-              >
-                <option value="">-- Chọn rạp --</option>
-                {cinemas.map(c => (
-                  <option key={c.cinemaId} value={c.cinemaId}>{c.name}</option>
-                ))}
-              </select>
-            </FormField>
             <div className="grid grid-cols-2 gap-3">
               <FormField label="Giá bán (VNĐ)" required>
                 <input className={inputCls} type="number" value={form.price} onChange={e => setForm({ ...form, price: Number(e.target.value) })} required />
               </FormField>
               <FormField label="Tồn kho" required>
                 <input className={inputCls} type="number" min="0" value={form.stockQuantity} onChange={e => setForm({ ...form, stockQuantity: Number(e.target.value) })} required />
-              </FormField>
-            </div>
-            <div className="grid grid-cols-1 gap-3">
-              <FormField label="Danh mục" required>
-                <select className={selectCls} value={form.categoryId} onChange={e => setForm({ ...form, categoryId: e.target.value })} required>
-                  <option value="">-- Chọn danh mục --</option>
-                  {categories.map(c => <option key={c.categoryId} value={c.categoryId}>{c.name}</option>)}
-                </select>
               </FormField>
             </div>
             <FormField label="Mô tả">
@@ -363,121 +306,11 @@ function ItemTab({ categories, notify }) {
   );
 }
 
-// ── Category Tab ──────────────────────────────────────────────────────────────
-function CategoryTab({ notify }) {
-  const [cats, setCats]         = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [saving, setSaving]     = useState(false);
-  const [modal, setModal]       = useState(null);
-  const [form, setForm]         = useState({ name: '', isActive: true });
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const r = await fetch(`${API}/categories`, { headers: getAuthHeaders() });
-      if (r.ok) setCats(await r.json());
-    } finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  const openAdd = () => { setForm({ name: '', isActive: true }); setModal('add'); };
-  const openEdit = (cat) => { setForm({ name: cat.name, isActive: cat.isActive }); setModal({ edit: cat }); };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    const isEdit = !!modal?.edit;
-    const url = isEdit ? `${API}/categories/${modal.edit.categoryId}` : `${API}/categories`;
-    try {
-      const r = await fetch(url, {
-        method: isEdit ? 'PUT' : 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(form)
-      });
-      if (r.ok) { notify('Đã lưu danh mục!', 'success'); setModal(null); load(); }
-    } finally { setSaving(false); }
-  };
-
-  return (
-    <div className="space-y-5">
-      <div className="flex justify-end">
-        <button onClick={openAdd} className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-slate-800 text-white text-sm font-bold hover:bg-slate-900 transition-all shadow-md active:scale-95 uppercase tracking-wider">
-          <span className="material-symbols-outlined text-lg text-orange-400">category</span>
-          Tạo danh mục mới
-        </button>
-      </div>
-
-      <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-50/50">
-              <th className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[2px]">Tên danh mục</th>
-              <th className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[2px]">Trạng thái</th>
-              <th className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[2px] text-right">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {loading ? (
-              <tr><td colSpan="3" className="py-20 text-center"><div className="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto" /></td></tr>
-            ) : cats.map(cat => (
-              <tr key={cat.categoryId} className="hover:bg-slate-50/50 transition-colors">
-                <td className="px-6 py-4">
-                  <p className="font-bold text-slate-700 tracking-tight">{cat.name}</p>
-                </td>
-                <td className="px-6 py-4">
-                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${cat.isActive ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-slate-100 text-slate-400 border border-slate-200'}`}>
-                    {cat.isActive ? 'Hoạt động' : 'Tạm dừng'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <button onClick={() => openEdit(cat)} className="w-9 h-9 rounded-xl inline-flex items-center justify-center text-slate-400 hover:text-orange-500 hover:bg-orange-50 transition-all">
-                    <span className="material-symbols-outlined text-lg">edit_note</span>
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {modal && (
-        <Modal title={modal.edit ? 'Sửa danh mục' : 'Thêm danh mục F&B'} onClose={() => setModal(null)}>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <FormField label="Tên danh mục" required>
-              <input className={inputCls} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ví dụ: Combo, Thủy tinh..." required />
-            </FormField>
-            <label className="flex items-center gap-2 cursor-pointer group">
-              <div className="relative flex items-center">
-                <input type="checkbox" className="sr-only peer" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })} />
-                <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500" />
-              </div>
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider group-hover:text-slate-700 transition-colors">Cho phép sử dụng</span>
-            </label>
-            <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => setModal(null)} className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50 transition-all font-['Space_Grotesk']">Hủy</button>
-              <button type="submit" disabled={saving} className="flex-1 py-3 rounded-2xl bg-slate-800 hover:bg-slate-900 text-white text-sm font-black transition-all shadow-lg shadow-slate-100 disabled:opacity-60 font-['Space_Grotesk'] uppercase tracking-wider">{saving ? 'Lưu thay đổi...' : 'Áp dụng'}</button>
-            </div>
-          </form>
-        </Modal>
-      )}
-    </div>
-  );
-}
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function FnbManagement() {
-  const [activeTab, setActiveTab] = useState('items'); // 'items' or 'categories'
   const [toast, setToast] = useState(null);
-  const [categories, setCategories] = useState([]);
 
   const notify = (msg, type = 'info') => setToast({ msg, type });
-
-  useEffect(() => {
-    fetch(`${API}/categories`, { headers: getAuthHeaders() })
-      .then(r => r.ok ? r.json() : [])
-      .then(data => setCategories(data));
-  }, [activeTab]);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] p-6 md:p-8 font-['Space_Grotesk'] antialiased">
@@ -495,25 +328,10 @@ export default function FnbManagement() {
           </div>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="bg-slate-100 p-1.5 rounded-[20px] flex gap-1 shadow-inner border border-slate-200/50">
-           <button onClick={() => setActiveTab('items')} className={`flex items-center gap-2 px-5 py-2.5 rounded-[16px] text-xs font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'items' ? 'bg-white text-orange-500 shadow-sm scale-[1.02]' : 'text-slate-500 hover:bg-white/50'}`}>
-              <span className="material-symbols-outlined text-[18px]">restaurant_menu</span>
-              Sản phẩm
-           </button>
-           <button onClick={() => setActiveTab('categories')} className={`flex items-center gap-2 px-5 py-2.5 rounded-[16px] text-xs font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'categories' ? 'bg-white text-orange-500 shadow-sm scale-[1.02]' : 'text-slate-500 hover:bg-white/50'}`}>
-              <span className="material-symbols-outlined text-[18px]">category</span>
-              Danh mục
-           </button>
-        </div>
       </div>
 
       <div className="max-w-[1240px]">
-        {activeTab === 'items' ? (
-          <ItemTab categories={categories} notify={notify} />
-        ) : (
-          <CategoryTab notify={notify} />
-        )}
+        <ItemTab notify={notify} />
       </div>
     </div>
   );

@@ -55,14 +55,9 @@ export default function SnackSelection() {
   // Fetch F&B theo rạp của suất đã chọn
   useEffect(() => {
     const loadFnB = async () => {
-      if (!cinema?.cinemaId) {
-        setFnbItems([]);
-        setLoading(false);
-        return;
-      }
       setLoading(true);
       try {
-        const data = await fetchFnBItems(cinema.cinemaId);
+        const data = await fetchFnBItems();
         setFnbItems(data);
       } catch (err) {
         console.error('Failed to fetch F&B items', err);
@@ -71,7 +66,7 @@ export default function SnackSelection() {
       }
     };
     loadFnB();
-  }, [cinema?.cinemaId]);
+  }, []);
 
   const updateQuantity = (itemId, delta) => {
     setSelectedFnB(prev => {
@@ -99,9 +94,9 @@ export default function SnackSelection() {
 
   const grandTotal = seatTotal + snackTotal;
 
-  // Group items by category name (backend returns category as object)
-  const combos = fnbItems.filter(i => i.categoryName?.toUpperCase() === 'COMBO');
-  const singles = fnbItems.filter(i => i.categoryName?.toUpperCase() !== 'COMBO');
+  // Category was removed from F&B model, keep one flat list for selection.
+  const combos = [];
+  const singles = fnbItems;
 
   const handleNext = () => {
     const snackList = Object.entries(selectedFnB)

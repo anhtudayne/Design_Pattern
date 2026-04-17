@@ -23,7 +23,6 @@ import com.cinema.booking.entities.FnbItem;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -125,10 +124,9 @@ public class PublicController {
         return ResponseEntity.ok(showtimeQueryService.findShowtimes(filter));
     }
 
-    @Operation(summary = "Lấy sản phẩm F&B", description = "Lọc theo cinemaId (rạp).")
+    @Operation(summary = "Lấy sản phẩm F&B", description = "Danh sách F&B dùng chung toàn hệ thống.")
     @GetMapping("/fnb/items")
-    public ResponseEntity<List<FnbItemDTO>> getPublicFnbItems(@RequestParam(required = false) Integer cinemaId) {
-        // FnbItem no longer has Cinema FK in strict entity model.
+    public ResponseEntity<List<FnbItemDTO>> getPublicFnbItems() {
         List<FnbItem> items = fnbItemRepository.findAll();
 
         List<FnbItemDTO> response = items.stream().map(item -> {
@@ -138,8 +136,6 @@ public class PublicController {
             dto.setDescription(item.getDescription());
             dto.setPrice(item.getPrice());
             dto.setImageUrl(item.getImageUrl());
-            dto.setCinemaId(null);
-            dto.setCinemaName(null);
             return dto;
         }).toList();
         return ResponseEntity.ok(response);

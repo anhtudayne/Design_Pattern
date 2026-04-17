@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { fetchFnBItems, fetchFnBCategories } from '../../services/fnbService';
-import { fetchCinemas } from '../../services/cinemaService';
+import { fetchFnBItems } from '../../services/fnbService';
 
 const formatMoney = (v) => new Intl.NumberFormat('vi-VN').format(v || 0) + 'đ';
 
@@ -9,48 +8,30 @@ const formatMoney = (v) => new Intl.NumberFormat('vi-VN').format(v || 0) + 'đ';
 // ══════════════════════════════════════════════════════════════════════
 export default function FnbConcession() {
   const [items, setItems] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [cinemas, setCinemas] = useState([]);
-  const [selectedCinemaId, setSelectedCinemaId] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState('ALL');
   const [cart, setCart] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   useEffect(() => {
-    fetchFnBCategories().then(setCategories).catch(console.error);
-    fetchCinemas()
-      .then((list) => {
-        setCinemas(list);
-        if (list?.length) setSelectedCinemaId(list[0].cinemaId);
-      })
-      .catch(console.error);
-  }, []);
-
-  useEffect(() => {
-    if (selectedCinemaId == null) return;
     setCart([]);
     setLoading(true);
-    fetchFnBItems(selectedCinemaId)
+    fetchFnBItems()
       .then(setItems)
       .catch((e) => console.error('Failed to load F&B data', e))
       .finally(() => setLoading(false));
-  }, [selectedCinemaId]);
+  }, []);
 
   // ── Filtered items ──────────────────────────────────────────────────
   const filteredItems = useMemo(() => {
     let result = items;
-    if (activeCategory !== 'ALL') {
-      result = result.filter(i => i.categoryId === parseInt(activeCategory));
-    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(i => i.name?.toLowerCase().includes(q));
     }
     return result;
-  }, [items, activeCategory, searchQuery]);
+  }, [items, searchQuery]);
 
   // ── Cart helpers ────────────────────────────────────────────────────
   const addToCart = (item) => {
@@ -137,20 +118,8 @@ export default function FnbConcession() {
       ════════════════════════════════════════════════════════════════ */}
       <div className="flex-[7] flex flex-col min-w-0 overflow-hidden">
 
-        {/* Chi nhánh + Search + Category Tabs */}
+        {/* Search */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4 flex-wrap">
-          <div className="flex items-center gap-2 min-w-[200px]">
-            <span className="material-symbols-outlined text-slate-400 text-lg">storefront</span>
-            <select
-              value={selectedCinemaId ?? ''}
-              onChange={(e) => setSelectedCinemaId(Number(e.target.value))}
-              className="flex-1 min-w-[180px] px-3 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-sm font-bold text-slate-800 dark:text-white focus:outline-none focus:border-orange-500"
-            >
-              {cinemas.map((c) => (
-                <option key={c.cinemaId} value={c.cinemaId}>{c.name}</option>
-              ))}
-            </select>
-          </div>
           {/* Search */}
           <div className="relative flex-1 max-w-sm">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
@@ -163,32 +132,6 @@ export default function FnbConcession() {
             />
           </div>
 
-          {/* Category tabs */}
-          <div className="flex items-center gap-1 flex-wrap">
-            <button
-              onClick={() => setActiveCategory('ALL')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
-                activeCategory === 'ALL'
-                  ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-md shadow-orange-500/30'
-                  : 'bg-white dark:bg-slate-900 text-slate-500 border border-slate-100 dark:border-slate-800 hover:border-orange-500/50'
-              }`}
-            >
-              Tất cả
-            </button>
-            {categories.map(cat => (
-              <button
-                key={cat.categoryId}
-                onClick={() => setActiveCategory(String(cat.categoryId))}
-                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
-                  activeCategory === String(cat.categoryId)
-                    ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-md shadow-orange-500/30'
-                    : 'bg-white dark:bg-slate-900 text-slate-500 border border-slate-100 dark:border-slate-800 hover:border-orange-500/50'
-                }`}
-              >
-                {cat.name}
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* Product Grid */}

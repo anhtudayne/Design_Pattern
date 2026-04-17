@@ -28,7 +28,7 @@ public class UserServiceImpl implements UserService {
         Integer userId = getCurrentUserId();
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
-        return UserDTO.fromEntity(user);
+        return toDto(user);
     }
 
     @Override
@@ -46,6 +46,15 @@ public class UserServiceImpl implements UserService {
         }
 
         user = userRepository.save(user);
-        return UserDTO.fromEntity(user);
+        return toDto(user);
+    }
+
+    private static UserDTO toDto(User user) {
+        UserDTO dto = new UserDTO();
+        dto.setUserId(user.getUserId());
+        dto.setFullname(user.getFullname());
+        dto.setPhone(user.getPhone());
+        dto.setEmail(user.getUserAccount() != null ? user.getUserAccount().getEmail() : null);
+        return dto;
     }
 }

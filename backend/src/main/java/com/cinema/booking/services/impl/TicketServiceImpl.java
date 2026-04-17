@@ -48,33 +48,12 @@ public class TicketServiceImpl implements TicketService {
     private TicketDTO convertToDTO(Ticket ticket) {
         return TicketDTO.builder()
                 .ticketId(ticket.getTicketId())
+                .movieId(ticket.getMovie() != null ? ticket.getMovie().getMovieId() : null)
+                .showtimeId(ticket.getShowtime() != null ? ticket.getShowtime().getShowtimeId() : null)
+                .seatId(ticket.getSeat() != null ? ticket.getSeat().getSeatId() : null)
+                .unitPrice(ticket.getUnitPrice())
+                .holdExpiresAt(ticket.getHoldExpiresAt())
                 .bookingId(ticket.getBooking() != null ? ticket.getBooking().getBookingId() : null)
-                .movieTitle(ticket.getShowtime() != null && ticket.getShowtime().getMovie() != null
-                        ? ticket.getShowtime().getMovie().getTitle() : "N/A")
-                .showtimeDate(ticket.getShowtime() != null ? ticket.getShowtime().getStartTime() : null)
-                .roomName(ticket.getSeat() != null && ticket.getSeat().getRoom() != null 
-                        ? ticket.getSeat().getRoom().getName() : "N/A")
-                .seatCode(ticket.getSeat() != null ? ticket.getSeat().getSeatCode() : null)
-                .seatRow(ticket.getSeat() != null ? extractSeatRow(ticket.getSeat().getSeatCode()) : null)
-                .seatNumber(ticket.getSeat() != null ? extractSeatNumber(ticket.getSeat().getSeatCode()) : null)
-                .seatType(ticket.getSeat() != null && ticket.getSeat().getSeatType() != null 
-                        ? ticket.getSeat().getSeatType().getName() : "STANDARD")
-                .price(ticket.getUnitPrice())
-                .bookingCode(ticket.getBooking() != null ? ticket.getBooking().getBookingCode() : null)
                 .build();
-    }
-
-    private String extractSeatRow(String seatCode) {
-        if (seatCode == null || seatCode.isBlank()) return null;
-        return seatCode.substring(0, 1);
-    }
-
-    private Integer extractSeatNumber(String seatCode) {
-        if (seatCode == null || seatCode.length() < 2) return null;
-        try {
-            return Integer.parseInt(seatCode.substring(1));
-        } catch (NumberFormatException ex) {
-            return null;
-        }
     }
 }

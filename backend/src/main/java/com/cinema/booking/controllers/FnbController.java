@@ -65,12 +65,10 @@ public class FnbController {
 
     private FnbItemDTO toDto(FnbItem item) {
         FnbItemDTO dto = new FnbItemDTO();
-        dto.setItemId(item.getFnbItemId());
+        dto.setFnbItemId(item.getFnbItemId());
         dto.setName(item.getName());
         dto.setDescription(item.getDescription());
         dto.setPrice(item.getPrice());
-        dto.setStockQuantity(0);
-        dto.setIsActive(true);
         dto.setImageUrl(item.getImageUrl());
         return dto;
     }

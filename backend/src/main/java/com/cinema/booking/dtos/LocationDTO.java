@@ -1,5 +1,6 @@
 package com.cinema.booking.dtos;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
 @Data
@@ -7,6 +8,8 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class LocationDTO {
+    /** Khớp entity {@code Location#id}; JSON dùng {@code locationId} cho frontend admin. */
+    @JsonProperty("locationId")
     private Integer id;
     private String name;
 }

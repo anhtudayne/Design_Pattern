@@ -131,7 +131,7 @@ public class PublicController {
 
         List<FnbItemDTO> response = items.stream().map(item -> {
             FnbItemDTO dto = new FnbItemDTO();
-            dto.setItemId(item.getFnbItemId());
+            dto.setFnbItemId(item.getFnbItemId());
             dto.setName(item.getName());
             dto.setDescription(item.getDescription());
             dto.setPrice(item.getPrice());

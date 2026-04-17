@@ -1,13 +1,10 @@
 package com.cinema.booking.services.builder.filter;
 
 import com.cinema.booking.dtos.ShowtimeDTO;
-import com.cinema.booking.entities.Movie;
-import com.cinema.booking.entities.Room;
 import com.cinema.booking.entities.Showtime;
 import com.cinema.booking.repositories.ShowtimeRepository;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -88,20 +85,6 @@ public class ShowtimeQueryService {
         dto.setStartTime(showtime.getStartTime());
         dto.setEndTime(showtime.getEndTime());
         dto.setBasePrice(showtime.getBasePrice());
-        dto.setSurcharge(BigDecimal.ZERO);
-
-        // Enriched fields
-        Movie movie = showtime.getMovie();
-        dto.setMovieTitle(movie.getTitle());
-        dto.setMoviePosterUrl(movie.getPosterUrl());
-        dto.setMovieDurationMinutes(movie.getDurationMinutes());
-
-        Room room = showtime.getRoom();
-        dto.setRoomName(room.getName());
-        dto.setScreenType(room.getScreenType());
-        dto.setCinemaId(room.getCinema().getCinemaId());
-        dto.setCinemaName(room.getCinema().getName());
-
         return dto;
     }
 }

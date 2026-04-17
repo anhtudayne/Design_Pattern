@@ -28,7 +28,6 @@ public class RoomServiceImpl implements RoomService {
         
         if (room.getCinema() != null) {
             dto.setCinemaId(room.getCinema().getCinemaId());
-            dto.setCinemaName(room.getCinema().getName());
         }
         
         dto.setName(room.getName());

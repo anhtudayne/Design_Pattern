@@ -13,7 +13,7 @@ const TYPES = {
   castMembers: {
     label: 'Cast & Crew', labelSingle: 'nhân sự điện ảnh',
     icon: 'groups', color: 'blue',
-    idField: 'id', endpoint: `${API}/cast-members`,
+    idField: 'castMemberId', endpoint: `${API}/cast-members`,
     fields: { fullName: true, bio: true, birthDate: false, nationality: false, imageUrl: false },
   },
   artists: {

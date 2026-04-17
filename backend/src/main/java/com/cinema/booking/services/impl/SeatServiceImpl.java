@@ -48,19 +48,8 @@ public class SeatServiceImpl implements SeatService {
         }
         
         dto.setSeatCode(seat.getSeatCode());
-        String seatCode = seat.getSeatCode() == null ? "" : seat.getSeatCode().trim();
-        if (seatCode.length() >= 2) {
-            dto.setSeatRow(seatCode.substring(0, 1));
-            try {
-                dto.setSeatNumber(Integer.parseInt(seatCode.substring(1)));
-            } catch (NumberFormatException ignored) {
-                dto.setSeatNumber(null);
-            }
-        }
         if (seat.getSeatType() != null) {
             dto.setSeatTypeId(seat.getSeatType().getSeatId());
-            dto.setSeatTypeName(seat.getSeatType().getName());
-            dto.setSeatTypeSurcharge(seat.getSeatType().getPriceSurcharge());
         }
         return dto;
     }
@@ -190,9 +179,6 @@ public class SeatServiceImpl implements SeatService {
         if (dto.getSeatCode() != null && !dto.getSeatCode().isBlank()) {
             return dto.getSeatCode().trim().toUpperCase();
         }
-        if (dto.getSeatRow() != null && dto.getSeatNumber() != null) {
-            return (dto.getSeatRow().trim() + dto.getSeatNumber()).toUpperCase();
-        }
-        throw new RuntimeException("Thiếu seatCode hoặc seatRow/seatNumber hợp lệ");
+        throw new RuntimeException("Thiếu seatCode hợp lệ");
     }
 }

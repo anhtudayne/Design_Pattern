@@ -19,7 +19,7 @@ public class LocationServiceImpl implements LocationService {
 
     private LocationDTO mapToDTO(Location location) {
         LocationDTO dto = new LocationDTO();
-        dto.setLocationId(location.getId());
+        dto.setId(location.getId());
         dto.setName(location.getName());
         return dto;
     }

@@ -8,7 +8,7 @@ const Dashboard = () => {
     totalUsers: 0,
     totalShowtimes: 0,
     totalFnbItems: 0,
-    totalVouchers: 0,
+    totalPromotions: 0,
     totalRevenue: 0,
     totalTickets: 0
   });
@@ -76,7 +76,7 @@ const Dashboard = () => {
         { 'Hạng Mục': '--- CƠ SỞ DỮ LIỆU ---', 'Giá Trị': '' },
         { 'Hạng Mục': 'Tổng số khách hàng', 'Giá Trị': stats.totalUsers.toLocaleString() + ' thành viên' },
         { 'Hạng Mục': 'Số lượng món ăn F&B', 'Giá Trị': stats.totalFnbItems + ' món' },
-        { 'Hạng Mục': 'Số lượng mã giảm giá', 'Giá Trị': stats.totalVouchers + ' mã' },
+        { 'Hạng Mục': 'Số lượng mã khuyến mãi (DB)', 'Giá Trị': stats.totalPromotions + ' mã' },
         { 'Hạng Mục': '', 'Giá Trị': '' },
         { 'Hạng Mục': '--- THÔNG TIN XUẤT FILE ---', 'Giá Trị': '' },
         { 'Hạng Mục': 'Ngày xuất báo cáo', 'Giá Trị': new Date().toLocaleDateString('vi-VN') },
@@ -250,8 +250,8 @@ const Dashboard = () => {
                     <span className="material-symbols-outlined">confirmation_number</span>
                  </div>
                  <div className="flex-1">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Mã giảm giá (Active)</p>
-                    <h5 className="text-lg font-black text-slate-700 tracking-tight">{stats.totalVouchers} Mã voucher</h5>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Khuyến mãi (Promotion)</p>
+                    <h5 className="text-lg font-black text-slate-700 tracking-tight">{stats.totalPromotions} Mã</h5>
                  </div>
               </div>
 

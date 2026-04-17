@@ -28,7 +28,6 @@ public class CinemaServiceImpl implements CinemaService {
         
         if (cinema.getLocation() != null) {
             dto.setLocationId(cinema.getLocation().getId());
-            dto.setLocationName(cinema.getLocation().getName());
         }
         
         dto.setName(cinema.getName());

@@ -41,17 +41,14 @@ public class MovieServiceImpl implements MovieService {
         dto.setStatus(movie.getStatus());
 
         List<MovieCast> casts = movieCastRepository.findByMovieIdWithCastMembers(movie.getMovieId());
-        dto.setCasts(casts.stream().map(mc -> {
+        dto.setMovieCastList(casts.stream().map(mc -> {
             MovieCastDTO c = new MovieCastDTO();
             c.setId(mc.getId());
             if (mc.getCastMember() != null) {
                 c.setCastMemberId(mc.getCastMember().getCastMemberId());
-                c.setCastMemberName(mc.getCastMember().getFullName());
-                c.setCastMemberBio(mc.getCastMember().getBio());
-                c.setCastMemberImageUrl(mc.getCastMember().getImageUrl());
             }
-            c.setRoleName(mc.getRoleName());
-            c.setRoleType(mc.getRoleType());
+            c.setRoleName(mc.getRole_name());
+            c.setRoleType(mc.getRole_type());
             return c;
         }).toList());
 
@@ -94,8 +91,8 @@ public class MovieServiceImpl implements MovieService {
             return MovieCast.builder()
                     .movie(movie)
                     .castMember(member)
-                    .roleName(cdto.getRoleName())
-                    .roleType(cdto.getRoleType())
+                    .role_name(cdto.getRoleName())
+                    .role_type(cdto.getRoleType())
                     .build();
         }).toList();
 
@@ -124,7 +121,7 @@ public class MovieServiceImpl implements MovieService {
         Movie movie = new Movie();
         mapToEntity(dto, movie);
         movie = movieRepository.save(movie);
-        upsertMovieCasts(movie, dto.getCasts());
+        upsertMovieCasts(movie, dto.getMovieCastList());
         return mapToDTO(movie);
     }
 
@@ -134,7 +131,7 @@ public class MovieServiceImpl implements MovieService {
             .orElseThrow(() -> new RuntimeException("Không thể Cập nhật: Phim này không tồn tại!"));
         mapToEntity(dto, movie);
         movie = movieRepository.save(movie);
-        upsertMovieCasts(movie, dto.getCasts());
+        upsertMovieCasts(movie, dto.getMovieCastList());
         return mapToDTO(movie);
     }
 

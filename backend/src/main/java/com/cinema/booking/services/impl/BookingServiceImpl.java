@@ -196,43 +196,24 @@ public class BookingServiceImpl implements BookingService {
 
         return BookingDTO.builder()
                 .bookingId(booking.getBookingId())
-                .customerId(booking.getUser() != null ? booking.getUser().getUserId() : null)
-                .showtimeId(tickets.isEmpty() || tickets.get(0).getShowtime() == null ? null : tickets.get(0).getShowtime().getShowtimeId())
-                .promoCode(booking.getPromotion() != null ? booking.getPromotion().getCode() : null)
-                .totalPrice(
-                        tickets.stream()
-                                .map(Ticket::getUnitPrice)
-                                .filter(java.util.Objects::nonNull)
-                                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add)
-                                .add(
-                                        fnbs.stream()
-                                                .map(l -> l.getFnbItem().getPrice().multiply(java.math.BigDecimal.valueOf(l.getQuantity())))
-                                                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add)
-                                )
-                )
+                .bookingCode(booking.getBookingCode())
+                .userId(booking.getUser() != null ? booking.getUser().getUserId() : null)
+                .promotionId(booking.getPromotion() != null ? booking.getPromotion().getId() : null)
                 .status(booking.getStatus())
                 .createdAt(booking.getCreatedAt())
-                .tickets(tickets.stream().map(t -> BookingDTO.TicketLineDTO.builder()
+                .ticketList(tickets.stream().map(t -> BookingDTO.TicketLineDTO.builder()
                         .ticketId(t.getTicketId())
+                        .movieId(t.getMovie() != null ? t.getMovie().getMovieId() : null)
+                        .showtimeId(t.getShowtime() != null ? t.getShowtime().getShowtimeId() : null)
                         .seatId(t.getSeat() != null ? t.getSeat().getSeatId() : null)
-                        .seatCode(t.getSeat() != null ? t.getSeat().getSeatCode() : null)
-                        .seatRow(t.getSeat() != null ? extractSeatRow(t.getSeat().getSeatCode()) : null)
-                        .seatNumber(t.getSeat() != null ? extractSeatNumber(t.getSeat().getSeatCode()) : null)
-                        .seatType(t.getSeat() != null && t.getSeat().getSeatType() != null ? t.getSeat().getSeatType().getName() : null)
-                        .seatSurcharge(t.getSeat() != null && t.getSeat().getSeatType() != null ? t.getSeat().getSeatType().getPriceSurcharge() : null)
-                        .price(t.getUnitPrice())
+                        .unitPrice(t.getUnitPrice())
+                        .holdExpiresAt(t.getHoldExpiresAt())
                         .build()).toList())
-                .fnbs(fnbs.stream().map(l -> {
-                    java.math.BigDecimal lineTotal = l.getFnbItem().getPrice().multiply(java.math.BigDecimal.valueOf(l.getQuantity()));
-                    return BookingDTO.FnBLineDTO.builder()
-                            .id(l.getId())
-                            .itemId(l.getFnbItem() != null ? l.getFnbItem().getFnbItemId() : null)
-                            .itemName(l.getFnbItem() != null ? l.getFnbItem().getName() : null)
-                            .quantity(l.getQuantity())
-                            .unitPrice(l.getFnbItem() != null ? l.getFnbItem().getPrice() : null)
-                            .lineTotal(lineTotal)
-                            .build();
-                }).toList())
+                .fnbLines(fnbs.stream().map(l -> BookingDTO.FnBLineDTO.builder()
+                        .id(l.getId())
+                        .fnbItemId(l.getFnbItem() != null ? l.getFnbItem().getFnbItemId() : null)
+                        .quantity(l.getQuantity())
+                        .build()).toList())
                 .build();
     }
 
@@ -249,4 +230,5 @@ public class BookingServiceImpl implements BookingService {
             return null;
         }
     }
+
 }

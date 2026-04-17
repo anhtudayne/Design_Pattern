@@ -9,6 +9,7 @@ const getAuthHeaders = () => {
 const SEAT_TYPES = ['STANDARD', 'VIP', 'COUPLE'];
 // Assumes seed ids in DB: 1=STANDARD, 2=VIP, 3=COUPLE
 const SEAT_TYPE_ID = { STANDARD: 1, VIP: 2, COUPLE: 3 };
+const SEAT_TYPE_NAME = { 1: 'STANDARD', 2: 'VIP', 3: 'COUPLE' };
 const SCREEN_TYPES = ['2D', '3D', 'IMAX', '4DX', 'SCREENX'];
 const SEAT_COLORS = {
   STANDARD: { bg: 'bg-sky-100 dark:bg-sky-900/30', border: 'border-sky-300 dark:border-sky-700', text: 'text-sky-700 dark:text-sky-300', label: 'Standard', icon: 'event_seat' },
@@ -94,7 +95,19 @@ function SeatMapEditor({ room, notify }) {
     try {
       const r = await fetch(`${API}/seats?roomId=${room.roomId}`, { headers: getAuthHeaders() });
       const data = await r.json();
-      setSeats(data.map(s => ({ ...s, seatType: s.seatTypeName || 'STANDARD' })));
+      setSeats(data.map(s => {
+        const code = (s.seatCode || '').trim().toUpperCase();
+        const seatRow = code.length >= 1 ? code.substring(0, 1) : '';
+        const seatNumber = code.length >= 2 ? Number.parseInt(code.substring(1), 10) : NaN;
+        const seatType = s.seatTypeName || SEAT_TYPE_NAME[s.seatTypeId] || 'STANDARD';
+        return {
+          ...s,
+          seatCode: code,
+          seatRow,
+          seatNumber: Number.isFinite(seatNumber) ? seatNumber : null,
+          seatType,
+        };
+      }).filter(s => s.seatRow && s.seatNumber != null));
       setDirty(false);
     } finally { setLoading(false); }
   }, [room.roomId]);
@@ -116,7 +129,14 @@ function SeatMapEditor({ room, notify }) {
     for (let r = 0; r < genRows; r++) {
       const row = String.fromCharCode(65 + r);
       for (let c = 1; c <= genCols; c++) {
-        newSeats.push({ roomId: room.roomId, seatRow: row, seatNumber: c, seatType: 'STANDARD', seatTypeId: SEAT_TYPE_ID.STANDARD, isActive: true });
+        newSeats.push({
+          roomId: room.roomId,
+          seatCode: `${row}${c}`,
+          seatRow: row,
+          seatNumber: c,
+          seatType: 'STANDARD',
+          seatTypeId: SEAT_TYPE_ID.STANDARD,
+        });
       }
     }
     setSeats(newSeats);
@@ -142,10 +162,8 @@ function SeatMapEditor({ room, notify }) {
       // BATCH: 1 request thay vì N delete + M create
       const payload = seats.map(s => ({
         roomId: room.roomId,
-        seatRow: s.seatRow,
-        seatNumber: s.seatNumber,
+        seatCode: s.seatCode || `${s.seatRow}${s.seatNumber}`,
         seatTypeId: s.seatTypeId || SEAT_TYPE_ID[s.seatType] || SEAT_TYPE_ID.STANDARD,
-        isActive: s.isActive !== false,
       }));
       const res = await fetch(`${API}/seats/batch/${room.roomId}`, {
         method: 'PUT',

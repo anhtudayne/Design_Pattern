@@ -51,7 +51,7 @@ public class MovieController {
     @PutMapping("/{id}/casts")
     public ResponseEntity<MovieDTO> replaceMovieCasts(@PathVariable Integer id, @RequestBody java.util.List<MovieCastDTO> casts) {
         MovieDTO dto = movieService.getMovieById(id);
-        dto.setCasts(casts);
+        dto.setMovieCastList(casts);
         return ResponseEntity.ok(movieService.updateMovie(id, dto));
     }
 

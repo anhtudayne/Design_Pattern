@@ -45,6 +45,82 @@ SET @sql := (
 );
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
+-- Normalize fnb_items schema to match current entity (drop legacy columns/FKs if present)
+SET @fk := (
+  SELECT MAX(kcu.CONSTRAINT_NAME)
+  FROM information_schema.KEY_COLUMN_USAGE kcu
+  WHERE kcu.TABLE_SCHEMA = DATABASE()
+    AND kcu.TABLE_NAME = 'fnb_items'
+    AND kcu.COLUMN_NAME = 'cinema_id'
+    AND kcu.REFERENCED_TABLE_NAME IS NOT NULL
+);
+SET @sql := IF(
+  @fk IS NOT NULL,
+  CONCAT('ALTER TABLE fnb_items DROP FOREIGN KEY `', @fk, '`'),
+  'SELECT 1'
+);
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @fk := (
+  SELECT MAX(kcu.CONSTRAINT_NAME)
+  FROM information_schema.KEY_COLUMN_USAGE kcu
+  WHERE kcu.TABLE_SCHEMA = DATABASE()
+    AND kcu.TABLE_NAME = 'fnb_items'
+    AND kcu.COLUMN_NAME = 'category_id'
+    AND kcu.REFERENCED_TABLE_NAME IS NOT NULL
+);
+SET @sql := IF(
+  @fk IS NOT NULL,
+  CONCAT('ALTER TABLE fnb_items DROP FOREIGN KEY `', @fk, '`'),
+  'SELECT 1'
+);
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @sql := (
+  SELECT IF(
+    EXISTS(
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'fnb_items'
+        AND COLUMN_NAME = 'is_active'
+    ),
+    'ALTER TABLE fnb_items DROP COLUMN is_active',
+    'SELECT 1'
+  )
+);
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @sql := (
+  SELECT IF(
+    EXISTS(
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'fnb_items'
+        AND COLUMN_NAME = 'category_id'
+    ),
+    'ALTER TABLE fnb_items DROP COLUMN category_id',
+    'SELECT 1'
+  )
+);
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @sql := (
+  SELECT IF(
+    EXISTS(
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'fnb_items'
+        AND COLUMN_NAME = 'cinema_id'
+    ),
+    'ALTER TABLE fnb_items DROP COLUMN cinema_id',
+    'SELECT 1'
+  )
+);
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
 DELETE FROM notifications;
 DELETE FROM payments;
 DELETE FROM fnb_lines;
@@ -121,6 +197,14 @@ INSERT INTO seats (id, room_id, seat_code, seat_type_id, is_active) VALUES
   (7, 2, 'C1', 3, true),
   (8, 3, 'A1', 1, true),
   (9, 3, 'A2', 1, true);
+
+-- F&B catalog (exactly matches FnbItem entity fields)
+INSERT INTO fnb_items (fnb_item_id, name, description, price, image_url) VALUES
+  (1, 'Combo Bap Nuoc Nho', '1 bap ngo nho + 1 nuoc ngot 500ml', 69000.00, 'https://example.com/fnb/combo-small.jpg'),
+  (2, 'Combo Bap Nuoc Lon', '1 bap ngo lon + 2 nuoc ngot 500ml', 109000.00, 'https://example.com/fnb/combo-large.jpg'),
+  (3, 'Bap Caramel', 'Bap ngo caramel vi ngot', 45000.00, 'https://example.com/fnb/popcorn-caramel.jpg'),
+  (4, 'Coca Cola 500ml', 'Nuoc ngot Coca Cola chai 500ml', 25000.00, 'https://example.com/fnb/coca-500ml.jpg'),
+  (5, 'Tra Dao Chanh Sa', 'Tra dao lanh vi chanh sa', 35000.00, 'https://example.com/fnb/peach-tea.jpg');
 
 -- Catalog
 INSERT INTO genres (id, name) VALUES

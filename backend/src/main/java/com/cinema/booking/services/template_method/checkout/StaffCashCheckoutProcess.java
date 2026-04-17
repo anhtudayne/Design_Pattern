@@ -8,6 +8,9 @@ import com.cinema.booking.services.BookingService;
 import com.cinema.booking.services.FnbItemInventoryService;
 import com.cinema.booking.services.PromotionInventoryService;
 import com.cinema.booking.services.factory.BookingFactory;
+import com.cinema.booking.services.notification.NotificationEvent;
+import com.cinema.booking.services.notification.NotificationPayload;
+import com.cinema.booking.services.notification.NotificationPublisher;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -27,6 +30,7 @@ public class StaffCashCheckoutProcess extends AbstractCheckoutTemplate {
     private final ShowtimeRepository showtimeRepository;
     private final SeatRepository seatRepository;
     private final CustomerRepository customerRepository;
+    private final NotificationPublisher notificationPublisher;
 
     public StaffCashCheckoutProcess(
             UserRepository userRepository,
@@ -41,12 +45,14 @@ public class StaffCashCheckoutProcess extends AbstractCheckoutTemplate {
             BookingFactory bookingFactory,
             ShowtimeRepository showtimeRepository,
             SeatRepository seatRepository,
-            CustomerRepository customerRepository) {
+            CustomerRepository customerRepository,
+            NotificationPublisher notificationPublisher) {
         super(userRepository, ticketRepository, promotionInventoryService, bookingService,
                 bookingRepository, fnbItemRepository, fnbItemInventoryService, fnBLineRepository, paymentRepository, bookingFactory);
         this.showtimeRepository = showtimeRepository;
         this.seatRepository = seatRepository;
         this.customerRepository = customerRepository;
+        this.notificationPublisher = notificationPublisher;
     }
 
     /**
@@ -90,6 +96,12 @@ public class StaffCashCheckoutProcess extends AbstractCheckoutTemplate {
 
         // Update customer spending
         safeIncreaseCustomerSpending(booking.getCustomer().getUserId(), price.getFinalTotal());
+        
+        // Publish notification event for booking confirmed (async)
+        notificationPublisher.publishAsync(NotificationPayload.builder()
+                .eventType(NotificationEvent.BOOKING_CONFIRMED)
+                .primaryId(booking.getBookingId().longValue())
+                .build());
     }
 
     public Map<String, Object> buildResult(Booking booking, Payment payment, PriceBreakdownDTO price) {

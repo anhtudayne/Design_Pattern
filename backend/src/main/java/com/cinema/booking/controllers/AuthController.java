@@ -20,34 +20,20 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
-        try {
-            JwtResponse response = authService.authenticateUser(loginRequest);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            System.err.println(">>> [AuthService] Login failed for " + loginRequest.getEmail() + ": " + e.getMessage());
-            e.printStackTrace();
-            return ResponseEntity.badRequest().body(new MessageResponse("Sai thông tin đăng nhập: " + e.getMessage()));
-        }
+        JwtResponse response = authService.authenticateUser(loginRequest);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
-        try {
-            authService.registerUser(signUpRequest);
-            return ResponseEntity.ok(new MessageResponse("Tạo thành công Tài khoản! Chào mừng đến với Hệ sinh thái Galaxy Cinema."));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Lỗi: " + e.getMessage()));
-        }
+        authService.registerUser(signUpRequest);
+        return ResponseEntity.ok(new MessageResponse("Tạo thành công Tài khoản! Chào mừng đến với Hệ sinh thái Galaxy Cinema."));
     }
 
     @PostMapping("/google-login")
     public ResponseEntity<?> googleLogin(@RequestBody java.util.Map<String, String> request) {
-        try {
-            String idToken = request.get("idToken");
-            JwtResponse response = authService.googleLogin(idToken);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Google Login Error: " + e.getMessage()));
-        }
+        String idToken = request.get("idToken");
+        JwtResponse response = authService.googleLogin(idToken);
+        return ResponseEntity.ok(response);
     }
 }

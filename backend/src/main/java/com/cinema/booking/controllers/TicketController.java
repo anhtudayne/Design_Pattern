@@ -34,21 +34,13 @@ public class TicketController {
     @Operation(summary = "Lấy thông tin chi tiết của một vé")
     @GetMapping("/{ticketId}")
     public ResponseEntity<TicketDTO> getTicketDetails(@PathVariable Integer ticketId) {
-        try {
-            return ResponseEntity.ok(ticketService.getTicketDetails(ticketId));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(ticketService.getTicketDetails(ticketId));
     }
 
     @Operation(summary = "Xóa vé (Dành cho nhân viên soát vé)")
     @DeleteMapping("/{ticketId}")
     public ResponseEntity<Void> deleteTicket(@PathVariable Integer ticketId) {
-        try {
-            ticketService.deleteTicket(ticketId);
-            return ResponseEntity.noContent().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        ticketService.deleteTicket(ticketId);
+        return ResponseEntity.noContent().build();
     }
 }

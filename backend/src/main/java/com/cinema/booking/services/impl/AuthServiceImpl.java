@@ -11,6 +11,9 @@ import com.cinema.booking.repositories.UserAccountRepository;
 import com.cinema.booking.repositories.UserRepository;
 import com.cinema.booking.security.JwtUtils;
 import com.cinema.booking.security.UserDetailsImpl;
+import com.cinema.booking.services.notification.NotificationEvent;
+import com.cinema.booking.services.notification.NotificationPayload;
+import com.cinema.booking.services.notification.NotificationPublisher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -40,6 +43,9 @@ public class AuthServiceImpl implements AuthService {
 
     @Autowired
     private JwtUtils jwtUtils;
+    
+    @Autowired
+    private NotificationPublisher notificationPublisher;
 
     @Override
     public JwtResponse authenticateUser(LoginRequest loginRequest) {
@@ -59,9 +65,6 @@ public class AuthServiceImpl implements AuthService {
                 userDetails.getEmail(),
                 roles);
     }
-
-    @Autowired
-    private com.cinema.booking.services.EmailService emailService;
 
     @Override
     @Transactional
@@ -84,11 +87,13 @@ public class AuthServiceImpl implements AuthService {
 
         userRepository.save(customer);
 
-        try {
-            emailService.sendWelcomeEmail(account.getEmail(), customer.getFullname());
-        } catch (Exception e) {
-            System.err.println(">>> Lỗi khi gọi EmailService: " + e.getMessage());
-        }
+        // Publish notification event instead of directly calling email service
+        notificationPublisher.publishAsync(NotificationPayload.builder()
+                .eventType(NotificationEvent.USER_REGISTERED)
+                .primaryId(customer.getUserId().longValue())
+                .email(account.getEmail())
+                .recipientName(customer.getFullname())
+                .build());
     }
 
     @org.springframework.beans.factory.annotation.Value("${OAUTH_CLIENT_ID:no-client-id}")

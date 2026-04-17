@@ -5,10 +5,12 @@ import com.cinema.booking.dtos.PriceBreakdownDTO;
 import com.cinema.booking.entities.*;
 import com.cinema.booking.repositories.*;
 import com.cinema.booking.services.BookingService;
-import com.cinema.booking.services.EmailService;
 import com.cinema.booking.services.FnbItemInventoryService;
 import com.cinema.booking.services.PromotionInventoryService;
 import com.cinema.booking.services.factory.BookingFactory;
+import com.cinema.booking.services.notification.NotificationEvent;
+import com.cinema.booking.services.notification.NotificationPayload;
+import com.cinema.booking.services.notification.NotificationPublisher;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -22,7 +24,7 @@ public class DemoCheckoutProcess extends AbstractCheckoutTemplate {
     private final ShowtimeRepository showtimeRepository;
     private final SeatRepository seatRepository;
     private final CustomerRepository customerRepository;
-    private final EmailService emailService;
+    private final NotificationPublisher notificationPublisher;
 
     public DemoCheckoutProcess(
             UserRepository userRepository,
@@ -38,13 +40,13 @@ public class DemoCheckoutProcess extends AbstractCheckoutTemplate {
             ShowtimeRepository showtimeRepository,
             SeatRepository seatRepository,
             CustomerRepository customerRepository,
-            EmailService emailService) {
+            NotificationPublisher notificationPublisher) {
         super(userRepository, ticketRepository, promotionInventoryService, bookingService,
                 bookingRepository, fnbItemRepository, fnbItemInventoryService, fnBLineRepository, paymentRepository, bookingFactory);
         this.showtimeRepository = showtimeRepository;
         this.seatRepository = seatRepository;
         this.customerRepository = customerRepository;
-        this.emailService = emailService;
+        this.notificationPublisher = notificationPublisher;
     }
 
     @Override
@@ -83,12 +85,11 @@ public class DemoCheckoutProcess extends AbstractCheckoutTemplate {
             // Cập nhật tổng chi tiêu cho Customer
             safeIncreaseCustomerSpending(booking.getCustomer().getUserId(), price.getFinalTotal());
 
-            // Gửi email vé
-            try {
-                emailService.sendTicketEmail(booking.getBookingId());
-            } catch (Exception e) {
-                System.err.println(">>> [StarCine] ERROR gửi email demo checkout: " + e.getMessage());
-            }
+            // Publish notification event for booking confirmed (async)
+            notificationPublisher.publishAsync(NotificationPayload.builder()
+                    .eventType(NotificationEvent.BOOKING_CONFIRMED)
+                    .primaryId(booking.getBookingId().longValue())
+                    .build());
         }
     }
 

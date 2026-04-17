@@ -2,201 +2,196 @@
 classDiagram
     class User {
         <<abstract>>
-        -id: int
-        -fullname: String
-        -phone: String
-        -created_at: DateTime
+        -int user_ID
+        -String fullname
+        -String phone
+        +updateProfile()
     }
 
     class Customer {
-        -total_spending: decimal
-        -loyalty_points: int
+        +bookTicket()
+        +writeReview()
     }
 
-    class MembershipTier {
-        -id: int
-        -name: String
-        -min_spending: decimal
-        -discount_percent: decimal
+    class Admin {
+        +manageUsers()
+        +manageCinemas()
+        +viewSystemReports()
+        +viewDashboard()
     }
 
-    class Admin
-    class Staff
+    class Staff {
+        +sellTicketOffline()
+        +manageFnbOrders()
+    }
 
     class UserAccount {
-        -id: int
-        -email: String
-        -password_hash: String
-    }
-
-    class Notification {
-        -id: int
-        -title: String
-        -message: String
-        -is_read: boolean
+        -int id
+        -String email
+        -String password_hash
+        +login()
+        +changePassword()
+        +resetPassword()
     }
 
     class Location {
-        -id: int
-        -name: String
+        -int id
+        -String name
+        +getLocations()
     }
 
     class Cinema {
-        -id: int
-        -name: String
-        -address: String
+        -int id
+        -String name
+        -String address
+        +getDetails()
     }
 
     class Room {
-        -id: int
-        -name: String
-        -screen_type: String
+        -int id
+        -String name
+        -List~Seat~ seatList
+        -String screen_type
+        +getCapacity()
     }
 
     class Seat {
-        -id: int
-        -seat_code: String
+        -int id
+        -String seat_code
     }
 
     class SeatType {
-        -id: int
-        -name: String
-        -price_surcharge: float
+        -int seat_ID
+        -String name
+        -float price_surcharge
     }
 
     class Movie {
-        -id: int
-        -title: String
-        -description: String
-        -duration_minutes: int
-        -release_date: Date
-        -language: String
-        -age_rating: String
-        -poster_url: String
-        -trailer_url: String
-        -status: String
+        -int movie_ID
+        -String title
+        -String description
+        -int duration_minutes
+        -Date release_date
+        -String language
+        -String status
+        -List~MovieCast~ movieCastList
+        +getDetails()
     }
 
     class Genre {
-        -id: int
-        -name: String
+        -int id
+        -String name
     }
 
     class CastMember {
-        -id: int
-        -full_name: String
-        -bio: String
-        -birth_date: Date
-        -nationality: String
-        -image_url: String
+        -int cast_memberID
+        -String full_name
+        -String bio
+        -Date birth_date
+        -String nationality
     }
 
     class MovieCast {
-        -role_name: String
-        -role_type: String
-    }
-
-    class Review {
-        -id: int
-        -rating: int
-        -comment: String
+        -CastMember castMember
+        -String role_name
+        -String role_type
     }
 
     class Showtime {
-        -id: int
-        -start_time: DateTime
-        -end_time: DateTime
-        -base_price: decimal
-    }
-
-    class Ticket {
-        -id: int
-        -price: decimal
-    }
-
-    class Booking {
-        -id: int
-        -booking_code: String
-        -status: String
-        -created_at: DateTime
-    }
-
-    class Payment {
-        -id: int
-        -method: String
-        -amount: decimal
-        -status: String
-        -paid_at: DateTime
+        -int showtime_ID
+        -Date start_time
+        -Date end_time
+        -int basePrice
+        +getAvailableTickets()
     }
 
     class FnbItem {
-        -id: int
-        -name: String
-        -description: String
-        -price: float
-        -image_url: String
-        -is_active: boolean
-    }
-
-    class FnbItemInventory {
-        -id: int
-        -quantity: int
-        -version: long
-    }
-
-    class FnbLine {
-        -id: int
-        -unit_price: decimal
-        -quantity: int
+        -int FnbItem_ID
+        -String name
+        -String description
+        -float price
     }
 
     class Promotion {
-        -id: int
-        -code: String
-        -discount_type: String
-        -discount_value: decimal
-        -valid_to: DateTime
+        -int id
+        -String code
+        -String discount_type
+        -float discount_value
+        -Date valid_to
     }
 
-    class PromotionInventory {
-        -id: int
-        -quantity: int
-        -version: long
+    class Booking {
+        -int id
+        -int userID
+        -String booking_code
+        -String status
+        -Date created_at
+        -List~Ticket~ TicketList
+        +calculateTotals()
+        +applyPromotion()
+    }
+
+    class Ticket {
+        -int id
+        -int movie_ID
+        -int showtime_ID
+        -int seat_ID
+        -float unit_price
+        -Date hold_expires_at
+        +printTicket()
+    }
+
+    class FnbLine {
+        -id
+        -int FnbItem_ID
+        -int quantity
+        +calculateLineTotal()
+    }
+
+    class Payment {
+        -int id
+        -String payment_method
+        -float amount
+        -Date paid_at
+        -String status
+        +processPayment()
+    }
+
+    class Notification {
+        -int notification_ID
+        -String title
+        -String message
+        +markasRead()
     }
 
     %% Relationships
+    UserAccount "1" -- "1" User : has
     User <|-- Customer : Extends
     User <|-- Admin : Extends
     User <|-- Staff : Extends
-    UserAccount "1" -- "1" User
-    Customer "*" --> "0..1" MembershipTier
-    User "1" --> "*" Notification
-    
-    Location "1" -- "*" Cinema
-    Cinema "1" o-- "*" Room
-    Room "1" *-- "*" Seat
-    Seat "*" --> "1" SeatType
-    
-    Movie "*" -- "*" Genre
-    Movie "1" o-- "*" MovieCast
-    MovieCast "*" -- "1" CastMember
-    Movie "1" -- "*" Review
-    Customer "1" -- "*" Review
-    
-    Movie "1" -- "*" Showtime
-    Room "1" -- "*" Showtime
-    Showtime "1" -- "*" Ticket
-    Seat "1" -- "*" Ticket
-    
-    Customer "1" -- "*" Booking
-    Booking "1" o-- "*" Ticket
-    Booking "1" -- "1" Payment
-    Booking "1" -- "*" FnbLine
-    FnbLine "*" --> "1" FnbItem
-    FnbItem "1" -- "1" FnbItemInventory
-    
-    Booking "*" --> "0..1" Promotion
-    Promotion "1" -- "1" PromotionInventory
+    User "1" -- "n" Notification : receives
+
+    Cinema "n" -- "1" Location : located_in
+    Cinema "1" -- "n" Room : contains
+    Room "1" -- "n" Showtime : hosts
+    Movie "1" -- "n" Showtime : scheduled_as
+
+    Movie "*" -- "*" Genre : has
+
+    CastMember "1" o-- "1" MovieCast : aggregation
+    Movie "1" *-- "n" MovieCast : contains (Composition)
+
+    Room "1" *-- "n" Seat : contains (Composition)
+    Seat "n" -- "1" SeatType : has_type
+
+    Booking "1" -- "0..1" Promotion : uses
+    Booking "1" -- "1" Payment : has
+    Booking "1" -- "0..n" FnbLine : includes
+    Booking "1" o-- "n" Ticket : aggregation
+
+    FnbLine "n" -- "1" FnbItem : refers_to
+
+
 ```
 
 UML tung design pattern (GoF) **khong** gop vao file nay — moi pattern co `classDiagram` rieng trong [plans/01](plans/01-chain-of-responsibility-checkout-validation.md) … [plans/07](plans/07-prototype-email-templates.md) va quy uoc [plans/00](plans/00-patterns-conventions.md).

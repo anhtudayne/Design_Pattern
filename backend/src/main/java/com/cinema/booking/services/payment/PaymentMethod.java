@@ -1,12 +1,16 @@
 package com.cinema.booking.services.payment;
 
 /**
- * Các kênh thanh toán được checkout hỗ trợ. Mở rộng (VNPay, …) bằng cách thêm enum + {@link PaymentStrategy}.
+ * Kênh thanh toán map 1-1 với {@link PaymentStrategy} (Factory đăng ký đủ enum).
+ * <ul>
+ *   <li>MOMO, VNPAY — cổng online (redirect), dùng {@code POST /api/payment/checkout}</li>
+ *   <li>CASH — tiền mặt / quầy, {@code POST /api/payment/checkout/cash} hoặc staff cash-checkout</li>
+ * </ul>
  */
 public enum PaymentMethod {
     MOMO,
-    DEMO,
-    CASH;
+    CASH,
+    VNPAY;
 
     public static PaymentMethod fromString(String raw) {
         if (raw == null || raw.isBlank()) {

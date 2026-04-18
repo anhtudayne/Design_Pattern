@@ -1,24 +1,27 @@
 package com.cinema.booking.services.template_method.checkout;
 
 import com.cinema.booking.dtos.CheckoutRequest;
-import com.cinema.booking.dtos.MomoPaymentResponse;
 import com.cinema.booking.dtos.PriceBreakdownDTO;
+import com.cinema.booking.dtos.VnpayPaymentResponse;
 import com.cinema.booking.entities.Booking;
 import com.cinema.booking.entities.Payment;
 import com.cinema.booking.repositories.*;
 import com.cinema.booking.services.BookingService;
-import com.cinema.booking.services.MomoService;
+import com.cinema.booking.services.VnPayService;
 import com.cinema.booking.services.factory.BookingFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.stream.Collectors;
 
+/**
+ * Checkout VNPay — PENDING + redirect URL (cổng thật khi bật {@code vnpay.enabled}).
+ */
 @Component
-public class MomoCheckoutProcess extends AbstractCheckoutTemplate {
+public class VnpayCheckoutProcess extends AbstractCheckoutTemplate {
 
-    private final MomoService momoService;
+    private final VnPayService vnPayService;
 
-    public MomoCheckoutProcess(
+    public VnpayCheckoutProcess(
             UserRepository userRepository,
             TicketRepository ticketRepository,
             BookingService bookingService,
@@ -27,10 +30,10 @@ public class MomoCheckoutProcess extends AbstractCheckoutTemplate {
             FnBLineRepository fnBLineRepository,
             PaymentRepository paymentRepository,
             BookingFactory bookingFactory,
-            MomoService momoService) {
+            VnPayService vnPayService) {
         super(userRepository, ticketRepository, bookingService,
                 bookingRepository, fnbItemRepository, fnBLineRepository, paymentRepository, bookingFactory);
-        this.momoService = momoService;
+        this.vnPayService = vnPayService;
     }
 
     @Override
@@ -45,22 +48,23 @@ public class MomoCheckoutProcess extends AbstractCheckoutTemplate {
                 : "";
         String extraData = booking.getBookingId() + "|" + request.getShowtimeId() + "|" + seatIdsStr;
 
-        MomoPaymentResponse momoResponse = momoService.createPayment(
+        VnpayPaymentResponse response = vnPayService.createPayment(
                 "BOOKING_" + booking.getBookingId(),
                 price.getFinalTotal().longValue(),
-                "Thanh toán vé xem phim StarCine cho Booking #" + booking.getBookingId(),
+                "Thanh toán vé xem phim StarCine (VNPay) cho Booking #" + booking.getBookingId(),
                 extraData
         );
-        return momoResponse.getPayUrl();
+        return response.getPayUrl();
     }
 
     @Override
     protected void finalizeBooking(Booking booking, PriceBreakdownDTO price, CheckoutRequest request, Object paymentResult) {
         try {
-            Payment payment = bookingFactory.createPayment(booking, "MOMO", price.getFinalTotal(), Payment.PaymentStatus.PENDING);
+            Payment payment = bookingFactory.createPayment(
+                    booking, "VNPAY", price.getFinalTotal(), Payment.PaymentStatus.PENDING);
             paymentRepository.save(payment);
         } catch (Exception e) {
-            System.err.println(">>> [StarCine] ERROR khi lưu Payment PENDING: " + e.getMessage());
+            System.err.println(">>> [StarCine] ERROR khi lưu Payment VNPAY PENDING: " + e.getMessage());
         }
     }
 }

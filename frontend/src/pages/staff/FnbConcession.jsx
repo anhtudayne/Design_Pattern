@@ -65,8 +65,8 @@ export default function FnbConcession() {
     return cart.reduce((sum, c) => sum + c.quantity, 0);
   }, [cart]);
 
-  // ── Payment ─────────────────────────────────────────────────────────
-  const handlePayment = async () => {
+  // ── Payment (đồng bộ nhãn với khách & POS vé: MoMo → Tiền mặt → VNPay) ──
+  const handleCashPayment = async () => {
     if (cart.length === 0) return;
     setPaymentProcessing(true);
     await new Promise(r => setTimeout(r, 1200));
@@ -76,6 +76,16 @@ export default function FnbConcession() {
       setPaymentSuccess(false);
       setCart([]);
     }, 2500);
+  };
+
+  const handleMomoPayment = () => {
+    alert(
+      'Thanh toán MoMo cho đơn F&B độc lập chưa kết nối cổng. Vui lòng chọn Tiền mặt hoặc thanh toán kèm vé tại quầy POS vé.'
+    );
+  };
+
+  const handleVnpayPayment = () => {
+    alert('Cổng thanh toán VNPay đang được tích hợp. Vui lòng dùng Tiền mặt.');
   };
 
   // ── Hotkeys ─────────────────────────────────────────────────────────
@@ -279,40 +289,41 @@ export default function FnbConcession() {
             <span className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">{formatMoney(cartTotal)}</span>
           </div>
 
-          {/* Payment Buttons */}
+          {/* Payment: MoMo → Tiền mặt → VNPay */}
           <div className="space-y-2">
             <button
-              onClick={handlePayment}
+              type="button"
+              onClick={handleMomoPayment}
               disabled={cart.length === 0 || paymentProcessing}
-              className="w-full py-4 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-green-500/30 hover:shadow-green-500/50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-pink-500 to-rose-600 text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-pink-500/25 hover:shadow-pink-500/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-lg">account_balance_wallet</span>
+              MoMo
+            </button>
+            <button
+              type="button"
+              onClick={handleCashPayment}
+              disabled={cart.length === 0 || paymentProcessing}
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-green-500/30 hover:shadow-green-500/50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
             >
               {paymentProcessing ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
               ) : (
                 <>
                   <span className="material-symbols-outlined text-lg">payments</span>
-                  Tiền Mặt
+                  Tiền mặt
                 </>
               )}
             </button>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={handlePayment}
-                disabled={cart.length === 0 || paymentProcessing}
-                className="py-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 text-white font-bold text-xs uppercase tracking-widest shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5"
-              >
-                <span className="material-symbols-outlined text-base">credit_card</span>
-                Thẻ
-              </button>
-              <button
-                onClick={handlePayment}
-                disabled={cart.length === 0 || paymentProcessing}
-                className="py-3 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-bold text-xs uppercase tracking-widest shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5"
-              >
-                <span className="material-symbols-outlined text-base">qr_code_scanner</span>
-                QR
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleVnpayPayment}
+              disabled={cart.length === 0 || paymentProcessing}
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-black text-xs uppercase tracking-widest shadow-md shadow-blue-600/25 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-lg">credit_card</span>
+              VNPay
+            </button>
           </div>
 
           <button

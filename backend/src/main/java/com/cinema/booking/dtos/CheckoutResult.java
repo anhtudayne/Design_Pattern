@@ -11,5 +11,5 @@ public class CheckoutResult {
     private Booking booking;
     private Payment payment;
     private PriceBreakdownDTO price;
-    private Object paymentResult; // Can be a payUrl string or a Map for demo result
+    private Object paymentResult; // payUrl (String) hoặc entity Payment tuỳ strategy
 }

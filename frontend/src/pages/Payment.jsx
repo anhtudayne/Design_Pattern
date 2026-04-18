@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { useBooking } from '../contexts/BookingContext';
 import { calculatePrice } from '../services/bookingService';
-import { demoCheckout, cashCheckout } from '../services/paymentService';
+import { cashCheckout, finishMomoUiCheckout, finishVnpayUiCheckout } from '../services/paymentService';
 
 // ─── Stepper component ──────────────────────────────────────────────
 function Stepper({ active }) {
@@ -49,7 +49,9 @@ export default function Payment() {
   const [voucherCode, setVoucherCode] = useState(savedVoucher || '');
   const [voucherLoading, setVoucherLoading] = useState(false);
   const [voucherMsg, setVoucherMsg] = useState('');
-  const [demoQr, setDemoQr] = useState(null);
+  /** MoMo / VNPay: QR mô phỏng + 2 nút xác nhận */
+  const [momoQr, setMomoQr] = useState(null);
+  const [vnpayQr, setVnpayQr] = useState(null);
 
   // Local state cho thông tin người mua (khởi tạo từ user redux)
   const [buyerInfo, setBuyerInfo] = useState({
@@ -151,12 +153,12 @@ export default function Payment() {
 
     try {
       if (paymentMethod === 'momo') {
-        const randomToken = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-        const orderId = `DEMO_${Date.now()}`;
-        setDemoQr({
+        const randomToken = `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+        const orderId = `MOMO_UI_${Date.now()}`;
+        setMomoQr({
           orderId,
           amount: displayTotal,
-          qrText: `demo-payment|orderId=${orderId}|user=${user?.id}|showtime=${showtime?.showtimeId}|token=${randomToken}`,
+          qrText: `momo-ui|order=${orderId}|user=${user?.id}|showtime=${showtime?.showtimeId}|${randomToken}`,
         });
         setLoading(false);
       } else if (paymentMethod === 'cash') {
@@ -179,8 +181,17 @@ export default function Payment() {
         navigate(
           `/profile/transactions?payment=success&orderId=${encodeURIComponent(result?.bookingCode || '')}&bookingId=${result?.bookingId || ''}&method=cash`
         );
+      } else if (paymentMethod === 'vnpay') {
+        const randomToken = `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+        const orderId = `VNPAY_UI_${Date.now()}`;
+        setVnpayQr({
+          orderId,
+          amount: displayTotal,
+          qrText: `vnpay-ui|order=${orderId}|user=${user?.id}|showtime=${showtime?.showtimeId}|${randomToken}`,
+        });
+        setLoading(false);
       } else {
-        alert('Phương thức này chưa áp dụng cho đặt vé online. Vui lòng chọn MoMo hoặc tiền mặt.');
+        alert('Phương thức thanh toán không hợp lệ.');
         setLoading(false);
       }
     } catch (err) {
@@ -190,8 +201,8 @@ export default function Payment() {
     }
   };
 
-  const handleDemoResult = async (isSuccess) => {
-    if (!demoQr) return;
+  const handleMomoUiResult = async (success) => {
+    if (!momoQr) return;
     try {
       setLoading(true);
       const safePromoCode = displayDiscount > 0 && voucherCode?.trim()
@@ -202,39 +213,67 @@ export default function Payment() {
         showtimeId: showtime.showtimeId,
         seatIds: selectedSeats.map(s => s.seatId),
         fnbs: (selectedSnacks || []).map(s => ({ itemId: s.itemId, quantity: s.quantity })),
-        // Only send promo when it was validated and applied.
         promoCode: safePromoCode,
       };
-      const result = await demoCheckout(checkoutData, isSuccess);
-      const target = isSuccess
-        ? `/profile/transactions?payment=success&orderId=${encodeURIComponent(result?.bookingCode || demoQr.orderId)}&bookingId=${result?.bookingId || ''}&demo=1`
-        : `/profile/transactions?payment=failed&errorCode=DEMO_CANCEL&bookingId=${result?.bookingId || ''}&demo=1`;
-      setDemoQr(null);
-      navigate(target);
+      const result = await finishMomoUiCheckout(checkoutData, success);
+      setMomoQr(null);
+      if (success) {
+        navigate(
+          `/profile/transactions?payment=success&orderId=${encodeURIComponent(result?.bookingCode || '')}&bookingId=${result?.bookingId || ''}&method=momo`
+        );
+      } else {
+        navigate(
+          `/profile/transactions?payment=failed&bookingId=${result?.bookingId || ''}&method=momo`
+        );
+      }
     } catch (err) {
-      alert(err.message || 'Không thể cập nhật trạng thái thanh toán demo');
+      alert(err.message || 'Không ghi nhận được kết quả thanh toán.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Khớp cột `method` ENUM('CASH','MOMO','VNPAY') trong database_schema.sql
+  const handleVnpayUiResult = async (success) => {
+    if (!vnpayQr) return;
+    try {
+      setLoading(true);
+      const safePromoCode = displayDiscount > 0 && voucherCode?.trim()
+        ? voucherCode.trim()
+        : null;
+      const checkoutData = {
+        userId: user.id,
+        showtimeId: showtime.showtimeId,
+        seatIds: selectedSeats.map(s => s.seatId),
+        fnbs: (selectedSnacks || []).map(s => ({ itemId: s.itemId, quantity: s.quantity })),
+        promoCode: safePromoCode,
+      };
+      const result = await finishVnpayUiCheckout(checkoutData, success);
+      setVnpayQr(null);
+      if (success) {
+        navigate(
+          `/profile/transactions?payment=success&orderId=${encodeURIComponent(result?.bookingCode || '')}&bookingId=${result?.bookingId || ''}&method=vnpay`
+        );
+      } else {
+        navigate(
+          `/profile/transactions?payment=failed&bookingId=${result?.bookingId || ''}&method=vnpay`
+        );
+      }
+    } catch (err) {
+      alert(err.message || 'Không ghi nhận được kết quả thanh toán.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Đồng bộ với quầy Staff: MoMo → Tiền mặt → VNPay (ENUM CASH / MOMO / VNPAY trên DB)
   const paymentMethods = [
     {
       id: 'momo',
       name: 'MoMo',
-      desc: 'Thanh toán online (QR / ví MoMo)',
+      desc: 'QR mô phỏng — xác nhận thành công / thất bại sau khi quét',
       icon: 'account_balance_wallet',
       iconColor: 'text-pink-500',
       disabled: false,
-    },
-    {
-      id: 'vnpay',
-      name: 'VNPay',
-      desc: 'Cổng VNPay — đang phát triển',
-      icon: 'credit_card',
-      iconColor: 'text-blue-600',
-      disabled: true,
     },
     {
       id: 'cash',
@@ -244,131 +283,129 @@ export default function Payment() {
       iconColor: 'text-emerald-600',
       disabled: false,
     },
+    {
+      id: 'vnpay',
+      name: 'VNPay',
+      desc: 'QR mô phỏng — xác nhận thành công / thất bại sau khi quét',
+      icon: 'credit_card',
+      iconColor: 'text-blue-600',
+      disabled: false,
+    },
   ];
 
   if (!movie || !isAuthenticated) return null;
 
   return (
     <main className="pt-44 pb-20 bg-slate-50 dark:bg-slate-950 min-h-screen">
-      {demoQr && (
+      {momoQr && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="relative w-full max-w-5xl bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl overflow-hidden flex flex-col lg:flex-row">
-            {/* Nút Đóng */}
+          <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl p-8 border border-slate-100 dark:border-slate-800">
             <button
-              onClick={() => setDemoQr(null)}
-              className="absolute top-4 right-4 z-10 w-10 h-10 bg-slate-100/50 hover:bg-slate-200 dark:bg-slate-800/50 dark:hover:bg-slate-700 rounded-full flex items-center justify-center text-slate-500 transition-colors"
+              type="button"
+              onClick={() => setMomoQr(null)}
+              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700"
+              aria-label="Đóng"
             >
-              <span className="material-symbols-outlined font-black">close</span>
+              <span className="material-symbols-outlined">close</span>
             </button>
-            
-            {/* Cột Trái 70% */}
-            <div className="flex-1 lg:w-[65%] p-8 lg:p-10 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center gap-3 mb-8">
-                  <span className="w-2 h-8 bg-gradient-to-b from-orange-500 to-red-500 rounded-full"></span>
-                  <h3 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Thanh toán vé</h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                  <div className="bg-white rounded-3xl p-5 border-2 border-slate-100 shadow-xl mx-auto w-full max-w-[280px]">
-                    <img
-                      alt="Demo payment QR"
-                      className="w-full aspect-square object-contain"
-                      src={`https://quickchart.io/qr?text=${encodeURIComponent(demoQr.qrText)}&size=320`}
-                    />
-                    <div className="mt-4 text-center">
-                      <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Quét mã qua ứng dụng</p>
-                      <p className="text-sm font-black mt-1 bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent">Chuyển khoản / MoMo</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border-l-4 border-orange-500 flex justify-between items-center transition-transform hover:-translate-y-1">
-                      <div className="space-y-1">
-                        <p className="text-[10px] uppercase font-black tracking-widest text-slate-400">Ngân hàng thụ hưởng</p>
-                        <p className="text-[13px] font-bold text-slate-800 dark:text-white">TMCP Cổ Phần Ngoại Thương (VCB)</p>
-                      </div>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border-l-4 border-orange-500 flex justify-between items-center transition-transform hover:-translate-y-1 group">
-                      <div className="space-y-1">
-                        <p className="text-[10px] uppercase font-black tracking-widest text-slate-400">Số tài khoản</p>
-                        <p className="text-base font-black text-slate-800 dark:text-white tracking-widest">1234 5678 9999</p>
-                      </div>
-                      <button className="text-orange-400 p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-orange-100 dark:hover:bg-slate-700 rounded-lg" title="Sao chép"><span className="material-symbols-outlined text-sm">content_copy</span></button>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border-l-4 border-orange-500 flex justify-between items-center transition-transform hover:-translate-y-1 group">
-                      <div className="space-y-1">
-                        <p className="text-[10px] uppercase font-black tracking-widest text-slate-400">Số tiền</p>
-                        <p className="text-2xl font-black text-orange-500">{Number(demoQr.amount || 0).toLocaleString('vi-VN')}đ</p>
-                      </div>
-                      <button className="text-orange-400 p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-orange-100 dark:hover:bg-slate-700 rounded-lg" title="Sao chép"><span className="material-symbols-outlined text-sm">content_copy</span></button>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border-l-4 border-orange-500 flex justify-between items-center transition-transform hover:-translate-y-1 group">
-                      <div className="space-y-1">
-                        <p className="text-[10px] uppercase font-black tracking-widest text-slate-400">Nội dung</p>
-                        <p className="text-sm font-black text-slate-800 dark:text-white">{demoQr.orderId}</p>
-                      </div>
-                      <button className="text-orange-400 p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-orange-100 dark:hover:bg-slate-700 rounded-lg" title="Sao chép"><span className="material-symbols-outlined text-sm">content_copy</span></button>
-                    </div>
-                  </div>
-                </div>
+            <div className="flex items-center gap-2 mb-6">
+              <span className="w-2 h-8 bg-gradient-to-b from-pink-500 to-rose-500 rounded-full" />
+              <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Quét mã MoMo (mô phỏng)</h3>
+            </div>
+            <div className="flex flex-col items-center gap-4">
+              <div className="bg-white p-4 rounded-2xl border-2 border-pink-100 shadow-inner">
+                <img
+                  alt="QR MoMo"
+                  className="w-56 h-56 object-contain mx-auto"
+                  src={`https://quickchart.io/qr?text=${encodeURIComponent(momoQr.qrText)}&size=280`}
+                />
               </div>
-
-              <div className="mt-10 pt-6 border-t-2 border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-4 shrink-0">
+              <p className="text-xs text-slate-500 text-center font-medium">
+                Mã đơn: <span className="font-black text-slate-700 dark:text-slate-300">{momoQr.orderId}</span>
+              </p>
+              <p className="text-2xl font-black text-pink-600">{Number(momoQr.amount || 0).toLocaleString('vi-VN')}đ</p>
+              <p className="text-[11px] text-slate-400 text-center leading-relaxed">
+                Sau khi quét ví MoMo (thử nghiệm), chọn kết quả thanh toán thực tế bên dưới.
+              </p>
+              <div className="grid grid-cols-2 gap-3 w-full mt-2">
                 <button
-                  onClick={() => handleDemoResult(false)}
-                  className="py-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-black uppercase tracking-widest text-[10px] md:text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                  type="button"
+                  onClick={() => handleMomoUiResult(false)}
+                  disabled={loading}
+                  className="py-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-black uppercase text-xs tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
                 >
-                  Xác nhận Hủy
+                  Thất bại
                 </button>
                 <button
-                  onClick={() => handleDemoResult(true)}
-                  className="py-4 px-2 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-500 text-white font-black uppercase tracking-widest text-[10px] md:text-xs shadow-xl shadow-green-500/30 hover:scale-[1.02] flex items-center justify-center gap-2 transition"
+                  type="button"
+                  onClick={() => handleMomoUiResult(true)}
+                  disabled={loading}
+                  className="py-4 rounded-xl bg-gradient-to-r from-pink-500 to-rose-600 text-white font-black uppercase text-xs tracking-widest shadow-lg shadow-pink-500/25 hover:opacity-95 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  <span className="material-symbols-outlined text-base">check_circle</span>
-                  Đã chuyển khoản
+                  {loading ? (
+                    <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin inline-block" />
+                  ) : (
+                    <span className="material-symbols-outlined text-lg">check_circle</span>
+                  )}
+                  Thành công
                 </button>
               </div>
             </div>
-
-            {/* Cột Phải 30% */}
-            <div className="lg:w-[35%] bg-slate-50 dark:bg-slate-800 p-8 lg:p-10 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-700 flex flex-col">
-              <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6 shrink-0">Chi tiết đơn hàng</h4>
-              
-              <div className="flex gap-4 pb-6 border-b-2 border-slate-200 dark:border-slate-700 shrink-0">
-                <img 
-                  alt={movie.title} 
-                  className="w-16 h-24 object-cover rounded-xl shadow-md border border-slate-200 dark:border-slate-600" 
-                  src={movie.posterUrl && movie.posterUrl.startsWith('http') ? movie.posterUrl : `https://lh3.googleusercontent.com/aida-public/${movie.posterUrl}`} 
+          </div>
+        </div>
+      )}
+      {vnpayQr && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl p-8 border border-slate-100 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setVnpayQr(null)}
+              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700"
+              aria-label="Đóng"
+            >
+              <span className="material-symbols-outlined">close</span>
+            </button>
+            <div className="flex items-center gap-2 mb-6">
+              <span className="w-2 h-8 bg-gradient-to-b from-blue-600 to-indigo-700 rounded-full" />
+              <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Quét mã VNPay (mô phỏng)</h3>
+            </div>
+            <div className="flex flex-col items-center gap-4">
+              <div className="bg-white p-4 rounded-2xl border-2 border-blue-100 shadow-inner">
+                <img
+                  alt="QR VNPay"
+                  className="w-56 h-56 object-contain mx-auto"
+                  src={`https://quickchart.io/qr?text=${encodeURIComponent(vnpayQr.qrText)}&size=280`}
                 />
-                <div className="flex-1">
-                  <h3 className="font-black text-slate-800 dark:text-white leading-snug uppercase text-[13px] line-clamp-3">{movie.title}</h3>
-                  <div className="mt-2 px-2 py-0.5 w-fit rounded bg-red-600 text-white text-[9px] font-bold uppercase">{movie.ageRating}</div>
-                </div>
               </div>
-
-              <div className="py-6 space-y-4 border-b-2 border-slate-200 dark:border-slate-700 flex-1">
-                <div className="flex justify-between line-clamp-2">
-                  <span className="text-[10px] font-black uppercase text-slate-400 w-1/3">Rạp</span>
-                  <span className="text-sm font-bold text-slate-800 dark:text-white text-right w-2/3">{cinema?.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[10px] font-black uppercase text-slate-400">Thời gian</span>
-                  <span className="text-sm font-bold text-slate-800 dark:text-white text-right">
-                    {showtime?.startTime?.split('T')[1]?.substring(0, 5)} • {showtime?.startTime ? new Date(showtime.startTime).toLocaleDateString('vi-VN') : ''}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[10px] font-black uppercase text-slate-400">Ghế</span>
-                  <span className="text-sm font-bold text-slate-800 dark:text-white text-right max-w-[60%]">
-                    {(selectedSeats || []).map(s => `${s.seatRow || s.rowName}${s.seatNumber}`).join(', ')}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="pt-6 shrink-0">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Cần thanh toán</p>
-                <p className="text-3xl font-black text-orange-500 tracking-tighter">{Number(demoQr.amount || 0).toLocaleString('vi-VN')}đ</p>
+              <p className="text-xs text-slate-500 text-center font-medium">
+                Mã đơn: <span className="font-black text-slate-700 dark:text-slate-300">{vnpayQr.orderId}</span>
+              </p>
+              <p className="text-2xl font-black text-blue-700">{Number(vnpayQr.amount || 0).toLocaleString('vi-VN')}đ</p>
+              <p className="text-[11px] text-slate-400 text-center leading-relaxed">
+                Sau khi quét VNPay (thử nghiệm), chọn kết quả thanh toán bên dưới.
+              </p>
+              <div className="grid grid-cols-2 gap-3 w-full mt-2">
+                <button
+                  type="button"
+                  onClick={() => handleVnpayUiResult(false)}
+                  disabled={loading}
+                  className="py-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-black uppercase text-xs tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
+                >
+                  Thất bại
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleVnpayUiResult(true)}
+                  disabled={loading}
+                  className="py-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-black uppercase text-xs tracking-widest shadow-lg shadow-blue-600/25 hover:opacity-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {loading ? (
+                    <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin inline-block" />
+                  ) : (
+                    <span className="material-symbols-outlined text-lg">check_circle</span>
+                  )}
+                  Thành công
+                </button>
               </div>
             </div>
           </div>

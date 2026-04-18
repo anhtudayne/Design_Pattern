@@ -6,6 +6,7 @@ import { fetchCinemas } from '../../services/cinemaService';
 import { fetchSeatStatuses, calculatePrice } from '../../services/bookingService';
 import { fetchFnBItems } from '../../services/fnbService';
 import { BASE_URL, getAuthHeaders } from '../../utils/api';
+import { payMoMo, payVnpay } from '../../services/paymentService';
 import { PosCommandInvoker, AddSeatCommand, RemoveSeatCommand, AddFnbCommand, RemoveFnbCommand } from '../../patterns/posCommands';
 
 // ── Seat palette ────────────────────────────────────────────────────
@@ -55,6 +56,8 @@ export default function BoxOfficePOS() {
   const [priceBreakdown, setPriceBreakdown] = useState(null);
   const [showFnbPanel, setShowFnbPanel] = useState(false);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [momoProcessing, setMomoProcessing] = useState(false);
+  const [vnpayProcessing, setVnpayProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [lastAction, setLastAction] = useState(null); // last command label for feedback
   const [toastVisible, setToastVisible] = useState(false);
@@ -298,21 +301,42 @@ export default function BoxOfficePOS() {
     runCmd(new RemoveFnbCommand(itemId, item.name, setCartFnb));
   };
 
-  // Real Staff Cash Checkout → /api/payment/staff/cash-checkout
-  const handlePayment = async () => {
+  /** Đồng bộ phương thức với khách web: MoMo → Tiền mặt → VNPay */
+
+  const checkoutPayload = () => ({
+    userId: currentUser?.id,
+    showtimeId: selectedShowtime.showtimeId,
+    seatIds: selectedSeats.map(s => s.seatId),
+    fnbs: cartFnb.map(f => ({ itemId: f.itemId, quantity: f.quantity })),
+    promoCode: Number(priceBreakdown?.discountAmount || 0) > 0 ? (promoCode || null) : null,
+  });
+
+  /** MoMo: tạo đơn PENDING + link thanh toán (backend), mở tab mới cho khách quét / thanh toán */
+  const handleMomoPayment = async () => {
+    if (!selectedShowtime || selectedSeats.length === 0 || !currentUser?.id) return;
+    setMomoProcessing(true);
+    try {
+      const payUrl = await payMoMo({ ...checkoutPayload(), paymentMethod: 'MOMO' });
+      window.open(payUrl, '_blank', 'noopener,noreferrer');
+      alert(
+        'Đã mở trang thanh toán MoMo trong tab mới. Sau khi khách thanh toán thành công, hệ thống sẽ cập nhật vé theo cổng MoMo.'
+      );
+    } catch (e) {
+      alert(e.message || 'Không tạo được link MoMo.');
+    } finally {
+      setMomoProcessing(false);
+    }
+  };
+
+  /** Tiền mặt — /api/payment/staff/cash-checkout */
+  const handleCashPayment = async () => {
     if (!selectedShowtime || selectedSeats.length === 0) return;
     setPaymentProcessing(true);
     try {
       const res = await fetch(`${BASE_URL}/payment/staff/cash-checkout`, {
         method: 'POST',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: currentUser?.id,
-          showtimeId: selectedShowtime.showtimeId,
-          seatIds: selectedSeats.map(s => s.seatId),
-          fnbs: cartFnb.map(f => ({ itemId: f.itemId, quantity: f.quantity })),
-          promoCode: Number(priceBreakdown?.discountAmount || 0) > 0 ? (promoCode || null) : null,
-        }),
+        body: JSON.stringify(checkoutPayload()),
       });
       if (!res.ok) {
         const err = await res.text();
@@ -328,6 +352,22 @@ export default function BoxOfficePOS() {
     } catch (e) {
       alert('Lỗi mạng: ' + e.message);
       setPaymentProcessing(false);
+    }
+  };
+
+  const handleVnpayPayment = async () => {
+    if (!selectedShowtime || selectedSeats.length === 0 || !currentUser?.id) return;
+    setVnpayProcessing(true);
+    try {
+      const payUrl = await payVnpay({ ...checkoutPayload(), paymentMethod: 'VNPAY' });
+      window.open(payUrl, '_blank', 'noopener,noreferrer');
+      alert(
+        'Đã mở cổng VNPay trong tab mới. Nếu backend chưa bật VNPay (vnpay.enabled), hãy cấu hình hoặc chọn tiền mặt.'
+      );
+    } catch (e) {
+      alert(e.message || 'Không tạo được link VNPay.');
+    } finally {
+      setVnpayProcessing(false);
     }
   };
 
@@ -847,40 +887,53 @@ export default function BoxOfficePOS() {
             </div>
           )}
 
-          {/* Payment Buttons */}
+          {/* Payment: MoMo → Tiền mặt → VNPay (đồng bộ với /booking/payment) */}
           <div className="space-y-2">
             <button
-              onClick={handlePayment}
-              disabled={selectedSeats.length === 0 || paymentProcessing}
-              className="w-full py-4 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-green-500/30 hover:shadow-green-500/50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+              type="button"
+              onClick={handleMomoPayment}
+              disabled={selectedSeats.length === 0 || paymentProcessing || momoProcessing || vnpayProcessing || !currentUser?.id}
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-pink-500 to-rose-600 text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-pink-500/25 hover:shadow-pink-500/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+            >
+              {momoProcessing ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-lg">account_balance_wallet</span>
+                  MoMo
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={handleCashPayment}
+              disabled={selectedSeats.length === 0 || paymentProcessing || momoProcessing || vnpayProcessing}
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-green-500/30 hover:shadow-green-500/50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
             >
               {paymentProcessing ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
               ) : (
                 <>
                   <span className="material-symbols-outlined text-lg">payments</span>
-                  Tiền Mặt
+                  Tiền mặt
                 </>
               )}
             </button>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={handlePayment}
-                disabled={selectedSeats.length === 0 || paymentProcessing}
-                className="py-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 text-white font-bold text-xs uppercase tracking-widest shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5"
-              >
-                <span className="material-symbols-outlined text-base">credit_card</span>
-                Thẻ
-              </button>
-              <button
-                onClick={handlePayment}
-                disabled={selectedSeats.length === 0 || paymentProcessing}
-                className="py-3 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-bold text-xs uppercase tracking-widest shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5"
-              >
-                <span className="material-symbols-outlined text-base">qr_code_scanner</span>
-                QR
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleVnpayPayment}
+              disabled={selectedSeats.length === 0 || paymentProcessing || momoProcessing || vnpayProcessing || !currentUser?.id}
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-black text-xs uppercase tracking-widest shadow-md shadow-blue-600/25 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+            >
+              {vnpayProcessing ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-lg">credit_card</span>
+                  VNPay
+                </>
+              )}
+            </button>
           </div>
 
           {/* Reset */}

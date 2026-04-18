@@ -71,7 +71,7 @@ public abstract class AbstractCheckoutTemplate {
         // Step 9: Finalize Booking (Method specific)
         finalizeBooking(booking, price, request, paymentResult);
 
-        // Demo failure/cancelled flows happen in-request, so release reserved resources here.
+        // Failure/cancelled flows that end in-request may release reserved resources here.
         if (booking.getStatus() == Booking.BookingStatus.CANCELLED) {
             rollbackReservedResources(booking);
         }

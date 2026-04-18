@@ -13,7 +13,10 @@ public class CheckoutRequest {
     private List<Integer> seatIds;
     private List<BookingCalculationDTO.FnbOrderDTO> fnbs;
     private String promoCode;
-    
-    // Flag for demo checkout success status
-    private boolean demoSuccess;
+
+    /** {@link com.cinema.booking.services.template_method.checkout.LocalMomoCheckoutProcess} */
+    private boolean momoUiPaid;
+
+    /** {@link com.cinema.booking.services.template_method.checkout.LocalVnpayCheckoutProcess} */
+    private boolean vnpayUiPaid;
 }

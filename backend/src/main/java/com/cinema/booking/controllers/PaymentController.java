@@ -2,6 +2,8 @@ package com.cinema.booking.controllers;
 
 import com.cinema.booking.dtos.CheckoutRequestDTO;
 import com.cinema.booking.dtos.MomoCallbackRequest;
+import com.cinema.booking.dtos.MomoUiFinishRequest;
+import com.cinema.booking.dtos.VnpayUiFinishRequest;
 import com.cinema.booking.entities.Payment;
 import com.cinema.booking.security.UserDetailsImpl;
 import com.cinema.booking.services.CheckoutService;
@@ -21,7 +23,7 @@ import org.springframework.web.servlet.view.RedirectView;
 @RestController
 @RequestMapping("/api/payment")
 @Slf4j
-@Tag(name = "6. Thanh Toán & Checkout", description = "Các API thanh toán MoMo, Webhook callback và Đặt vé hoàn tất")
+@Tag(name = "6. Thanh Toán & Checkout", description = "Tiền mặt, MoMo/VNPay cổng + QR mô phỏng, callback MoMo")
 public class PaymentController {
 
     @Autowired
@@ -33,8 +35,7 @@ public class PaymentController {
     @Value("${app.frontend-url}")
     private String frontendUrl;
 
-    // 1. Tạo đơn hàng và lấy link MoMo
-    @Operation(summary = "Checkout và tạo link thanh toán MoMo", description = "Tạo một bản ghi Booking PENDING và gọi MoMo API để lấy link thanh toán cho khách hàng")
+    @Operation(summary = "Checkout cổng online", description = "POST /checkout — MOMO hoặc VNPAY → payUrl (Booking PENDING).")
     @PostMapping("/checkout")
     public ResponseEntity<?> checkout(@RequestBody CheckoutRequestDTO request) throws Exception {
         String payUrl = checkoutService.createBooking(
@@ -46,30 +47,14 @@ public class PaymentController {
                 request.getPaymentMethod()
         );
         if (payUrl == null || payUrl.isBlank()) {
-            return ResponseEntity.badRequest().body("Không tạo được link thanh toán MoMo. Vui lòng kiểm tra cấu hình MoMo hoặc thử lại sau.");
+            return ResponseEntity.badRequest().body("Không tạo được link thanh toán. Kiểm tra cấu hình MoMo / VNPay.");
         }
         return ResponseEntity.ok(java.util.Collections.singletonMap("payUrl", payUrl));
     }
 
-    @Operation(summary = "Demo checkout (không gọi MoMo thật)", description = "Tạo booking/payment demo và cập nhật trạng thái success/failed để test luồng frontend.")
-    @PostMapping("/checkout/demo")
-    public ResponseEntity<?> demoCheckout(
-            @RequestBody CheckoutRequestDTO request,
-            @RequestParam(defaultValue = "true") boolean success
-    ) throws Exception {
-        return ResponseEntity.ok(checkoutService.processDemoCheckout(
-                request.getUserId(),
-                request.getShowtimeId(),
-                request.getSeatIds(),
-                request.getFnbs(),
-                request.getPromoCode(),
-                success
-        ));
-    }
-
     @Operation(
             summary = "Checkout tiền mặt (khách web)",
-            description = "Dùng CashPaymentStrategy + StaffCashCheckoutProcess: booking CONFIRMED, payment CASH SUCCESS. JWT phải trùng userId trong body."
+            description = "CashPaymentStrategy + StaffCashCheckoutProcess. JWT phải trùng userId."
     )
     @PostMapping("/checkout/cash")
     public ResponseEntity<?> customerCashCheckout(
@@ -91,8 +76,51 @@ public class PaymentController {
         ));
     }
 
-    // 2. MoMo Redirect Callback (Xử lý và Redirect về Frontend)
-    @Operation(summary = "Redirect callback từ MoMo", description = "Hứng redirect từ MoMo sau khi khách thanh toán, xử lý nghiệp vụ và redirect về trang kết quả ở Frontend.")
+    @Operation(summary = "Hoàn tất MoMo (QR mô phỏng)", description = "LocalMomoCheckoutProcess — không thay thế cổng redirect.")
+    @PostMapping("/checkout/momo-ui/finish")
+    public ResponseEntity<?> momoUiFinish(
+            @RequestBody MomoUiFinishRequest request,
+            Authentication authentication
+    ) throws Exception {
+        if (authentication == null || !(authentication.getPrincipal() instanceof UserDetailsImpl principal)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Chưa đăng nhập.");
+        }
+        if (request.getUserId() == null || !request.getUserId().equals(principal.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Không được đặt vé thay tài khoản khác.");
+        }
+        return ResponseEntity.ok(checkoutService.processMomoUiFinish(
+                request.isSuccess(),
+                request.getUserId(),
+                request.getShowtimeId(),
+                request.getSeatIds(),
+                request.getFnbs(),
+                request.getPromoCode()
+        ));
+    }
+
+    @Operation(summary = "Hoàn tất VNPay (QR mô phỏng)", description = "LocalVnpayCheckoutProcess.")
+    @PostMapping("/checkout/vnpay-ui/finish")
+    public ResponseEntity<?> vnpayUiFinish(
+            @RequestBody VnpayUiFinishRequest request,
+            Authentication authentication
+    ) throws Exception {
+        if (authentication == null || !(authentication.getPrincipal() instanceof UserDetailsImpl principal)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Chưa đăng nhập.");
+        }
+        if (request.getUserId() == null || !request.getUserId().equals(principal.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Không được đặt vé thay tài khoản khác.");
+        }
+        return ResponseEntity.ok(checkoutService.processVnpayUiFinish(
+                request.isSuccess(),
+                request.getUserId(),
+                request.getShowtimeId(),
+                request.getSeatIds(),
+                request.getFnbs(),
+                request.getPromoCode()
+        ));
+    }
+
+    @Operation(summary = "Redirect callback từ MoMo")
     @GetMapping("/momo/callback")
     public RedirectView momoCallback(@ModelAttribute MomoCallbackRequest callback) {
         try {
@@ -100,47 +128,40 @@ public class PaymentController {
         } catch (Exception e) {
             log.error("MoMo callback error: {}", e.getMessage(), e);
         }
-        // Redirect về trang lịch sử giao dịch để người dùng xem kết quả
         String targetUrl = frontendUrl + "/profile/transactions?payment=success&orderId=" + callback.getOrderId();
-        if (callback.getResultCode() != 0) {
+        if (callback.getResultCode() != null && callback.getResultCode() != 0) {
             targetUrl = frontendUrl + "/profile/transactions?payment=failed&errorCode=" + callback.getResultCode();
         }
         return new RedirectView(targetUrl);
     }
 
-    // 3. MoMo IPN Webhook (Server-to-Server)
-    @Operation(summary = "IPN Webhook từ MoMo", description = "MoMo gọi vào API này để thông báo kết quả thanh toán. Nếu thành công, hệ thống sẽ xác nhận vé và gửi email bất đồng bộ.")
+    @Operation(summary = "IPN Webhook MoMo")
     @PostMapping("/momo/webhook")
     public ResponseEntity<?> momoWebhook(@RequestBody MomoCallbackRequest callback) throws Exception {
         checkoutService.processMomoCallback(callback);
         return ResponseEntity.noContent().build();
     }
 
-    // 4. API nhận kết quả thanh toán chung (theo yêu cầu user)
-    @Operation(summary = "Endpoint nhận kết quả thanh toán và redirect", description = "Endpoint chung để nhận kết quả và chuyển hướng người dùng về frontend")
+    @Operation(summary = "Chuyển hướng về frontend")
     @GetMapping("/payment-redirect")
     public RedirectView paymentResult() {
-        String targetUrl = frontendUrl + "/profile/transactions";
-        return new RedirectView(targetUrl);
+        return new RedirectView(frontendUrl + "/profile/transactions");
     }
 
-    // 5. Lấy lịch sử giao dịch của User
-    @Operation(summary = "Lấy lịch sử thanh toán", description = "Lấy danh sách các giao dịch thanh toán của người dùng hiện tại")
+    @Operation(summary = "Lấy lịch sử thanh toán")
     @GetMapping("/history/{userId}")
     public ResponseEntity<?> getPaymentHistory(@PathVariable Integer userId) {
         return ResponseEntity.ok(paymentService.getUserPaymentHistory(userId));
     }
 
-    // 6. Lấy chi tiết giao dịch
-    @Operation(summary = "Lấy chi tiết thanh toán", description = "Lấy thông tin chi tiết của một mã giao dịch cụ thể")
+    @Operation(summary = "Chi tiết thanh toán")
     @GetMapping("/details/{paymentId}")
     public ResponseEntity<?> getPaymentDetails(@PathVariable Integer paymentId) {
         Payment payment = paymentService.getPaymentDetails(paymentId);
         return ResponseEntity.ok(payment);
     }
 
-    // 7. Staff thanh toán tiền mặt tại quầy (Template Method + Strategy)
-    @Operation(summary = "Staff bán vé tiền mặt", description = "Tạo Booking CONFIRMED ngay lập tức và Payment CASH. Dành riêng cho nhân viên quầy POS. Không gọi MoMo.")
+    @Operation(summary = "Staff bán vé tiền mặt")
     @PostMapping("/staff/cash-checkout")
     public ResponseEntity<?> staffCashCheckout(@RequestBody CheckoutRequestDTO request) throws Exception {
         return ResponseEntity.ok(checkoutService.processStaffCashCheckout(

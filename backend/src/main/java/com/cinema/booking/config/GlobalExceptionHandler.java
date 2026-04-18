@@ -14,6 +14,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -189,6 +191,44 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Lỗi gọi cổng thanh toán MoMo / HTTP upstream (403 do IP chưa whitelist, sai endpoint, v.v.)
+     */
+    @ExceptionHandler(RestClientException.class)
+    public ResponseEntity<ErrorResponse> handleRestClientException(
+            RestClientException ex,
+            HttpServletRequest request) {
+
+        int upstreamStatus = -1;
+        if (ex instanceof HttpStatusCodeException hx) {
+            upstreamStatus = hx.getStatusCode().value();
+            log.warn("Upstream HTTP error calling MoMo/external {} on {}: {}", upstreamStatus, request.getRequestURI(), hx.getMessage());
+        } else {
+            log.error("RestClientException on {}: {}", request.getRequestURI(), ex.getMessage(), ex);
+        }
+
+        String message;
+        if (upstreamStatus == 403) {
+            message = "Cổng MoMo trả về 403 Forbidden. Thường gặp khi: (1) IP máy chủ backend chưa đăng ký trên MoMo Sandbox, "
+                    + "(2) sai endpoint hoặc partner code / secret, (3) môi trường dev — đặt momo.dev-skip-external=true hoặc MOMO_DEV_SKIP_EXTERNAL=true trong .env để bỏ qua gọi MoMo.";
+        } else if (upstreamStatus == 401) {
+            message = "Cổng MoMo từ chối xác thực (401). Kiểm tra accessKey, secretKey và partnerCode.";
+        } else if (upstreamStatus > 0) {
+            message = "Không gọi được cổng thanh toán MoMo (HTTP " + upstreamStatus + "). Kiểm tra endpoint và biến môi trường MoMo.";
+        } else {
+            message = "Lỗi kết nối tới cổng thanh toán: " + ex.getMessage();
+        }
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .status(HttpStatus.BAD_GATEWAY.value())
+                .error("Bad Gateway")
+                .message(message)
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(errorResponse);
+    }
+
+    /**
      * Handle IllegalArgumentException (invalid arguments passed to methods)
      * Returns 400 Bad Request
      */
@@ -239,7 +279,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleRuntimeException(
             RuntimeException ex,
             HttpServletRequest request) {
-        
+
+        if (ex instanceof RestClientException) {
+            return handleRestClientException((RestClientException) ex, request);
+        }
+
         log.error("RuntimeException in request to {}: {}", request.getRequestURI(), ex.getMessage(), ex);
 
         ErrorResponse errorResponse = ErrorResponse.builder()

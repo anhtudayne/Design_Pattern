@@ -80,7 +80,6 @@ export const getBookingDetail = async (bookingId) => {
   if (!res.ok) throw new Error('Không thể tải chi tiết booking');
   return res.json();
 };
-
 /**
  * Create booking (returns MoMo payUrl).
  * Payload: { userId, showtimeId, tickets: [{ seatId }], fnbLines: [{ itemId, quantity, unitPrice }], promoCode }
@@ -92,6 +91,7 @@ export const createBooking = async (payload) => {
     seatIds: (payload.tickets || []).map(t => t.seatId),
     fnbs: (payload.fnbLines || []).map(l => ({ itemId: l.itemId, quantity: l.quantity })),
     promoCode: payload.promoCode || null,
+    paymentMethod: payload.paymentMethod ?? 'MOMO',
   };
 
   const res = await ApiProxy(`${BASE_URL}/payment/checkout`, {
@@ -106,3 +106,4 @@ export const createBooking = async (payload) => {
   const data = await res.json();
   return data.payUrl;
 };
+

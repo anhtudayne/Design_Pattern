@@ -4,6 +4,8 @@ import com.cinema.booking.dtos.MovieDTO;
 import com.cinema.booking.dtos.MovieDTO.MovieCastDTO;
 import com.cinema.booking.entities.Movie.MovieStatus;
 import com.cinema.booking.services.MovieService;
+import com.cinema.booking.services.adapter.ExternalMovieData;
+import com.cinema.booking.services.adapter.MovieDataAdapter;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +20,12 @@ public class MovieController {
 
     @Autowired
     private MovieService movieService;
+
+    // ──────────────────────────────────────────────────────────────────
+    //  Adapter Pattern: MovieDataAdapter chuyển đổi dữ liệu bên ngoài
+    // ──────────────────────────────────────────────────────────────────
+    @Autowired
+    private MovieDataAdapter movieDataAdapter;
 
     // GET /api/movies?status=NOW_SHOWING
     @GetMapping
@@ -59,5 +67,39 @@ public class MovieController {
     public ResponseEntity<?> deleteMovie(@PathVariable Integer id) {
         movieService.deleteMovie(id);
         return ResponseEntity.ok().build();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  Adapter Pattern — Import phim từ nguồn bên ngoài (VD: TMDb API)
+    //  Admin gửi dữ liệu dạng ExternalMovieData → Adapter chuyển đổi
+    //  sang MovieDTO → gọi movieService.createMovie() để lưu vào DB
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * Import phim từ dữ liệu bên ngoài (Adapter Pattern).
+     * Nhận ExternalMovieData (format TMDb) → adapt sang MovieDTO → tạo phim mới.
+     */
+    @PostMapping("/import-external")
+    public ResponseEntity<MovieDTO> importExternalMovie(@RequestBody ExternalMovieData externalData) {
+        // Bước 1: Adapter chuyển đổi format bên ngoài → format nội bộ
+        MovieDTO adaptedMovie = movieDataAdapter.adapt(externalData);
+
+        // Bước 2: Gọi service tạo phim bình thường (như nhập thủ công)
+        MovieDTO createdMovie = movieService.createMovie(adaptedMovie);
+
+        return ResponseEntity.ok(createdMovie);
+    }
+
+    /**
+     * Import nhiều phim cùng lúc từ nguồn bên ngoài (Adapter Pattern - batch).
+     */
+    @PostMapping("/import-external/batch")
+    public ResponseEntity<List<MovieDTO>> importExternalMovies(@RequestBody List<ExternalMovieData> externalDataList) {
+        List<MovieDTO> createdMovies = externalDataList.stream()
+                .map(movieDataAdapter::adapt)
+                .map(movieService::createMovie)
+                .toList();
+
+        return ResponseEntity.ok(createdMovies);
     }
 }

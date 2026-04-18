@@ -15,6 +15,7 @@ import com.cinema.booking.pattern.strategy.pricing.PricingContext;
 import com.cinema.booking.pattern.decorator.PricingEngine;
 import com.cinema.booking.pattern.chain.PricingValidationContext;
 import com.cinema.booking.pattern.chain.PricingValidationHandler;
+import com.cinema.booking.pattern.strategy.pricing.PricingContextBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -62,6 +63,7 @@ public class BookingServiceImpl implements BookingService {
     @Autowired
     @Qualifier("cachingPricingEngineProxy")
     private PricingEngine pricingEngine;
+    private PricingContextBuilder pricingContextBuilder;
 
     @Autowired
     @Qualifier("pricingValidationChain")
@@ -145,7 +147,9 @@ public class BookingServiceImpl implements BookingService {
         // Promotion validation is handled in validation chain, 
         // inventory validation is removed per new logic schema
 
-        // TODO: Build PricingContext from DTO
+        // TODO: Restore PricingContextBuilder usage
+        // PricingContext pricingContext = pricingContextBuilder.build(validationCtx, request);
+        // TODO: Restore when PricingContextBuilder is fixed
         return pricingEngine.calculateTotalPrice(null);
     }
 

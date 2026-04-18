@@ -5,5 +5,6 @@ import { BASE_URL } from '../utils/api';
 export const fetchFnBItems = async () => {
   const res = await fetch(`${BASE_URL}/public/fnb/items`);
   if (!res.ok) throw new Error('Không thể tải sản phẩm F&B');
-  return res.json();
+  const data = await res.json();
+  return data.map(item => ({ ...item, itemId: item.fnbItemId }));
 };

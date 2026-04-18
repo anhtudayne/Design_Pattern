@@ -38,10 +38,9 @@ export default function FnbConcession() {
     setCart(prev => {
       const exists = prev.find(c => c.itemId === item.itemId);
       if (exists) {
-        if (exists.quantity >= item.stockQuantity) return prev; // Limit to stock
         return prev.map(c => c.itemId === item.itemId ? { ...c, quantity: c.quantity + 1 } : c);
       }
-      if (item.stockQuantity <= 0) return prev; // No stock to add
+      if (item.isActive === false) return prev; // No stock to add
       return [...prev, { ...item, quantity: 1 }];
     });
   };
@@ -157,7 +156,7 @@ export default function FnbConcession() {
                       {item.imageUrl ? (
                         <img
                           alt={item.name}
-                          className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${item.stockQuantity <= 0 ? 'grayscale opacity-50' : ''}`}
+                          className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${item.isActive === false ? 'grayscale opacity-50' : ''}`}
                           src={item.imageUrl}
                         />
                       ) : (
@@ -166,11 +165,10 @@ export default function FnbConcession() {
                         </div>
                       )}
 
-                      {/* Stock badge */}
                       <div className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-sm ${
-                        item.stockQuantity > 0 ? 'bg-white/90 text-slate-600' : 'bg-red-500 text-white'
+                        item.isActive !== false ? 'bg-white/90 text-slate-600' : 'bg-red-500 text-white'
                       }`}>
-                        {item.stockQuantity > 0 ? `Tồn: ${item.stockQuantity}` : 'Hết hàng'}
+                        {item.isActive !== false ? 'Đang bán' : 'Ngừng bán'}
                       </div>
 
                       {/* Quantity badge */}
@@ -198,7 +196,7 @@ export default function FnbConcession() {
                       </button>
                       <button
                         onClick={() => addToCart(item)}
-                        disabled={item.stockQuantity <= 0 || (inCart && inCart.quantity >= item.stockQuantity)}
+                        disabled={item.isActive === false}
                         className="flex-1 py-2.5 flex items-center justify-center text-slate-400 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <span className="material-symbols-outlined text-xl">add</span>

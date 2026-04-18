@@ -286,8 +286,7 @@ export default function BoxOfficePOS() {
   const handleAddFnb = (item) => {
     const inCart = cartFnb.find(f => f.itemId === item.itemId);
     const currentQty = inCart?.quantity || 0;
-    const stock = Math.max(0, Number(item.stockQuantity ?? 0));
-    if (currentQty >= stock) return;
+    if (item.isActive === false) return;
     runCmd(new AddFnbCommand(item, setCartFnb));
   };
 
@@ -765,7 +764,7 @@ export default function BoxOfficePOS() {
                     <span className="font-bold text-slate-800 dark:text-white w-4 text-center">{f.quantity}</span>
                     <button
                       onClick={() => handleAddFnb(f)}
-                      disabled={f.quantity >= Math.max(0, Number(f.stockQuantity ?? 0))}
+                      disabled={false}
                       className="w-5 h-5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center text-sm font-bold hover:bg-green-100 hover:text-green-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >+</button>
                     <span className="font-bold text-slate-500 w-16 text-right">{formatMoney(f.price * f.quantity)}</span>
@@ -793,15 +792,15 @@ export default function BoxOfficePOS() {
                 <button
                   key={item.itemId}
                   onClick={() => handleAddFnb(item)}
-                  disabled={Math.max(0, Number(item.stockQuantity ?? 0)) <= 0}
+                  disabled={item.isActive === false}
                   className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition-colors text-left"
                 >
                   <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-orange-500 text-base">fastfood</span>
                     <div className="min-w-0">
                       <span className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate max-w-[120px] block">{item.name}</span>
-                      <span className={`text-[10px] font-bold ${(item.stockQuantity || 0) > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                        {(item.stockQuantity || 0) > 0 ? `Còn ${item.stockQuantity}` : 'Hết hàng'}
+                      <span className={`text-[10px] font-bold ${item.isActive !== false ? 'text-emerald-600' : 'text-red-500'}`}>
+                        {item.isActive !== false ? 'Đang bán' : 'Ngừng bán'}
                       </span>
                     </div>
                   </div>

@@ -138,7 +138,10 @@ function ItemTab({ notify }) {
     setLoading(true);
     try {
       const r = await fetch(`${API}/items`, { headers: getAuthHeaders() });
-      if (r.ok) setItems(await r.json());
+      if (r.ok) {
+        const data = await r.json();
+        setItems(data.map(i => ({ ...i, itemId: i.fnbItemId })));
+      }
     } finally { setLoading(false); }
   }, []);
 
@@ -258,10 +261,9 @@ function ItemTab({ notify }) {
                 <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between">
                    <p className="font-black text-orange-500">{item.price.toLocaleString('vi-VN')}đ</p>
                    <div className="flex flex-col items-end gap-1">
-                     <span className={`text-[10px] font-black uppercase tracking-widest ${(item.stockQuantity || 0) > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                       {(item.stockQuantity || 0) > 0 ? `Còn ${item.stockQuantity}` : 'Hết hàng'}
-                     </span>
-                     {item.isActive && <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /><span className="text-[10px] font-bold text-green-600 uppercase tracking-widest">Sẵn có</span></div>}
+                     <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold tracking-widest ${item.isActive !== false ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-500'}`}>
+                       {item.isActive !== false ? 'Đang bán' : 'Ngừng kinh doanh'}
+                     </div>
                    </div>
                 </div>
               </div>

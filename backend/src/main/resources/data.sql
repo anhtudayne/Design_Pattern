@@ -80,11 +80,11 @@ INSERT INTO seats (id, room_id, seat_code, seat_type_id, is_active) VALUES
 
 -- F&B catalog (exactly matches FnbItem entity fields)
 INSERT INTO fnb_items (fnb_item_id, name, description, price, image_url, is_active) VALUES
-  (1, 'Combo Bap Nuoc Nho', '1 bap ngo nho + 1 nuoc ngot 500ml', 69000.00, 'https://example.com/fnb/combo-small.jpg', true),
-  (2, 'Combo Bap Nuoc Lon', '1 bap ngo lon + 2 nuoc ngot 500ml', 109000.00, 'https://example.com/fnb/combo-large.jpg', true),
-  (3, 'Bap Caramel', 'Bap ngo caramel vi ngot', 45000.00, 'https://example.com/fnb/popcorn-caramel.jpg', true),
-  (4, 'Coca Cola 500ml', 'Nuoc ngot Coca Cola chai 500ml', 25000.00, 'https://example.com/fnb/coca-500ml.jpg', true),
-  (5, 'Tra Dao Chanh Sa', 'Tra dao lanh vi chanh sa', 35000.00, 'https://example.com/fnb/peach-tea.jpg', true);
+  (1, 'Combo Bap Nuoc Nho', '1 bap ngo nho + 1 nuoc ngot 500ml', 69000.00, 'https://api-website.cinestar.com.vn/media/.thumbswysiwyg/pictures/PICCONNEW/CNS035_COMBO_GAU.png?rand=1723084117', true),
+  (2, 'Combo Bap Nuoc Lon', '1 bap ngo lon + 2 nuoc ngot 500ml', 109000.00, 'https://down-vn.img.susercontent.com/file/5178202fa8a147917d01aedc379736d0', true),
+  (3, 'Bap Caramel', 'Bap ngo caramel vi ngot', 45000.00, 'https://images.pexels.com/photos/30925516/pexels-photo-30925516.jpeg', true),
+  (4, 'Coca Cola 500ml', 'Nuoc ngot Coca Cola chai 500ml', 25000.00, 'https://images.pexels.com/photos/14650670/pexels-photo-14650670.jpeg', true),
+  (5, 'Tra Dao Chanh Sa', 'Tra dao lanh vi chanh sa', 35000.00, 'https://images.pexels.com/photos/33573171/pexels-photo-33573171.jpeg', true);
 
 -- Catalog
 INSERT INTO genres (id, name) VALUES

@@ -1,7 +1,7 @@
 package com.cinema.booking.security;
 
-import com.cinema.booking.entities.UserAccount;
-import com.cinema.booking.repositories.UserAccountRepository;
+import com.cinema.booking.entity.UserAccount;
+import com.cinema.booking.repository.UserAccountRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

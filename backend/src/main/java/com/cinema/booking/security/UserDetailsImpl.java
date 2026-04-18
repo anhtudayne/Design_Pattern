@@ -1,7 +1,7 @@
 package com.cinema.booking.security;
 
-import com.cinema.booking.entities.User;
-import com.cinema.booking.entities.UserAccount;
+import com.cinema.booking.entity.User;
+import com.cinema.booking.entity.UserAccount;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

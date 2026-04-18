@@ -1,0 +1,68 @@
+package com.cinema.booking.pattern.template.checkout;
+import com.cinema.booking.pattern.template.checkout.MomoCheckoutProcess;
+import com.cinema.booking.pattern.template.checkout.AbstractCheckoutTemplate;
+
+import com.cinema.booking.dto.request.CheckoutRequest;
+import com.cinema.booking.dto.MomoPaymentResponse;
+import com.cinema.booking.dto.PriceBreakdownDTO;
+import com.cinema.booking.entity.Booking;
+import com.cinema.booking.entity.Payment;
+import com.cinema.booking.repository.*;
+import com.cinema.booking.service.BookingService;
+import com.cinema.booking.service.MomoService;
+import com.cinema.booking.pattern.factory.BookingFactory;
+import org.springframework.stereotype.Component;
+
+import java.util.stream.Collectors;
+
+@Component
+public class MomoCheckoutProcess extends AbstractCheckoutTemplate {
+
+    private final MomoService momoService;
+
+    public MomoCheckoutProcess(
+            UserRepository userRepository,
+            TicketRepository ticketRepository,
+            BookingService bookingService,
+            BookingRepository bookingRepository,
+            FnbItemRepository fnbItemRepository,
+            FnBLineRepository fnBLineRepository,
+            PaymentRepository paymentRepository,
+            BookingFactory bookingFactory,
+            MomoService momoService) {
+        super(userRepository, ticketRepository, bookingService,
+                bookingRepository, fnbItemRepository, fnBLineRepository, paymentRepository, bookingFactory);
+        this.momoService = momoService;
+    }
+
+    @Override
+    protected Booking.BookingStatus determineInitialBookingStatus(CheckoutRequest request) {
+        return Booking.BookingStatus.PENDING;
+    }
+
+    @Override
+    protected Object processPayment(Booking booking, PriceBreakdownDTO price, CheckoutRequest request) throws Exception {
+        String seatIdsStr = (request.getSeatIds() != null)
+                ? request.getSeatIds().stream().map(String::valueOf).collect(Collectors.joining(","))
+                : "";
+        String extraData = booking.getBookingId() + "|" + request.getShowtimeId() + "|" + seatIdsStr;
+
+        MomoPaymentResponse momoResponse = momoService.createPayment(
+                "BOOKING_" + booking.getBookingId(),
+                price.getFinalTotal().longValue(),
+                "Thanh toán vé xem phim StarCine cho Booking #" + booking.getBookingId(),
+                extraData
+        );
+        return momoResponse.getPayUrl();
+    }
+
+    @Override
+    protected void finalizeBooking(Booking booking, PriceBreakdownDTO price, CheckoutRequest request, Object paymentResult) {
+        try {
+            Payment payment = bookingFactory.createPayment(booking, "MOMO", price.getFinalTotal(), Payment.PaymentStatus.PENDING);
+            paymentRepository.save(payment);
+        } catch (Exception e) {
+            System.err.println(">>> [StarCine] ERROR khi lưu Payment PENDING: " + e.getMessage());
+        }
+    }
+}

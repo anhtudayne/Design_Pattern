@@ -7,6 +7,8 @@ import com.cinema.booking.dtos.SeatStatusDTO;
 import com.cinema.booking.domain.seat.SeatState;
 import com.cinema.booking.domain.seat.SeatStateFactory;
 import com.cinema.booking.entities.*;
+import com.cinema.booking.patterns.observer.SeatStatusEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import com.cinema.booking.repositories.*;
 import com.cinema.booking.services.BookingService;
 import com.cinema.booking.services.seatlock.SeatLockProvider;
@@ -54,7 +56,6 @@ public class BookingServiceImpl implements BookingService {
     @Autowired
     private PaymentRepository paymentRepository;
 
-
     @Value("${cinema.app.redisTtlSeconds:600}")
     private long redisTtlSeconds;
 
@@ -68,6 +69,10 @@ public class BookingServiceImpl implements BookingService {
 
     @Autowired
     private PricingContextBuilder pricingContextBuilder;
+
+    // ── Observer Pattern: Spring Event Publisher (Subject) ─────────────────────
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     @Override
     public List<SeatStatusDTO> getSeatStatuses(Integer showtimeId) {
@@ -125,12 +130,20 @@ public class BookingServiceImpl implements BookingService {
         if (!state.allowsLockAttempt()) {
             return false;
         }
-        return seatLockProvider.tryAcquire(showtimeId, seatId, userId, redisTtlSeconds);
+        boolean acquired = seatLockProvider.tryAcquire(showtimeId, seatId, userId, redisTtlSeconds);
+
+        // [Observer] Phát sự kiện khi lock thành công
+        if (acquired) {
+            eventPublisher.publishEvent(new SeatStatusEvent(showtimeId, seatId, null, "PENDING", userId));
+        }
+        return acquired;
     }
 
     @Override
     public void unlockSeat(Integer showtimeId, Integer seatId) {
         seatLockProvider.release(showtimeId, seatId);
+        // [Observer] Phát sự kiện khi ghế được giải phóng (VACANT)
+        eventPublisher.publishEvent(new SeatStatusEvent(showtimeId, seatId, null, "VACANT", null));
     }
 
     @Override
@@ -141,12 +154,11 @@ public class BookingServiceImpl implements BookingService {
 
         pricingValidationChain.validate(validationCtx);
 
-        // Promotion validation is handled in validation chain, 
+        // Promotion validation is handled in validation chain,
         // inventory validation is removed per new logic schema
 
         return pricingEngine.calculateTotalPrice(pricingContextBuilder.build(validationCtx, request));
     }
-
 
     @Override
     public BookingDTO getBookingDetail(Integer bookingId) {
@@ -163,7 +175,7 @@ public class BookingServiceImpl implements BookingService {
                 .filter(b -> q.isEmpty()
                         || (b.getBookingCode() != null && b.getBookingCode().toLowerCase().contains(q))
                         || (b.getUser() != null && b.getUser().getFullname() != null
-                        && b.getUser().getFullname().toLowerCase().contains(q)))
+                                && b.getUser().getFullname().toLowerCase().contains(q)))
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
     }
@@ -171,32 +183,63 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public void cancelBooking(Integer bookingId) {
-        Booking booking = bookingRepository.findById(bookingId).orElseThrow(() -> new RuntimeException("Booking not found"));
-        com.cinema.booking.patterns.state.BookingContext context = new com.cinema.booking.patterns.state.BookingContext(booking);
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+        com.cinema.booking.patterns.state.BookingContext context = new com.cinema.booking.patterns.state.BookingContext(
+                booking);
         context.cancel();
         bookingRepository.save(booking);
 
-        // Release reserved resources only when booking has never been settled successfully.
-        if (!paymentRepository.existsByBookingAndStatus(booking, Payment.PaymentStatus.SUCCESS)) {
-            // Inventory and promotion inventory logic removed
+        // [Observer] Khi hủy đơn — ghế được giải phóng trở lại (AVAILABLE)
+        if (booking.getTicketList() != null) {
+            booking.getTicketList().forEach(ticket -> {
+                if (ticket.getShowtime() != null && ticket.getSeat() != null) {
+                    eventPublisher.publishEvent(new SeatStatusEvent(
+                            ticket.getShowtime().getShowtimeId(),
+                            ticket.getSeat().getSeatId(),
+                            ticket.getSeat().getSeatCode(),
+                            "VACANT",
+                            null));
+                }
+            });
         }
     }
+
     @Override
     @Transactional
     public void refundBooking(Integer bookingId) {
-        Booking booking = bookingRepository.findById(bookingId).orElseThrow(() -> new RuntimeException("Booking not found"));
-        com.cinema.booking.patterns.state.BookingContext context = new com.cinema.booking.patterns.state.BookingContext(booking);
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+        com.cinema.booking.patterns.state.BookingContext context = new com.cinema.booking.patterns.state.BookingContext(
+                booking);
         context.refund();
         bookingRepository.save(booking);
+
+        // [Observer] Khi hoàn tiền — ghế cũng được giải phóng
+        if (booking.getTicketList() != null) {
+            booking.getTicketList().forEach(ticket -> {
+                if (ticket.getShowtime() != null && ticket.getSeat() != null) {
+                    eventPublisher.publishEvent(new SeatStatusEvent(
+                            ticket.getShowtime().getShowtimeId(),
+                            ticket.getSeat().getSeatId(),
+                            ticket.getSeat().getSeatCode(),
+                            "VACANT",
+                            null));
+                }
+            });
+        }
     }
 
     @Override
     @Transactional
     public void printTickets(Integer bookingId) {
-        Booking booking = bookingRepository.findById(bookingId).orElseThrow(() -> new RuntimeException("Booking not found"));
-        com.cinema.booking.patterns.state.BookingContext context = new com.cinema.booking.patterns.state.BookingContext(booking);
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+        com.cinema.booking.patterns.state.BookingContext context = new com.cinema.booking.patterns.state.BookingContext(
+                booking);
         context.printTickets();
-        // Maybe update DB if printing changes a specific physical flag, for now state pattern enforces rules.
+        // State Pattern đã cập nhật trạng thái. Ghế vẫn SOLD sau khi in vé — không cần
+        // notify.
     }
 
     private BookingDTO mapToDTO(Booking booking) {
@@ -218,7 +261,9 @@ public class BookingServiceImpl implements BookingService {
                         .showtimeId(t.getShowtime() != null ? t.getShowtime().getShowtimeId() : null)
                         .seatId(t.getSeat() != null ? t.getSeat().getSeatId() : null)
                         .seatCode(t.getSeat() != null ? t.getSeat().getSeatCode() : null)
-                        .seatType(t.getSeat() != null && t.getSeat().getSeatType() != null ? t.getSeat().getSeatType().getName() : null)
+                        .seatType(t.getSeat() != null && t.getSeat().getSeatType() != null
+                                ? t.getSeat().getSeatType().getName()
+                                : null)
                         .unitPrice(t.getUnitPrice())
                         .holdExpiresAt(t.getHoldExpiresAt())
                         .build()).toList())
@@ -233,12 +278,14 @@ public class BookingServiceImpl implements BookingService {
     }
 
     private String extractSeatRow(String seatCode) {
-        if (seatCode == null || seatCode.isBlank()) return null;
+        if (seatCode == null || seatCode.isBlank())
+            return null;
         return seatCode.substring(0, 1);
     }
 
     private Integer extractSeatNumber(String seatCode) {
-        if (seatCode == null || seatCode.length() < 2) return null;
+        if (seatCode == null || seatCode.length() < 2)
+            return null;
         try {
             return Integer.parseInt(seatCode.substring(1));
         } catch (NumberFormatException ex) {

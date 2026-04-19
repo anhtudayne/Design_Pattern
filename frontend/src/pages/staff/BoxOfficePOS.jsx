@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSelector } from "react-redux";
 import { selectCurrentUser } from "../../store/authSlice";
 import { fetchPublicShowtimes } from "../../services/showtimeService";
@@ -16,6 +16,7 @@ import {
   AddFnbCommand,
   RemoveFnbCommand,
 } from "../../patterns/posCommands";
+import { useSeatObserver } from "../../hooks/useSeatObserver";
 
 // ── Seat palette ────────────────────────────────────────────────────
 const SEAT_STYLES = {
@@ -94,6 +95,54 @@ export default function BoxOfficePOS() {
   // Command Pattern Invoker
   const invokerRef = useRef(new PosCommandInvoker());
   const currentUser = useSelector(selectCurrentUser);
+
+  // ── Holding Timer Logic ───────────────────────────────────────────────
+  const [holdTimer, setHoldTimer] = useState(0); // seconds remaining
+
+  useEffect(() => {
+    let interval = null;
+    if (selectedSeats.length > 0 && holdTimer === 0) {
+      // Khi bắt đầu chọn ghế đầu tiên -> bắt đầu đếm ngược 10 phút (600s)
+      setHoldTimer(10);
+    } else if (selectedSeats.length === 0) {
+      setHoldTimer(0);
+    }
+
+    if (holdTimer > 0) {
+      interval = setInterval(() => {
+        setHoldTimer((t) => {
+          if (t <= 1) {
+            // Hết thời gian -> Chỉ giải phóng ghế, giữ nguyên màn hình
+            clearSelectedSeats();
+            setLastAction("Hết thời gian giữ ghế. Ghế đã được giải phóng.");
+            setToastVisible(true);
+            return 0;
+          }
+          return t - 1;
+        });
+      }, 1000);
+    }
+
+    return () => clearInterval(interval);
+  }, [selectedSeats.length, holdTimer]);
+
+  const formatTimer = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  // ── Observer Pattern: Lắng nghe thay đổi trạng thái ghế real-time ──────────────
+  // Khi một Staff khác chọn/bỏ ghế, cấu trúc này tự động cập nhật UI không cần reload.
+  const handleSeatUpdate = useCallback((event) => {
+    setSeats((currentSeats) =>
+      currentSeats.map((seat) =>
+        seat.seatId === event.seatId ? { ...seat, status: event.status } : seat,
+      ),
+    );
+  }, []);
+
+  useSeatObserver(selectedShowtime?.showtimeId, handleSeatUpdate);
 
   // Helper to run + sync undo/redo state after any command
   const runCmd = (cmd) => {
@@ -236,7 +285,8 @@ export default function BoxOfficePOS() {
           st.movieId === selectedMovie.movieId &&
           st.cinemaId === selectedCinema.cinemaId &&
           st.startTime?.split("T")[0] === selectedDate &&
-          (st.startTime?.split("T")[0] !== todayStr || new Date(st.startTime).getTime() >= now)
+          (st.startTime?.split("T")[0] !== todayStr ||
+            new Date(st.startTime).getTime() >= now),
       )
       .sort((a, b) => a.startTime.localeCompare(b.startTime));
   }, [allShowtimes, selectedMovie, selectedCinema, selectedDate, todayStr]);
@@ -330,11 +380,16 @@ export default function BoxOfficePOS() {
   const handleToggleSeat = (seat) => {
     if (seat.status === "SOLD" || seat.status === "PENDING") return;
     const isSelected = selectedSeats.find((s) => s.seatId === seat.seatId);
+
+    // Lấy thông tin cần thiết cho API Lock/Unlock trong Command
+    const sid = selectedShowtime?.showtimeId;
+    const uid = currentUser?.userId || -1;
+
     if (isSelected) {
-      runCmd(new RemoveSeatCommand(seat, setSelectedSeats));
+      runCmd(new RemoveSeatCommand(seat, sid, uid, setSelectedSeats));
     } else {
       if (selectedSeats.length >= 10) return;
-      runCmd(new AddSeatCommand(seat, setSelectedSeats));
+      runCmd(new AddSeatCommand(seat, sid, uid, setSelectedSeats));
     }
   };
 
@@ -394,6 +449,17 @@ export default function BoxOfficePOS() {
   };
 
   const resetAll = () => {
+    // [Observer] Trước khi xóa state, phải giải phóng ghế trên Backend
+    if (selectedSeats.length > 0) {
+      const sid = selectedShowtime?.showtimeId;
+      selectedSeats.forEach(s => {
+        fetch(`${BASE_URL}/booking/unlock?showtimeId=${sid}&seatId=${s.seatId}`, {
+          method: 'POST',
+          headers: getAuthHeaders()
+        }).catch(() => {});
+      });
+    }
+
     setStep(1);
     setSelectedCinema(null);
     setSelectedMovie(null);
@@ -410,7 +476,44 @@ export default function BoxOfficePOS() {
     invokerRef.current.reset();
     setCanUndo(false);
     setCanRedo(false);
+    setHoldTimer(0);
   };
+
+  // Chỉ giải phóng ghế khi hết giờ hoặc muốn xóa nhanh giỏ hàng
+  const clearSelectedSeats = () => {
+    if (selectedSeats.length > 0) {
+      const sid = selectedShowtime?.showtimeId;
+      selectedSeats.forEach(s => {
+        fetch(`${BASE_URL}/booking/unlock?showtimeId=${sid}&seatId=${s.seatId}`, {
+          method: 'POST',
+          headers: getAuthHeaders()
+        }).catch(() => {});
+      });
+    }
+    setSelectedSeats([]);
+    setPriceBreakdown(null);
+    setCartFnb([]);
+    setHoldTimer(0);
+    invokerRef.current.reset();
+    setCanUndo(false);
+    setCanRedo(false);
+  };
+
+  // ── Cleanup on Close ───────────────────────────────────────────────────
+  useEffect(() => {
+    const handleTabClose = () => {
+      if (selectedSeats.length > 0 && selectedShowtime) {
+        // Cố gắng nhả ghế khi tắt tab (Lưu ý: Không đảm bảo 100% do trình duyệt hạn chế)
+        const sid = selectedShowtime.showtimeId;
+        selectedSeats.forEach(s => {
+          const url = `${BASE_URL}/booking/unlock?showtimeId=${sid}&seatId=${s.seatId}`;
+          navigator.sendBeacon(url); // Dùng Beacon API cho việc cleanup khi đóng tab
+        });
+      }
+    };
+    window.addEventListener("beforeunload", handleTabClose);
+    return () => window.removeEventListener("beforeunload", handleTabClose);
+  }, [selectedSeats, selectedShowtime]);
 
   // ── Hotkeys: Escape = reset, Ctrl+Z = undo, Ctrl+Y = redo ──────────
   useEffect(() => {
@@ -684,8 +787,10 @@ export default function BoxOfficePOS() {
               </h2>
 
               <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-1.5 rounded-xl shadow-sm w-full sm:w-auto focus-within:ring-2 focus-within:ring-orange-500/50 transition-all">
-                <span className="material-symbols-outlined text-slate-400 ml-2">calendar_month</span>
-                <input 
+                <span className="material-symbols-outlined text-slate-400 ml-2">
+                  calendar_month
+                </span>
+                <input
                   type="date"
                   value={selectedDate}
                   min={toLocalDateString()}
@@ -885,25 +990,32 @@ export default function BoxOfficePOS() {
                         const isSelected = selectedSeats.some(
                           (s) => s.seatId === seat.seatId,
                         );
-                        const seatType =
-                          seat.status === "SOLD"
-                            ? "SOLD"
-                            : seat.status === "PENDING"
-                              ? "PENDING"
-                              : seat.seatType || "STANDARD";
+
+                        // Xác định loại ghế để lấy màu (ưu tiên loại ghế gốc để lấy màu Cam khi active)
+                        const baseType = seat.seatType || "STANDARD";
+                        const displayStatus = isSelected
+                          ? baseType
+                          : seat.status || baseType;
+
                         const style =
-                          SEAT_STYLES[seatType] || SEAT_STYLES.STANDARD;
+                          SEAT_STYLES[displayStatus] || SEAT_STYLES.STANDARD;
                         const canSelect =
-                          seat.status !== "SOLD" && seat.status !== "PENDING";
+                          seat.status !== "SOLD" &&
+                          (seat.status !== "PENDING" || isSelected);
 
                         return (
                           <button
                             key={seat.seatId}
                             onClick={() => handleToggleSeat(seat)}
-                            disabled={!canSelect}
-                            title={`${row}${seat.seatNumber} • ${seatType}${seat.totalPrice ? " • " + formatMoney(seat.totalPrice) : ""}`}
+                            disabled={
+                              seat.status === "SOLD" ||
+                              (seat.status === "PENDING" && !isSelected)
+                            }
+                            title={`${row}${seat.seatNumber} • ${baseType}${seat.totalPrice ? " • " + formatMoney(seat.totalPrice) : ""}`}
                             className={`w-8 h-8 rounded-lg text-[10px] font-bold transition-all duration-150 ${
-                              isSelected ? style.active : style.idle
+                              isSelected
+                                ? SEAT_STYLES[baseType].active
+                                : style.idle
                             }`}
                           >
                             {seat.seatNumber}
@@ -1123,6 +1235,23 @@ export default function BoxOfficePOS() {
 
         {/* Cart Footer: Total + Payment Buttons */}
         <div className="border-t border-slate-100 dark:border-slate-800 p-5 space-y-3">
+          {/* Timer Indicator */}
+          {holdTimer > 0 && (
+            <div className="flex justify-between items-center mb-2 px-3 py-2 bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-900/30 rounded-xl">
+              <span className="text-[10px] font-black text-orange-600 dark:text-orange-400 uppercase tracking-widest flex items-center gap-1">
+                <span
+                  className={`w-2 h-2 rounded-full bg-orange-500 ${holdTimer < 60 ? "animate-ping" : ""}`}
+                ></span>
+                Giữ ghế
+              </span>
+              <span
+                className={`font-mono font-black ${holdTimer < 60 ? "text-red-500 animate-pulse" : "text-orange-600"}`}
+              >
+                {formatTimer(holdTimer)}
+              </span>
+            </div>
+          )}
+
           {/* Total */}
           <div className="flex justify-between items-center">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">

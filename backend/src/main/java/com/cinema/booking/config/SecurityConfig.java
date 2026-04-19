@@ -57,6 +57,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
+                .requestMatchers("/ws/**").permitAll() // Cho phép handshake WebSocket
                 .requestMatchers(HttpMethod.GET, "/api/locations/**", "/api/cinemas/**", "/api/rooms/**", "/api/seats/**", "/api/booking/seats/**", "/api/admin/showtimes/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/movie-genres/**").permitAll()
                 .requestMatchers("/error").permitAll()

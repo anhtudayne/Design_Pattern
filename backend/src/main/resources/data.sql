@@ -36,10 +36,11 @@ INSERT INTO users (id, fullname, phone) VALUES
   (1, 'System Admin', '0900000001'),
   (2, 'Counter Staff', '0900000002'),
   (3, 'Nguyen Van A', '0900000003'),
-  (4, 'Tran Thi B', '0900000004');
+  (4, 'Tran Thi B', '0900000004'),
+  (5, 'Counter Staff 2', '0900000005');
 
 INSERT INTO admins (user_id) VALUES (1);
-INSERT INTO staffs (user_id) VALUES (2);
+INSERT INTO staffs (user_id) VALUES (2), (5);
 INSERT INTO customers (user_id) VALUES (-1), (3), (4);
 
 INSERT INTO user_accounts (id, user_id, email, password_hash) VALUES
@@ -47,7 +48,8 @@ INSERT INTO user_accounts (id, user_id, email, password_hash) VALUES
   (1, 1, 'admin@starcine.local', '$2b$10$HQeilHe0tQIj3qb3pw6GFuj.zu8LY/YPrqeLJTh0hiI21FyoFzsGK'),
   (2, 2, 'staff@starcine.local', '$2b$10$HQeilHe0tQIj3qb3pw6GFuj.zu8LY/YPrqeLJTh0hiI21FyoFzsGK'),
   (3, 3, 'user1@starcine.local', '$2b$10$HQeilHe0tQIj3qb3pw6GFuj.zu8LY/YPrqeLJTh0hiI21FyoFzsGK'),
-  (4, 4, 'user2@starcine.local', '$2b$10$HQeilHe0tQIj3qb3pw6GFuj.zu8LY/YPrqeLJTh0hiI21FyoFzsGK');
+  (4, 4, 'user2@starcine.local', '$2b$10$HQeilHe0tQIj3qb3pw6GFuj.zu8LY/YPrqeLJTh0hiI21FyoFzsGK'),
+  (5, 5, 'staff2@starcine.local', '$2b$10$HQeilHe0tQIj3qb3pw6GFuj.zu8LY/YPrqeLJTh0hiI21FyoFzsGK');
 
 -- Geography and cinemas
 INSERT INTO locations (id, name) VALUES

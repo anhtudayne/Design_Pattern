@@ -1,8 +1,4 @@
 package com.cinema.booking.pattern.state.booking;
-import com.cinema.booking.pattern.state.booking.CancelledState;
-import com.cinema.booking.pattern.state.booking.ConfirmedState;
-import com.cinema.booking.pattern.state.booking.PendingState;
-import com.cinema.booking.pattern.state.booking.BookingState;
 
 import com.cinema.booking.entity.Booking;
 

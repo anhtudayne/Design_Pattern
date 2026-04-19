@@ -1,6 +1,4 @@
 package com.cinema.booking.pattern.state.seat;
-import com.cinema.booking.pattern.state.seat.SeatState;
-import com.cinema.booking.adapter.seatlock.SeatLockProvider;
 
 import com.cinema.booking.dto.SeatStatusDTO;
 
@@ -12,7 +10,7 @@ public interface SeatState {
     SeatStatusDTO.SeatStatus toDisplayStatus();
 
     /**
-     * Ghế đã bán thì không được thử giữ tạm; còn lại vẫn có thể gọi {@link com.cinema.booking.services.seatlock.SeatLockProvider#tryAcquire}
+     * Ghế đã bán thì không được thử giữ tạm; còn lại vẫn có thể gọi {@link com.cinema.booking.adapter.seatlock.SeatLockProvider#tryAcquire}
      * (SETNX sẽ thất bại nếu người khác đang giữ).
      */
     boolean allowsLockAttempt();

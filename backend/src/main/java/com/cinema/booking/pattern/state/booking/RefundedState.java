@@ -1,7 +1,4 @@
 package com.cinema.booking.pattern.state.booking;
-import com.cinema.booking.pattern.state.booking.RefundedState;
-import com.cinema.booking.pattern.state.booking.BookingContext;
-import com.cinema.booking.pattern.state.booking.BookingState;
 
 public class RefundedState implements BookingState {
 

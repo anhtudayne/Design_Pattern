@@ -1,6 +1,4 @@
 package com.cinema.booking.pattern.state.seat;
-import com.cinema.booking.pattern.state.seat.SoldSeatState;
-import com.cinema.booking.pattern.state.seat.SeatState;
 
 import com.cinema.booking.dto.SeatStatusDTO;
 

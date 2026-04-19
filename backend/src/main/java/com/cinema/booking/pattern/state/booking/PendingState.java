@@ -1,9 +1,4 @@
 package com.cinema.booking.pattern.state.booking;
-import com.cinema.booking.pattern.state.booking.CancelledState;
-import com.cinema.booking.pattern.state.booking.ConfirmedState;
-import com.cinema.booking.pattern.state.booking.PendingState;
-import com.cinema.booking.pattern.state.booking.BookingContext;
-import com.cinema.booking.pattern.state.booking.BookingState;
 
 public class PendingState implements BookingState {
 

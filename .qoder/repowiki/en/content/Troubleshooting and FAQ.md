@@ -444,7 +444,7 @@ Common issues:
   - Ensure frontend URL matches the configured origin.
 
 Fix checklist:
-- Copy .env.example to .env and fill in values.
+- Create a `.env` file at the repository root (same level as `backend/`) and set required variables.
 - Start containers with Docker Compose.
 - Confirm all services are healthy.
 

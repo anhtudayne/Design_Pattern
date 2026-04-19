@@ -48,8 +48,7 @@ Khai báo `RestTemplate` là `@Bean` trong `@Configuration`. Spring quản lý 1
 | File | Đường dẫn | Vai trò |
 |------|-----------|---------|
 | `RestTemplateConfig.java` | `config/` | **@Configuration** — khai báo Singleton bean |
-| `MomoServiceImpl.java` | `services/impl/` | Inject và dùng `RestTemplate` |
-| `ExternalApiService.java` | `services/` | Inject `RestTemplate` (nếu có HTTP call khác) |
+| `MomoServiceImpl.java` | `service/impl/` | Inject và dùng `RestTemplate` (gọi API MoMo) |
 
 ---
 
@@ -180,12 +179,29 @@ Spring `@Bean` đơn giản hơn, thread-safe hơn, dễ test hơn (có thể ov
 
 ## 11. Test thủ công
 
-```bash
-# Kiểm tra app khởi động có bean không
-curl http://localhost:8080/actuator/beans | grep restTemplate
+**Không** dán cả khối “mô tả HTTP” (`POST ...`, `Body: { ... }`, mũi tên `→`) vào terminal. Đó không phải lệnh shell; zsh sẽ báo lỗi (thường `parse error near '}'` vì ký tự `{`).
 
-# Kiểm tra thanh toán MoMo hoạt động (RestTemplate gọi được)
-POST /api/payment/checkout
-Body: { "showtimeId": 1, "seatIds": [1, 2] }
-→ Response có orderId MoMo → RestTemplate Singleton hoạt động
+**Actuator:** dự án backend **chưa** khai báo `spring-boot-starter-actuator`, nên **`/actuator/beans` không có**. Muốn xem bean trên HTTP thì thêm dependency + bật endpoint trong cấu hình; còn không thì xác minh Singleton `RestTemplate` qua IDE (Spring Boot dashboard) hoặc breakpoint trong `MomoServiceImpl`.
+
+**Checkout MoMo** (`MomoServiceImpl` + bean `RestTemplate`): `POST /api/payment/checkout` cần **JWT**, body đúng `CheckoutRequestDTO`. Mặc định **`momo.dev-skip-external=false`** — gọi sandbox MoMo (trừ khi trong `.env` có `MOMO_DEV_SKIP_EXTERNAL=true`). Khi skip bật: **không** POST ra ngoài, trả `payUrl` dạng `about:blank#momo-dev-skip-...` (chỉ để test luồng đặt vé không cần cổng). Gặp **403** từ MoMo: tạm đặt `MOMO_DEV_SKIP_EXTERNAL=true` hoặc whitelist IP / kiểm tra key trên portal sandbox. Cấu hình: **`.env`** ở root repo (khuyến nghị) hoặc `backend/.env` — Spring import cả hai đường. `DEV_*` MoMo tham chiếu [momo-wallet/java `environment.properties`](https://github.com/momo-wallet/java/blob/master/src/main/resources/environment.properties); `DEV_MOMO_ENDPOINT` = **URL đầy đủ** `.../api/create`. Thiếu biến: `application.properties` có default local cho DB/Redis/MoMo sandbox.
+
+Ví dụ **copy được** (seed `data.sql`: khách `user1@starcine.local` / `123456` → `userId` = **3**):
+
+```bash
+# 1) Lấy JWT
+TOKEN=$(curl -sS -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user1@starcine.local","password":"123456"}' | jq -r .token)
+
+# 2) Checkout MoMo (ghế 1,2 — suất 1; chỉnh nếu DB của bạn khác)
+curl -sS -X POST http://localhost:8080/api/payment/checkout \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"userId":3,"showtimeId":1,"seatIds":[1,2],"paymentMethod":"MOMO"}'
 ```
+
+Không có `jq` thì làm hai bước tay: gọi login, copy giá trị `token` (chỉ chuỗi JWT, không kèm `","type"`…), gán `TOKEN='...'` rồi chạy lệnh `curl` ở bước 2.
+
+**Nếu 400 *Suất chiếu đã kết thúc*:** `ShowtimeFutureHandler` chỉ cho đặt khi `start_time` của suất chưa qua so với giờ máy chủ. Cập nhật `showtimes` trong DB hoặc chạy lại seed (`data.sql` dùng suất năm 2028).
+
+**Lưu ý:** Nếu **502** *Cổng MoMo trả về 403* — IP/key/endpoint sandbox chưa đúng; có thể đặt `MOMO_DEV_SKIP_EXTERNAL=true` trong `.env` để dùng payUrl giả tạm thời.

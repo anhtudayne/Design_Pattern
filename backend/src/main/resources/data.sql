@@ -111,11 +111,11 @@ INSERT INTO movie_casts (id, movie_id, cast_member_id, role_name, role_type) VAL
   (2, 1, 3, NULL, 'DIRECTOR'),
   (3, 2, 2, 'Mai', 'ACTOR');
 
--- Showtimes
+-- Showtimes (start_time phải trong tương lai so với ngày chạy app — xem ShowtimeFutureHandler)
 INSERT INTO showtimes (id, movie_id, room_id, start_time, end_time, base_price) VALUES
-  (1, 1, 1, '2026-04-18 09:00:00', '2026-04-18 11:08:00', 90000.00),
-  (2, 1, 2, '2026-04-18 19:30:00', '2026-04-18 21:38:00', 140000.00),
-  (3, 2, 3, '2026-04-19 14:00:00', '2026-04-19 15:50:00', 80000.00);
+  (1, 1, 1, '2028-06-01 09:00:00', '2028-06-01 11:08:00', 90000.00),
+  (2, 1, 2, '2028-06-01 19:30:00', '2028-06-01 21:38:00', 140000.00),
+  (3, 2, 3, '2028-06-02 14:00:00', '2028-06-02 15:50:00', 80000.00);
 
 -- Promotions, booking flow
 INSERT INTO promotions (id, code, discount_type, discount_value, valid_to) VALUES

@@ -181,11 +181,18 @@ DashboardController.getStats()
 
 ## 9. Test thủ công
 
-```bash
-GET /api/admin/dashboard/stats
-Authorization: Bearer {admin_token}
+Đoạn dưới đây là **mô tả request/response (HTTP)** — **không** phải lệnh terminal. Nếu bạn copy toàn bộ vào zsh/bash, shell sẽ báo `command not found` vì nó cố chạy `GET`, `Authorization:`... như lệnh.
 
-# Expected response (ví dụ):
+**Cách dùng:** Swagger UI (`/swagger-ui.html`), Postman, Insomnia, hoặc `curl` như sau (thay token thật):
+
+```bash
+curl -sS -H "Authorization: Bearer YOUR_ADMIN_JWT" \
+  http://localhost:8080/api/admin/dashboard/stats
+```
+
+**Ví dụ response (JSON):**
+
+```json
 {
   "totalMovies": 42,
   "totalUsers": 1500,

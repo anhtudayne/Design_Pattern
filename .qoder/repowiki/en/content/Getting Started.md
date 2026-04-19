@@ -134,11 +134,9 @@ Ports:
 - [frontend/vite.config.js:1-15](file://frontend/vite.config.js#L1-L15)
 
 ## Environment Configuration
-The application uses separate environment files:
-- backend/.env
-- frontend/.env
+Use a **`.env` file** at the repository root (recommended) or under `backend/`. Spring Boot imports `optional:../.env` then `optional:./.env` when the process working directory is `backend/`. Vite uses `envDir` pointing at the repo root for the frontend.
 
-Important backend variables mapped from application.properties:
+Important variables mapped from `application.properties`:
 - Database: DB_URL, DB_USERNAME, DB_PASSWORD
 - Frontend origin for CORS: FRONTEND_URL
 - JWT: JWT_SECRET
@@ -164,7 +162,7 @@ After starting backend and frontend:
 - Test metadata endpoints to confirm backend is reachable
 
 Common CORS fix:
-- Ensure FRONTEND_URL matches the frontend origin in backend/.env.
+- Ensure FRONTEND_URL matches the frontend origin in the root `.env`.
 
 **Section sources**
 - [HUONG_DAN_CHAY_DU_AN_MOI.md:128-133](file://HUONG_DAN_CHAY_DU_AN_MOI.md#L128-L133)

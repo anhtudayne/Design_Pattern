@@ -6,7 +6,6 @@ import com.cinema.booking.entity.FnbItem;
 import com.cinema.booking.entity.Promotion;
 import com.cinema.booking.entity.Seat;
 import com.cinema.booking.entity.Showtime;
-import com.cinema.booking.entity.User;
 import com.cinema.booking.repository.CustomerRepository;
 import com.cinema.booking.repository.FnbItemRepository;
 import com.cinema.booking.repository.SeatRepository;

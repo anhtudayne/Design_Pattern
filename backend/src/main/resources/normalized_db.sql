@@ -286,6 +286,17 @@ SET @sql := (
 );
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
+-- Add membership_discount_percent column to customers (if not exists)
+-- Replaces the old tier_id FK approach: discount % is stored directly on the customer row.
+SET @sql := (
+  SELECT IF(EXISTS(
+    SELECT 1 FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'customers' AND COLUMN_NAME = 'membership_discount_percent'
+  ), 'SELECT 1',
+  'ALTER TABLE customers ADD COLUMN membership_discount_percent DECIMAL(5,2) NULL COMMENT ''% giảm giá theo hạng thành viên; null = chưa có hạng''')
+);
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
 -- Drop legacy tables not mapped by current entities.
 -- Keep entity tables and explicit many-to-many bridge table: movie_genres.
 SET FOREIGN_KEY_CHECKS = 0;
@@ -298,3 +309,4 @@ DROP TABLE IF EXISTS fnb_item_inventory;
 DROP TABLE IF EXISTS promotion_inventory;
 DROP TABLE IF EXISTS fnb_items_backup_20260417;
 SET FOREIGN_KEY_CHECKS = 1;
+

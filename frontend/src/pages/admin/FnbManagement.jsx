@@ -172,7 +172,7 @@ function ItemTab({ notify }) {
     e.preventDefault();
     setSaving(true);
     const isEdit = !!modal?.edit;
-    const url = isEdit ? `${API}/items/${modal.edit.itemId}` : `${API}/items`;
+    const url = isEdit ? `${API}/items/${modal.edit.fnbItemId}` : `${API}/items`;
     try {
       const r = await fetch(url, {
         method: isEdit ? 'PUT' : 'POST',
@@ -196,7 +196,7 @@ function ItemTab({ notify }) {
 
   const handleDelete = async (item) => {
     if (!window.confirm(`Xóa sản phẩm "${item.name}"?`)) return;
-    const r = await fetch(`${API}/items/${item.itemId}`, { method: 'DELETE', headers: getAuthHeaders() });
+    const r = await fetch(`${API}/items/${item.fnbItemId}`, { method: 'DELETE', headers: getAuthHeaders() });
     if (r.ok) { notify('Đã xóa!', 'success'); load(); }
     else notify('Xóa thất bại', 'error');
   };
@@ -230,7 +230,7 @@ function ItemTab({ notify }) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map(item => (
-            <div key={item.itemId} className="group bg-white rounded-3xl border border-slate-100 p-3 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-100/30 transition-all cursor-default">
+            <div key={item.fnbItemId} className="group bg-white rounded-3xl border border-slate-100 p-3 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-100/30 transition-all cursor-default">
               <div className="aspect-[4/3] rounded-2xl bg-slate-50 overflow-hidden relative mb-3">
                 {item.imageUrl ? (
                   <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />

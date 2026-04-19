@@ -1,11 +1,9 @@
 package com.cinema.booking.pattern.composite;
-import com.cinema.booking.pattern.composite.StatsComponent;
 
 import java.util.Map;
 
 /**
- * Composite pattern — Component interface.
- * Mỗi leaf hoặc composite ghi số liệu thống kê vào target map.
+ * Thành phần composite (dashboard): leaf hoặc composite đều ghi số liệu vào map đích.
  */
 public interface StatsComponent {
     void collect(Map<String, Object> target);

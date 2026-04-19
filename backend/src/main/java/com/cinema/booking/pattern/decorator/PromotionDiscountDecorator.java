@@ -1,21 +1,14 @@
 package com.cinema.booking.pattern.decorator;
-import com.cinema.booking.pattern.decorator.DiscountResult;
-import com.cinema.booking.pattern.decorator.PromotionDiscountDecorator;
-import com.cinema.booking.pattern.decorator.BaseDiscountDecorator;
-import com.cinema.booking.pattern.decorator.DiscountComponent;
-import com.cinema.booking.pattern.strategy.pricing.PricingContext;
 
 import com.cinema.booking.entity.Promotion;
+import com.cinema.booking.pattern.strategy.pricing.PricingContext;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 /**
- * Concrete Decorator — Áp dụng mã khuyến mãi từ bảng promotions.
- * Hỗ trợ 2 loại giảm giá:
- *   - PERCENT: giảm theo % (VD: 10% tổng hóa đơn)
- *   - FIXED: giảm số tiền cố định (VD: giảm 50.000đ)
- * Discount không vượt quá subtotal.
+ * Áp dụng {@link Promotion}: theo % trên subtotal (làm tròn xuống) hoặc số tiền cố định.
+ * Tổng giảm không vượt {@code subtotal}.
  */
 public class PromotionDiscountDecorator extends BaseDiscountDecorator {
 
@@ -28,34 +21,37 @@ public class PromotionDiscountDecorator extends BaseDiscountDecorator {
 
     @Override
     public DiscountResult applyDiscount(BigDecimal subtotal, PricingContext context) {
-        // Lấy kết quả từ chain trước đó
-        DiscountResult previousResult = super.applyDiscount(subtotal, context);
-        BigDecimal previousDiscount = previousResult.getTotalDiscount();
+        DiscountResult inner = super.applyDiscount(subtotal, context);
 
-        // Tính discount của promotion này
-        BigDecimal promotionDiscount;
-        String description;
+        BigDecimal promoDiscount;
+        String promoDescription;
 
         if (promotion.getDiscountType() == Promotion.DiscountType.PERCENT) {
-            promotionDiscount = subtotal.multiply(promotion.getDiscountValue())
+            promoDiscount = subtotal
+                    .multiply(promotion.getDiscountValue())
                     .divide(BigDecimal.valueOf(100), 0, RoundingMode.FLOOR);
-            description = previousResult.getDescription() + " | Khuyến mãi " 
-                    + promotion.getCode() + ": -" + promotion.getDiscountValue() + "%";
+            promoDescription = "Mã " + promotion.getCode() + ": -" + promotion.getDiscountValue() + "%";
         } else {
-            // FIXED
-            promotionDiscount = promotion.getDiscountValue();
-            description = previousResult.getDescription() + " | Khuyến mãi " 
-                    + promotion.getCode() + ": -" + promotion.getDiscountValue() + "đ";
+            promoDiscount = promotion.getDiscountValue();
+            promoDescription = "Mã " + promotion.getCode() + ": -" + promotion.getDiscountValue() + "đ";
         }
 
-        // Tổng discount = trước + hiện tại, nhưng không được vượt subtotal
-        BigDecimal totalDiscount = previousDiscount.add(promotionDiscount);
-        if (totalDiscount.compareTo(subtotal) > 0) {
-            totalDiscount = subtotal;
+        BigDecimal newPromoTotal = inner.getPromotionDiscount().add(promoDiscount);
+        BigDecimal newTotal = inner.getTotalDiscount().add(promoDiscount);
+        if (newTotal.compareTo(subtotal) > 0) {
+            BigDecimal overflow = newTotal.subtract(subtotal);
+            newPromoTotal = newPromoTotal.subtract(overflow);
+            newTotal = subtotal;
         }
+
+        String description = "Không có giảm giá".equals(inner.getDescription())
+                ? promoDescription
+                : inner.getDescription() + " | " + promoDescription;
 
         return DiscountResult.builder()
-                .totalDiscount(totalDiscount)
+                .totalDiscount(newTotal)
+                .promotionDiscount(newPromoTotal)
+                .membershipDiscount(inner.getMembershipDiscount())
                 .description(description)
                 .build();
     }

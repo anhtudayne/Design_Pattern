@@ -2,7 +2,6 @@ package com.cinema.booking.service.impl;
 
 import com.cinema.booking.service.CloudinaryService;
 import com.cloudinary.Cloudinary;
-import com.cloudinary.utils.ObjectUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;

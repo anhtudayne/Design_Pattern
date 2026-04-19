@@ -1,6 +1,4 @@
 package com.cinema.booking.pattern.composite;
-import com.cinema.booking.pattern.composite.TicketStatsLeaf;
-import com.cinema.booking.pattern.composite.StatsComponent;
 
 import com.cinema.booking.repository.TicketRepository;
 import lombok.RequiredArgsConstructor;
@@ -8,10 +6,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
-/**
- * Leaf component responsible for collecting ticket statistics.
- * Single Responsibility: Only handles total ticket count.
- */
+/** Leaf: đếm tổng số vé. */
 @Component
 @RequiredArgsConstructor
 public class TicketStatsLeaf implements StatsComponent {

@@ -20,11 +20,11 @@ import java.util.Map;
 @Tag(name = "14. Dashboard Thống kê", description = "Các API cung cấp dữ liệu tổng quan cho trang quản trị")
 public class DashboardController {
 
-    /** Composite — aggregates all stat leaves; replaces 6 direct repo/service injections in getStats. */
+    /** Thống kê tổng quan qua composite (một lần gọi {@code collect}). */
     @Autowired
     private DashboardStatsComposite dashboardStatsComposite;
 
-    /** Still needed for the weekly revenue endpoint (not yet composited). */
+    /** Dùng cho API doanh thu theo tuần (chưa gộp vào composite). */
     @Autowired
     private PaymentRepository paymentRepository;
 

@@ -1,8 +1,4 @@
 package com.cinema.booking.pattern.chain;
-import com.cinema.booking.pattern.chain.ShowtimeFutureHandler;
-import com.cinema.booking.pattern.chain.SeatsAvailableHandler;
-import com.cinema.booking.pattern.chain.PromoValidHandler;
-import com.cinema.booking.pattern.chain.PricingValidationHandler;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

@@ -1,7 +1,4 @@
 package com.cinema.booking.pattern.observer;
-import com.cinema.booking.pattern.observer.NotificationPayload;
-import com.cinema.booking.pattern.observer.NotificationObserver;
-import com.cinema.booking.pattern.observer.NotificationEvent;
 
 /**
  * Observer interface for the Notification system.

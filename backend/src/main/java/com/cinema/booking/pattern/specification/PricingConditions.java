@@ -1,6 +1,4 @@
 package com.cinema.booking.pattern.specification;
-import com.cinema.booking.pattern.specification.PricingSpecificationContext;
-import com.cinema.booking.pattern.specification.PricingConditions;
 
 import java.time.DayOfWeek;
 import java.time.MonthDay;

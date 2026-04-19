@@ -1,6 +1,4 @@
 package com.cinema.booking.service;
-import com.cinema.booking.pattern.template.checkout.LocalVnpayCheckoutProcess;
-import com.cinema.booking.pattern.template.checkout.LocalMomoCheckoutProcess;
 
 public interface CheckoutService {
 
@@ -31,7 +29,7 @@ public interface CheckoutService {
             java.util.List<com.cinema.booking.dto.BookingCalculationDTO.FnbOrderDTO> fnbs,
             String promoCode) throws Exception;
 
-    /** MoMo QR mô phỏng — {@link com.cinema.booking.services.template_method.checkout.LocalMomoCheckoutProcess}. */
+    /** MoMo QR mô phỏng — {@link com.cinema.booking.pattern.template.checkout.LocalMomoCheckoutProcess}. */
     java.util.Map<String, Object> processMomoUiFinish(
             boolean success,
             Integer userId,
@@ -40,7 +38,7 @@ public interface CheckoutService {
             java.util.List<com.cinema.booking.dto.BookingCalculationDTO.FnbOrderDTO> fnbs,
             String promoCode) throws Exception;
 
-    /** VNPay QR mô phỏng — {@link com.cinema.booking.services.template_method.checkout.LocalVnpayCheckoutProcess}. */
+    /** VNPay QR mô phỏng — {@link com.cinema.booking.pattern.template.checkout.LocalVnpayCheckoutProcess}. */
     java.util.Map<String, Object> processVnpayUiFinish(
             boolean success,
             Integer userId,

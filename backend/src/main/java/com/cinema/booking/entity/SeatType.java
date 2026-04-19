@@ -23,6 +23,7 @@ public class SeatType {
     private String name; // STANDARD, VIP, COUPLE
 
     @Column(name = "price_surcharge", nullable = false, precision = 10, scale = 2)
+    @Builder.Default
     private BigDecimal priceSurcharge = BigDecimal.ZERO;
 }
 

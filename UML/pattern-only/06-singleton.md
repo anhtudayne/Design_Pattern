@@ -26,20 +26,16 @@ classDiagram
   class MomoServiceImpl {
     <<service>>
     -restTemplate: RestTemplate
-    +requestPayment(bookingId, amount) String
+    +createPayment(orderId, amountVnd, orderInfo, extraData) MomoPaymentResponse
     +verifySignature(callback) boolean
-  }
-
-  class SecurityConfig {
-    <<configuration>>
-    -restTemplate: RestTemplate
   }
 
   %% Pattern structure — Singleton via Spring IoC
   RestTemplateConfig ..> RestTemplate : "@Bean creates"
   SpringApplicationContext --> RestTemplate : "manages as singleton"
-  MomoServiceImpl --> RestTemplate : "@Autowired (shared instance)"
-  SecurityConfig --> RestTemplate : "@Autowired (same instance)"
+  MomoServiceImpl --> RestTemplate : "@Autowired via constructor"
 
   note for RestTemplate "Singleton scope (default Spring):\nSpring IoC đảm bảo chỉ tạo 1 instance\nduy nhất, inject cùng bean cho tất cả client."
 ```
+
+> **Lưu ý:** `SecurityConfig` không sử dụng `RestTemplate` — class này chỉ cấu hình phân quyền HTTP/JWT, không liên quan đến pattern Singleton này.

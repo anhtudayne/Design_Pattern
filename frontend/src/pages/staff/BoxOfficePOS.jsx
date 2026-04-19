@@ -227,7 +227,7 @@ export default function BoxOfficePOS() {
         const result = await calculatePrice({
           showtimeId: selectedShowtime.showtimeId,
           seatIds: selectedSeats.map(s => s.seatId),
-          fnbs: cartFnb.map(f => ({ itemId: f.itemId, quantity: f.quantity })),
+          fnbs: cartFnb.map(f => ({ itemId: f.fnbItemId, quantity: f.quantity })),
           promoCode: promoCode || null,
         });
         setPriceBreakdown(result);
@@ -287,7 +287,7 @@ export default function BoxOfficePOS() {
 
   // Command Pattern: Add F&B item
   const handleAddFnb = (item) => {
-    const inCart = cartFnb.find(f => f.itemId === item.itemId);
+    const inCart = cartFnb.find(f => f.fnbItemId === item.fnbItemId);
     const currentQty = inCart?.quantity || 0;
     const stock = Math.max(0, Number(item.stockQuantity ?? 0));
     if (currentQty >= stock) return;
@@ -296,7 +296,7 @@ export default function BoxOfficePOS() {
 
   // Command Pattern: Remove F&B item
   const handleRemoveFnb = (itemId) => {
-    const item = cartFnb.find(f => f.itemId === itemId);
+    const item = cartFnb.find(f => f.fnbItemId === itemId);
     if (!item) return;
     runCmd(new RemoveFnbCommand(itemId, item.name, setCartFnb));
   };
@@ -307,7 +307,7 @@ export default function BoxOfficePOS() {
     userId: currentUser?.id,
     showtimeId: selectedShowtime.showtimeId,
     seatIds: selectedSeats.map(s => s.seatId),
-    fnbs: cartFnb.map(f => ({ itemId: f.itemId, quantity: f.quantity })),
+    fnbs: cartFnb.map(f => ({ itemId: f.fnbItemId, quantity: f.quantity })),
     promoCode: Number(priceBreakdown?.discountAmount || 0) > 0 ? (promoCode || null) : null,
   });
 
@@ -798,10 +798,10 @@ export default function BoxOfficePOS() {
             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800">
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">F&B</p>
               {cartFnb.map(f => (
-                <div key={f.itemId} className="flex items-center justify-between py-1 text-xs">
+                <div key={f.fnbItemId} className="flex items-center justify-between py-1 text-xs">
                   <span className="font-medium text-slate-700 dark:text-slate-300 truncate max-w-[120px]">{f.name}</span>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => handleRemoveFnb(f.itemId)} className="w-5 h-5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center text-sm font-bold hover:bg-red-100 hover:text-red-500 transition-colors">−</button>
+                    <button onClick={() => handleRemoveFnb(f.fnbItemId)} className="w-5 h-5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center text-sm font-bold hover:bg-red-100 hover:text-red-500 transition-colors">−</button>
                     <span className="font-bold text-slate-800 dark:text-white w-4 text-center">{f.quantity}</span>
                     <button
                       onClick={() => handleAddFnb(f)}
@@ -831,7 +831,7 @@ export default function BoxOfficePOS() {
             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800 space-y-2 max-h-48 overflow-y-auto">
               {fnbItems.map(item => (
                 <button
-                  key={item.itemId}
+                  key={item.fnbItemId}
                   onClick={() => handleAddFnb(item)}
                   disabled={Math.max(0, Number(item.stockQuantity ?? 0)) <= 0}
                   className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition-colors text-left"

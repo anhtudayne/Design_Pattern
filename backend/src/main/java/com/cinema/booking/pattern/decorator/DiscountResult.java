@@ -1,24 +1,26 @@
 package com.cinema.booking.pattern.decorator;
-import com.cinema.booking.pattern.decorator.DiscountResult;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
 import java.math.BigDecimal;
 
-/**
- * Kết quả trả về từ Discount chain.
- * Chứa tổng giảm giá và mô tả chi tiết.
- */
+/** Kết quả gộp từ chuỗi decorator; dùng để lắp {@code PriceBreakdownDTO}. */
 @Getter
 @Builder
-@AllArgsConstructor
 public class DiscountResult {
-    private BigDecimal totalDiscount;
-    private String description;
+
+    private final BigDecimal totalDiscount;
+    private final BigDecimal promotionDiscount;
+    private final BigDecimal membershipDiscount;
+    private final String description;
 
     public static DiscountResult none() {
-        return new DiscountResult(BigDecimal.ZERO, "Không có giảm giá");
+        return DiscountResult.builder()
+                .totalDiscount(BigDecimal.ZERO)
+                .promotionDiscount(BigDecimal.ZERO)
+                .membershipDiscount(BigDecimal.ZERO)
+                .description("Không có giảm giá")
+                .build();
     }
 }

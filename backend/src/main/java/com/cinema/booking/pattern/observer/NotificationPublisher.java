@@ -1,7 +1,4 @@
 package com.cinema.booking.pattern.observer;
-import com.cinema.booking.pattern.observer.NotificationPayload;
-import com.cinema.booking.pattern.observer.NotificationObserver;
-import com.cinema.booking.pattern.observer.NotificationPublisher;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

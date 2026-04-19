@@ -1,7 +1,9 @@
-package com.cinema.booking.services.strategy_decorator.pricing.specification;
+package com.cinema.booking.patterns.specification;
 
-import com.cinema.booking.entities.Room;
-import com.cinema.booking.entities.Showtime;
+import com.cinema.booking.entity.Room;
+import com.cinema.booking.entity.Showtime;
+import com.cinema.booking.pattern.specification.PricingConditions;
+import com.cinema.booking.pattern.specification.PricingSpecificationContext;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

@@ -1,6 +1,4 @@
 package com.cinema.booking.pattern.composite;
-import com.cinema.booking.pattern.composite.MovieStatsLeaf;
-import com.cinema.booking.pattern.composite.StatsComponent;
 
 import com.cinema.booking.repository.MovieRepository;
 import lombok.RequiredArgsConstructor;
@@ -8,6 +6,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
+/** Leaf: đếm tổng số phim. */
 @Component
 @RequiredArgsConstructor
 public class MovieStatsLeaf implements StatsComponent {

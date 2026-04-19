@@ -14,16 +14,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
- * Proxy Pattern — wraps PricingEngine để thêm Redis caching.
- *
- * <p>Đánh dấu {@code @Primary} để Spring inject proxy này vào mọi caller
- * (BookingServiceImpl) mà không cần thay đổi caller code (ngoài việc inject interface).
- *
- * <p>Cache key: {@code pricing:{showtimeId}:{seats}:{fnb}:{promo}}
- * (ghế và F&B sorted để tránh collision).
- * TTL: {@code cinema.app.redisTtlSeconds} (mặc định 600s).
- *
- * <p>Không cần invalidate thủ công vì pricing là read-only snapshot tại thời điểm tính.
+ * Proxy {@link IPricingEngine}: tra Redis trước, miss thì gọi engine thật.
+ * Bean {@code @Primary}; TTL {@code cinema.app.redisTtlSeconds}. Khóa cache: ghế và F&amp;B đã sắp xếp.
  */
 @Primary
 @Component("cachingPricingEngineProxy")
@@ -58,9 +50,6 @@ public class CachingPricingEngineProxy implements IPricingEngine {
         return result;
     }
 
-    /**
-     * Cache key: showtime + ghế (sorted seatId) + F&B (sorted itemId:qty) + promo.
-     */
     private String buildCacheKey(PricingContext context) {
         Integer showtimeId = context.getShowtime() != null ? context.getShowtime().getShowtimeId() : 0;
 

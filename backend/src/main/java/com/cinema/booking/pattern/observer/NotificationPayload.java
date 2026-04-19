@@ -1,6 +1,4 @@
 package com.cinema.booking.pattern.observer;
-import com.cinema.booking.pattern.observer.NotificationPayload;
-import com.cinema.booking.pattern.observer.NotificationEvent;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

@@ -79,7 +79,7 @@ export default function SnackSelection() {
 
   const updateQuantity = (itemId, delta) => {
     setSelectedFnB(prev => {
-      const item = fnbItems.find(i => i.itemId === itemId);
+      const item = fnbItems.find(i => i.fnbItemId === itemId);
       const stock = getAvailableStock(item);
       const current = prev[itemId] || 0;
       const next = Math.max(0, current + delta);
@@ -96,7 +96,7 @@ export default function SnackSelection() {
   // Calculate Snack Total (BigDecimal-safe)
   const snackTotal = useMemo(() => {
     return Object.entries(selectedFnB).reduce((sum, [id, qty]) => {
-      const item = fnbItems.find(i => i.itemId === parseInt(id));
+      const item = fnbItems.find(i => i.fnbItemId === parseInt(id));
       return sum + (item ? Number(item.price) * qty : 0);
     }, 0);
   }, [selectedFnB, fnbItems]);
@@ -111,15 +111,17 @@ export default function SnackSelection() {
     const snackList = Object.entries(selectedFnB)
       .filter(([, qty]) => qty > 0)
       .map(([id, qty]) => {
-        const item = fnbItems.find(i => i.itemId === parseInt(id));
+        const item = fnbItems.find(i => i.fnbItemId === parseInt(id));
+        if (!item) return null;
         return {
-          itemId: item.itemId,    // Backend expects itemId
+          itemId: item.fnbItemId,    // Backend expects itemId but DTO uses fnbItemId
           name: item.name,
           unitPrice: Number(item.price),
           quantity: qty,
           imageUrl: item.imageUrl,
         };
-      });
+      })
+      .filter(Boolean); // Remove null entries
     setBookingSnacks(snackList);
     navigate('/booking/payment');
   };
@@ -155,7 +157,7 @@ export default function SnackSelection() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {combos.map(item => (
-                    <div key={item.itemId} className="bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 p-6 rounded-2xl flex gap-6 hover:shadow-xl transition-all group">
+                    <div key={item.fnbItemId} className="bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 p-6 rounded-2xl flex gap-6 hover:shadow-xl transition-all group">
                       <div className="w-32 h-32 rounded-xl overflow-hidden flex-shrink-0 border border-slate-100 dark:border-slate-700">
                         <img alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
                           src={item.imageUrl && item.imageUrl.startsWith('http') ? item.imageUrl : `https://lh3.googleusercontent.com/aida-public/${item.imageUrl}`} 
@@ -174,11 +176,11 @@ export default function SnackSelection() {
                         <div className="flex items-center justify-between mt-4">
                           <span className="font-black text-orange-500 text-lg">{Number(item.price).toLocaleString('vi-VN')}đ</span>
                           <div className="flex items-center bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-1">
-                            <button onClick={() => updateQuantity(item.itemId, -1)} className="w-8 h-8 flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-colors"><span className="material-symbols-outlined text-sm text-slate-500">remove</span></button>
-                            <span className="w-10 text-center font-black text-slate-800 dark:text-white">{selectedFnB[item.itemId] || 0}</span>
+                            <button onClick={() => updateQuantity(item.fnbItemId, -1)} className="w-8 h-8 flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-colors"><span className="material-symbols-outlined text-sm text-slate-500">remove</span></button>
+                            <span className="w-10 text-center font-black text-slate-800 dark:text-white">{selectedFnB[item.fnbItemId] || 0}</span>
                             <button
-                              onClick={() => updateQuantity(item.itemId, 1)}
-                              disabled={(selectedFnB[item.itemId] || 0) >= getAvailableStock(item)}
+                              onClick={() => updateQuantity(item.fnbItemId, 1)}
+                              disabled={(selectedFnB[item.fnbItemId] || 0) >= getAvailableStock(item)}
                               className="w-8 h-8 flex items-center justify-center bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
                             ><span className="material-symbols-outlined text-sm">add</span></button>
                           </div>
@@ -198,7 +200,7 @@ export default function SnackSelection() {
                 </h2>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                   {singles.map(item => (
-                    <div key={item.itemId} className="bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 p-5 rounded-2xl group transition-all hover:shadow-xl">
+                    <div key={item.fnbItemId} className="bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 p-5 rounded-2xl group transition-all hover:shadow-xl">
                       <div className="aspect-square rounded-xl overflow-hidden mb-4 border border-slate-100 dark:border-slate-700">
                         <img alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                           src={item.imageUrl && item.imageUrl.startsWith('http') ? item.imageUrl : `https://lh3.googleusercontent.com/aida-public/${item.imageUrl}`} 
@@ -212,19 +214,19 @@ export default function SnackSelection() {
                       </p>
                       <div className="flex items-center justify-between">
                         <span className="font-black text-orange-500">{Number(item.price).toLocaleString('vi-VN')}đ</span>
-                        {(selectedFnB[item.itemId] || 0) > 0 ? (
+                        {(selectedFnB[item.fnbItemId] || 0) > 0 ? (
                           <div className="flex items-center bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-1">
-                            <button onClick={() => updateQuantity(item.itemId, -1)} className="w-7 h-7 flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-colors"><span className="material-symbols-outlined text-sm text-slate-500">remove</span></button>
-                            <span className="w-7 text-center font-black text-sm text-slate-800 dark:text-white">{selectedFnB[item.itemId]}</span>
+                            <button onClick={() => updateQuantity(item.fnbItemId, -1)} className="w-7 h-7 flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-colors"><span className="material-symbols-outlined text-sm text-slate-500">remove</span></button>
+                            <span className="w-7 text-center font-black text-sm text-slate-800 dark:text-white">{selectedFnB[item.fnbItemId]}</span>
                             <button
-                              onClick={() => updateQuantity(item.itemId, 1)}
-                              disabled={(selectedFnB[item.itemId] || 0) >= getAvailableStock(item)}
+                              onClick={() => updateQuantity(item.fnbItemId, 1)}
+                              disabled={(selectedFnB[item.fnbItemId] || 0) >= getAvailableStock(item)}
                               className="w-7 h-7 flex items-center justify-center bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
                             ><span className="material-symbols-outlined text-sm">add</span></button>
                           </div>
                         ) : (
                           <button
-                            onClick={() => updateQuantity(item.itemId, 1)}
+                            onClick={() => updateQuantity(item.fnbItemId, 1)}
                             disabled={getAvailableStock(item) <= 0}
                             className="w-9 h-9 flex items-center justify-center bg-slate-50 dark:bg-slate-800 text-slate-500 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:border-orange-500 hover:text-orange-500 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                           >
@@ -276,7 +278,7 @@ export default function SnackSelection() {
                 <div className="space-y-3">
                   {Object.entries(selectedFnB).map(([id, qty]) => {
                     if (qty === 0) return null;
-                    const item = fnbItems.find(i => i.itemId === parseInt(id));
+                    const item = fnbItems.find(i => i.fnbItemId === parseInt(id));
                     if (!item) return null;
                     return (
                       <div key={id} className="flex justify-between items-center group">

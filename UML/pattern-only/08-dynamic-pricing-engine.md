@@ -5,7 +5,7 @@
 5 GoF pattern kết hợp trong production path:
 **Chain of Responsibility** (validation) + **Proxy** (Redis cache) + **Specification** (PricingConditions) + **Strategy** (Ticket / Fnb / TimeBased) + **Decorator** (NoDiscount → Promotion → Member).
 
-**Ghi chú:** `PriceBreakdownDTO` trên diagram chỉ các khoản tiền; code thực tế vẫn có thêm `appliedStrategy`.
+**Ghi chú:** `PriceBreakdownDTO` gồm các khoản tiền + `appliedStrategy`. **Không** có field `promotionDiscount` trên DTO — `discountAmount` là **tổng** giảm; `membershipDiscount` tách riêng phần hạng. Tách đầy đủ mã/hạng nằm trong `DiscountResult` (nội bộ decorator).
 
 ```mermaid
 classDiagram
@@ -28,12 +28,13 @@ classDiagram
     +BigDecimal timeBasedSurcharge
     +BigDecimal membershipDiscount
     +BigDecimal discountAmount
+    +String appliedStrategy
     +BigDecimal finalTotal
   }
 
   %% ═══════════════════════════════════════════
   %% CHAIN OF RESPONSIBILITY — pricing validation
-  %% package: services.strategy_decorator.pricing.validation
+  %% package: com.cinema.booking.pattern.chain
   %% ═══════════════════════════════════════════
 
   class PricingValidationHandler {
@@ -70,8 +71,8 @@ classDiagram
   }
 
   %% ═══════════════════════════════════════════
-  %% PROXY — Redis cache
-  %% package: services.strategy_decorator.pricing
+  %% PROXY — Redis cache; IPricingEngine: com.cinema.booking.pattern.proxy
+  %% PricingEngine (thực thi): com.cinema.booking.pattern.decorator
   %% ═══════════════════════════════════════════
 
   class IPricingEngine {
@@ -89,12 +90,11 @@ classDiagram
   }
 
   %% ═══════════════════════════════════════════
-  %% SPECIFICATION
-  %% package: patterns.specification
+  %% SPECIFICATION — com.cinema.booking.pattern.specification
   %% ═══════════════════════════════════════════
 
   class PricingSpecificationContext {
-    <<patterns.specification>>
+    <<pattern.specification>>
     +Showtime showtime
     +List~Seat~ seats
     +Customer customer
@@ -166,7 +166,7 @@ classDiagram
   }
 
   %% ═══════════════════════════════════════════
-  %% DECORATOR — discount chain
+  %% DECORATOR — discount chain — com.cinema.booking.pattern.decorator
   %% ═══════════════════════════════════════════
 
   class DiscountComponent {
@@ -197,7 +197,9 @@ classDiagram
 
   class PricingEngine {
     <<component pricingEngine>>
-    -strategiesByLine: EnumMap~PricingLineType,PricingStrategy~
+    -ticketStrategy: PricingStrategy
+    -fnbStrategy: PricingStrategy
+    -timeBasedStrategy: PricingStrategy
     +calculateTotalPrice(ctx) PriceBreakdownDTO
     -buildDiscountChain(ctx) DiscountComponent
   }
@@ -244,7 +246,9 @@ classDiagram
   TicketPricingStrategy ..> PricingLineType : TICKET
   FnbPricingStrategy ..> PricingLineType : FNB
   TimeBasedPricingStrategy ..> PricingLineType : TIME_BASED_SURCHARGE
-  PricingEngine o-- PricingStrategy : strategiesByLine
+  PricingEngine --> PricingStrategy : ticketStrategy @Qualifier tuTicket
+  PricingEngine --> PricingStrategy : fnbStrategy @Qualifier tuFnb
+  PricingEngine --> PricingStrategy : timeBased @Qualifier tuTimeBased
 
   %% Decorator
   DiscountComponent <|.. NoDiscount

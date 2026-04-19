@@ -3,7 +3,7 @@ package com.cinema.booking.security;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
-import java.util.Formatter;
+import java.util.HexFormat;
 
 public class SecurityUtils {
     public static String hmacSha256(String data, String key) throws Exception {
@@ -16,11 +16,6 @@ public class SecurityUtils {
     }
 
     private static String toHexString(byte[] bytes) {
-        StringBuilder sb = new StringBuilder(bytes.length * 2);
-        Formatter formatter = new Formatter(sb);
-        for (byte b : bytes) {
-            formatter.format("%02x", b);
-        }
-        return sb.toString();
+        return HexFormat.of().formatHex(bytes);
     }
 }

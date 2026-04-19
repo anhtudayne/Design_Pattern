@@ -1,7 +1,4 @@
 package com.cinema.booking.pattern.chain;
-import com.cinema.booking.pattern.chain.ShowtimeFutureHandler;
-import com.cinema.booking.pattern.chain.AbstractPricingValidationHandler;
-import com.cinema.booking.pattern.chain.PricingValidationContext;
 
 import com.cinema.booking.entity.Showtime;
 import com.cinema.booking.repository.ShowtimeRepository;

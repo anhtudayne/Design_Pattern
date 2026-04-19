@@ -1,6 +1,4 @@
 package com.cinema.booking.adapter.seatlock;
-import com.cinema.booking.adapter.seatlock.RedisSeatLockAdapter;
-import com.cinema.booking.adapter.seatlock.SeatLockProvider;
 
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;

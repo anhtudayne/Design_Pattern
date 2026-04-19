@@ -1,6 +1,4 @@
 package com.cinema.booking.pattern.factory;
-import com.cinema.booking.pattern.factory.StandardBookingFactory;
-import com.cinema.booking.pattern.factory.BookingFactory;
 
 import com.cinema.booking.entity.*;
 import org.springframework.stereotype.Component;

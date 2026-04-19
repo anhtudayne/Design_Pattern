@@ -4,10 +4,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;
 
-/**
- * Singleton pattern via Spring IoC — provides a single shared RestTemplate bean.
- * All callers inject this bean; no one calls new RestTemplate() directly.
- */
+/** Bean {@link RestTemplate} dùng chung (Spring mặc định singleton). */
 @Configuration
 public class RestTemplateConfig {
 

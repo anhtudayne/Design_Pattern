@@ -14,7 +14,7 @@ Component (interface)
 
 ## 2. Vấn đề (Trước khi áp dụng)
 
-Admin Dashboard cần hiển thị thống kê tổng hợp: số phim, số user, số suất chiếu, doanh thu F&B, số voucher, tổng doanh thu. Controller gọi 6 service khác nhau:
+Admin Dashboard cần hiển thị thống kê tổng hợp: số phim, user, suất chiếu, món F&B, vé, khuyến mãi, doanh thu. Controller gọi nhiều service/repository khác nhau:
 
 ```java
 // ❌ Trước — Controller làm quá nhiều việc
@@ -25,16 +25,17 @@ public ResponseEntity<?> getDashboardStats() {
     stats.put("totalMovies", movieService.count());
     stats.put("totalUsers", userService.count());
     stats.put("totalShowtimes", showtimeService.count());
-    stats.put("totalFnbRevenue", fnbService.getTotalRevenue());
-    stats.put("totalVouchers", voucherService.count());
-    stats.put("totalRevenue", bookingService.getTotalRevenue());
+    stats.put("totalFnbItems", fnbItemRepository.count());
+    stats.put("totalTickets", ticketRepository.count());
+    stats.put("totalPromotions", promotionRepository.count());
+    stats.put("totalRevenue", paymentService.sumSuccessfulPayments());
 
     return ResponseEntity.ok(stats);
 }
 ```
 
 **Hậu quả:**
-- Controller phụ thuộc 6 service — coupling cao, vi phạm SRP
+- Controller phụ thuộc nhiều service/repository — coupling cao, vi phạm SRP
 - Thêm loại thống kê mới → phải mở Controller ra sửa — vi phạm OCP
 - Khó test Controller đơn lẻ
 - Không tái sử dụng được từng nhóm stats
@@ -49,16 +50,19 @@ Mỗi loại thống kê là một `Leaf`. `DashboardStatsComposite` chứa tấ
 
 ## 4. Các file trong dự án
 
-| File | Đường dẫn | Vai trò |
-|------|-----------|---------|
-| `StatsComponent.java` | `patterns/composite/` | **Interface** — contract cho Leaf và Composite |
-| `DashboardStatsComposite.java` | `patterns/composite/` | **Composite** — chứa và điều phối tất cả Leaf |
-| `MovieStatsLeaf.java` | `patterns/composite/` | Leaf: đếm số phim |
-| `UserStatsLeaf.java` | `patterns/composite/` | Leaf: đếm số user |
-| `ShowtimeStatsLeaf.java` | `patterns/composite/` | Leaf: đếm suất chiếu |
-| `FnbStatsLeaf.java` | `patterns/composite/` | Leaf: doanh thu F&B |
-| `VoucherStatsLeaf.java` | `patterns/composite/` | Leaf: đếm voucher |
-| `RevenueStatsLeaf.java` | `patterns/composite/` | Leaf: tổng doanh thu booking |
+Package: `com.cinema.booking.pattern.composite`
+
+| File | Vai trò |
+|------|---------|
+| `StatsComponent.java` | **Interface** — contract cho Leaf và Composite |
+| `DashboardStatsComposite.java` | **Composite** — nhận `List<StatsComponent>` từ Spring, lọc bỏ chính nó, gọi `collect` lần lượt |
+| `MovieStatsLeaf.java` | Leaf: đếm phim |
+| `UserStatsLeaf.java` | Leaf: đếm user |
+| `ShowtimeStatsLeaf.java` | Leaf: đếm suất chiếu |
+| `FnbStatsLeaf.java` | Leaf: đếm món F&B (`totalFnbItems`) |
+| `TicketStatsLeaf.java` | Leaf: đếm vé |
+| `PromotionStatsLeaf.java` | Leaf: đếm khuyến mãi |
+| `RevenueStatsLeaf.java` | Leaf: tổng doanh thu từ thanh toán thành công |
 
 ---
 
@@ -75,29 +79,24 @@ public interface StatsComponent {
 ### Composite — `DashboardStatsComposite.java`
 
 ```java
+// import java.util.stream.Collectors;
+
 @Component
 public class DashboardStatsComposite implements StatsComponent {
 
     private final List<StatsComponent> children;
 
     @Autowired
-    public DashboardStatsComposite(
-            MovieStatsLeaf movieStatsLeaf,
-            UserStatsLeaf userStatsLeaf,
-            ShowtimeStatsLeaf showtimeStatsLeaf,
-            FnbStatsLeaf fnbStatsLeaf,
-            VoucherStatsLeaf voucherStatsLeaf,
-            RevenueStatsLeaf revenueStatsLeaf) {
-        this.children = Arrays.asList(
-                movieStatsLeaf, userStatsLeaf, showtimeStatsLeaf,
-                fnbStatsLeaf, voucherStatsLeaf, revenueStatsLeaf
-        );
+    public DashboardStatsComposite(List<StatsComponent> allComponents) {
+        this.children = allComponents.stream()
+                .filter(c -> !(c instanceof DashboardStatsComposite))
+                .collect(Collectors.toList());
     }
 
     @Override
     public void collect(Map<String, Object> target) {
         for (StatsComponent child : children) {
-            child.collect(target);  // mỗi Leaf tự điền phần của mình
+            child.collect(target);
         }
     }
 }
@@ -121,12 +120,12 @@ public class MovieStatsLeaf implements StatsComponent {
 ### Kết quả — Controller sau refactor
 
 ```java
-// ✅ Sau — 1 dòng duy nhất
+// ✅ Sau — gom thống kê qua composite
 @Autowired
 private DashboardStatsComposite dashboardStatsComposite;
 
 @GetMapping("/stats")
-public ResponseEntity<?> getDashboardStats() {
+public ResponseEntity<Map<String, Object>> getStats() {
     Map<String, Object> stats = new HashMap<>();
     dashboardStatsComposite.collect(stats);
     return ResponseEntity.ok(stats);
@@ -141,18 +140,19 @@ public ResponseEntity<?> getDashboardStats() {
 GET /api/admin/dashboard/stats
         │
         ▼
-AdminController.getDashboardStats()
+DashboardController.getStats()
         │── new HashMap<>()
         │── dashboardStatsComposite.collect(stats)
         │       │
-        │       ├── MovieStatsLeaf.collect()    → stats["totalMovies"] = 42
-        │       ├── UserStatsLeaf.collect()     → stats["totalUsers"] = 1500
-        │       ├── ShowtimeStatsLeaf.collect() → stats["totalShowtimes"] = 88
-        │       ├── FnbStatsLeaf.collect()      → stats["totalFnbRevenue"] = 15000000
-        │       ├── VoucherStatsLeaf.collect()  → stats["totalVouchers"] = 200
-        │       └── RevenueStatsLeaf.collect()  → stats["totalRevenue"] = 85000000
+        │       ├── MovieStatsLeaf.collect()      → stats["totalMovies"]
+        │       ├── UserStatsLeaf.collect()       → stats["totalUsers"]
+        │       ├── ShowtimeStatsLeaf.collect()   → stats["totalShowtimes"]
+        │       ├── FnbStatsLeaf.collect()        → stats["totalFnbItems"]
+        │       ├── TicketStatsLeaf.collect()     → stats["totalTickets"]
+        │       ├── PromotionStatsLeaf.collect()  → stats["totalPromotions"]
+        │       └── RevenueStatsLeaf.collect()    → stats["totalRevenue"]
         │
-        └── return stats (map đầy đủ 6 keys)
+        └── return stats (7 keys)
 ```
 
 ---
@@ -162,7 +162,7 @@ AdminController.getDashboardStats()
 | | Chi tiết |
 |-|---------|
 | **S** | `MovieStatsLeaf` chỉ đếm phim; `RevenueStatsLeaf` chỉ tính doanh thu |
-| **O** | Thêm thống kê quảng cáo → tạo `AdsStatsLeaf` mới + thêm vào Composite constructor |
+| **O** | Thêm thống kê → tạo `AdsStatsLeaf` mới (`@Component` implements `StatsComponent`); Spring inject vào `List` — **không** cần sửa `DashboardStatsComposite` |
 | **I** | `StatsComponent` chỉ 1 method `collect()` — gọn nhất có thể |
 | **D** | Controller inject `DashboardStatsComposite` (implements `StatsComponent`) |
 
@@ -172,8 +172,8 @@ AdminController.getDashboardStats()
 
 | Trước | Sau |
 |-------|-----|
-| Controller phụ thuộc 6 service | Controller chỉ phụ thuộc 1 Composite |
-| Thêm stats → sửa Controller | Tạo Leaf mới + thêm vào Composite |
+| Controller phụ thuộc nhiều dependency | Controller chỉ phụ thuộc 1 Composite |
+| Thêm stats → sửa Controller | Tạo Leaf `@Component` mới — DI tự gom |
 | Khó test từng loại stats riêng | Test từng Leaf riêng với 1 Repository mock |
 | Controller 30+ dòng | Controller 3 dòng |
 
@@ -185,13 +185,14 @@ AdminController.getDashboardStats()
 GET /api/admin/dashboard/stats
 Authorization: Bearer {admin_token}
 
-# Expected response:
+# Expected response (ví dụ):
 {
   "totalMovies": 42,
   "totalUsers": 1500,
   "totalShowtimes": 88,
-  "totalFnbRevenue": 15000000,
-  "totalVouchers": 200,
+  "totalFnbItems": 120,
+  "totalTickets": 5000,
+  "totalPromotions": 15,
   "totalRevenue": 85000000
 }
 ```

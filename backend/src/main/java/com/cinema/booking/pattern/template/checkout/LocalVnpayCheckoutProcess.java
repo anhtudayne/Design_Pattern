@@ -1,6 +1,4 @@
 package com.cinema.booking.pattern.template.checkout;
-import com.cinema.booking.pattern.template.checkout.LocalVnpayCheckoutProcess;
-import com.cinema.booking.pattern.template.checkout.AbstractCheckoutTemplate;
 
 import com.cinema.booking.dto.request.CheckoutRequest;
 import com.cinema.booking.dto.PriceBreakdownDTO;

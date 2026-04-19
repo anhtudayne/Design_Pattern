@@ -1,14 +1,16 @@
 package com.cinema.booking.pattern.decorator;
-import com.cinema.booking.pattern.decorator.DiscountResult;
-import com.cinema.booking.pattern.decorator.DiscountComponent;
+
 import com.cinema.booking.pattern.strategy.pricing.PricingContext;
 
 import java.math.BigDecimal;
 
 /**
- * Component interface cho Decorator Pattern (giảm giá).
- * Mỗi Decorator sẽ implement interface này để "bọc" thêm logic giảm giá.
+ * Một bước trong chuỗi giảm giá: nhận subtotal trước giảm và ngữ cảnh, trả {@link DiscountResult}.
  */
 public interface DiscountComponent {
+
+    /**
+     * @param subtotal tổng vé + F&amp;B + phụ thu trước khi giảm giá
+     */
     DiscountResult applyDiscount(BigDecimal subtotal, PricingContext context);
 }

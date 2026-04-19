@@ -1,8 +1,4 @@
 package com.cinema.booking.pattern.chain;
-import com.cinema.booking.pattern.chain.ShowtimeFutureHandler;
-import com.cinema.booking.pattern.chain.PromoValidHandler;
-import com.cinema.booking.pattern.chain.PricingValidationContext;
-import com.cinema.booking.pattern.strategy.pricing.PricingContext;
 
 import com.cinema.booking.dto.BookingCalculationDTO;
 import com.cinema.booking.entity.Promotion;

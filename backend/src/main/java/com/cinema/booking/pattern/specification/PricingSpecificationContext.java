@@ -1,7 +1,4 @@
 package com.cinema.booking.pattern.specification;
-import com.cinema.booking.pattern.specification.PricingSpecificationContext;
-import com.cinema.booking.pattern.specification.PricingConditions;
-import com.cinema.booking.pattern.strategy.pricing.PricingContext;
 
 import com.cinema.booking.entity.Promotion;
 import com.cinema.booking.entity.Seat;

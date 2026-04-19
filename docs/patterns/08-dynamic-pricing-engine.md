@@ -54,19 +54,19 @@ POST /api/booking/calculate
 
 ## 2. Danh sach file backend lien quan
 
-| File | Vai tro |
+| File / goi y package | Vai tro |
 |------|---------|
-| `controllers/BookingController` | Expose API `/api/booking/calculate` |
-| `services/impl/BookingServiceImpl` | Orchestrate full flow tinh gia |
-| `services/strategy_decorator/pricing/validation/*` | CoR validation chain |
-| `services/strategy_decorator/pricing/PricingContextBuilder` | Build `PricingContext` cho engine |
-| `services/strategy_decorator/pricing/IPricingEngine` | Interface de chen Proxy |
-| `services/strategy_decorator/pricing/CachingPricingEngineProxy` | Redis cache layer |
-| `services/strategy_decorator/pricing/PricingEngine` | Core orchestrator trong engine |
-| `services/strategy_decorator/pricing/*PricingStrategy` | Ticket/FnB/TimeBased calculations |
-| `patterns/specification/PricingConditions` | Static predicates (holiday/weekend/...) |
-| `services/strategy_decorator/pricing/*Discount*` | Decorator chain cho discount |
-| `dtos/PriceBreakdownDTO` | Payload tra ve cho frontend |
+| `com.cinema.booking.controller.BookingController` | Expose API `/api/booking/calculate` |
+| `com.cinema.booking.service.impl.BookingServiceImpl` | Orchestrate full flow tinh gia |
+| `com.cinema.booking.pattern.chain.*` | CoR validation (`PricingValidationHandler`, handlers, `PricingValidationConfig`) |
+| `com.cinema.booking.pattern.strategy.pricing.PricingContextBuilder` | Build `PricingContext` cho engine |
+| `com.cinema.booking.pattern.proxy.IPricingEngine` | Interface de chen Proxy |
+| `com.cinema.booking.pattern.proxy.CachingPricingEngineProxy` | Redis cache layer |
+| `com.cinema.booking.pattern.decorator.PricingEngine` | Core orchestrator (strategy + decorator) |
+| `com.cinema.booking.pattern.strategy.pricing.*PricingStrategy` | Ticket / Fnb / TimeBased |
+| `com.cinema.booking.pattern.specification.PricingConditions` | Static predicates (holiday/weekend/...) |
+| `com.cinema.booking.pattern.decorator.*Discount*` | Decorator chain cho discount |
+| `com.cinema.booking.dto.PriceBreakdownDTO` | Payload tra ve cho frontend |
 
 ---
 
@@ -89,14 +89,9 @@ Thu tu trong `PricingValidationConfig`:
 
 Neu bat ky handler throw exception -> dung flow, API tra loi loi.
 
-### Buoc 3 - Re-resolve promotion tai service
+### Buoc 3 - Promotion sau validate
 
-Sau khi chain xong, `BookingServiceImpl` tiep tuc:
-
-- Neu co `promoCode` thi goi lai `promotionInventoryService.resolvePromotionForPricing(promoCode)`
-- Gan lai vao `validationCtx.setPromotion(...)`
-
-Muc dich: dam bao promotion trong context la trang thai hien tai tu inventory service ngay truoc khi build pricing context.
+Sau khi chain xong, `promotion` (neu co) da nam trong `PricingValidationContext` tu `PromoValidHandler` (`PromotionRepository`, kiem tra het han). **Ban hien tai** khong co buoc re-resolve qua service ton kho tren luong calculate.
 
 ### Buoc 4 - Build PricingContext
 
@@ -136,11 +131,10 @@ Muc dich: dam bao promotion trong context la trang thai hien tai tu inventory se
 
 - Neu khong co `promoCode` -> bo qua
 - Neu co `promoCode`:
-  - Promotion phai ton tai
+  - Promotion phai ton tai (`PromotionRepository.findByCode`)
   - Chua het han (`validTo`)
-  - Con luot su dung (`promotionInventoryService.resolvePromotionForPricing(...) != null`)
 - Hop le thi populate `context.promotion`
-- **Luu y quan trong**: handler nay dang **throw exception** neu promo khong hop le (khong phai graceful ignore)
+- **Luu y**: handler **throw exception** neu promo khong hop le. Kiem tra **ton kho / luot dung** chua co trong ban code nay (co the bo sung sau).
 
 ---
 
@@ -176,8 +170,7 @@ Builder nay la diem ghep du lieu truoc khi vao engine:
 
 ### 7.1 PricingEngine
 
-- Khoi tao `EnumMap<PricingLineType, PricingStrategy>`
-- Fail-fast neu duplicate/missing strategy (`IllegalStateException`)
+- Inject ba `PricingStrategy` qua constructor voi `@Qualifier`: `tuTicketPricingStrategy`, `tuFnbPricingStrategy`, `tuTimeBasedPricingStrategy`
 - Tinh:
   - `ticketTotal` tu `TicketPricingStrategy`
   - `fnbTotal` tu `FnbPricingStrategy`
@@ -215,11 +208,11 @@ Chain duoc build:
 - Neu co promotion -> wrap `PromotionDiscountDecorator`
 - Neu co member tier hop le -> wrap `MemberDiscountDecorator`
 
-Thu tu ap dung thuc te:
+Cong thuc **trong code hien tai** (lam tron xuong tung buoc, tong khong vuot `subtotal`):
 
-1. Promotion discount ap tren `subtotal`.
-2. Membership discount ap tren **so tien con lai sau promo**.
-3. `discountAmount = promotionDiscount + membershipDiscount`.
+1. `% ma` va `% hang` deu tinh tren **cung mot `subtotal`** (ve + F&B + phu thu thoi diem).
+2. `discountAmount` (tren `PriceBreakdownDTO`) = tong hai khoan (promotion + membership), sau khi gioi han tran.
+3. `membershipDiscount` tren DTO chi la **phan hang**; **khong** co field `promotionDiscount` tren DTO — phan ma = `discountAmount - membershipDiscount` (suy ra).
 
 ---
 
@@ -230,16 +223,16 @@ Thu tu ap dung thuc te:
 - `ticketTotal`
 - `timeBasedSurcharge`
 - `fnbTotal`
-- `membershipDiscount` (muc giam member thuc te, tinh tren phan con lai sau promo)
-- `discountAmount` (tong discount thuc su da tru vao final)
+- `membershipDiscount` (phan giam theo hang; % tinh tren **subtotal**, khong phai tren tien sau ma)
+- `discountAmount` (tong giam: ma + hang)
 - `appliedStrategy`
 - `finalTotal`
 
 **Luu y**:
 
-1. `membershipDiscount` duoc tinh sau promotion, phan anh dung luong giam gia tu member.
-2. `appliedStrategy` duoc build dong theo context (`TICKET`, `FNB`, `TIME_BASED`, `MEMBER_DISCOUNT`, `PROMO`).
-3. Luong calculate price chi "read/preview" gia; viec reserve promotion thuc su nam o flow checkout (`reservePromotionOrThrow`), khong nam trong dynamic pricing engine.
+1. Tach day du `promotionDiscount` / `membershipDiscount` nam trong `DiscountResult` noi bo; API chi tach ro `membershipDiscount` va `discountAmount`.
+2. `appliedStrategy` la chuoi mo ta do engine build (ve, F&B, phu thu, ma, hang...).
+3. Luong calculate chi "read/preview" gia; tieu thu / ton kho ma (neu co) nam o flow checkout, khong nam trong engine tinh gia.
 
 ---
 
@@ -288,7 +281,7 @@ Section nay tra loi cau hoi: "Nguoi dung bam gi trong app thi Dynamic Pricing En
 
 **Engine action**
 
-- CoR (`PromoValidHandler`) kiem tra ma ton tai, con han, con luot.
+- CoR (`PromoValidHandler`) kiem tra ma ton tai va con han.
 - Neu khong hop le -> throw exception, API tra loi de UI hien thong bao.
 - Neu hop le -> promotion duoc dua vao `PricingContext` de decorator ap dung discount.
 

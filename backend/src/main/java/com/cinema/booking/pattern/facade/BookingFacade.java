@@ -1,19 +1,15 @@
 package com.cinema.booking.pattern.facade;
-import com.cinema.booking.pattern.builder.showtime.ShowtimeQueryService;
-import com.cinema.booking.pattern.builder.showtime.ShowtimeFilterBuilder;
-import com.cinema.booking.pattern.builder.showtime.ShowtimeFilter;
-import com.cinema.booking.pattern.facade.BookingFacade;
 
 import com.cinema.booking.dto.*;
 import com.cinema.booking.entity.FnbItem;
 import com.cinema.booking.entity.Movie.MovieStatus;
+import com.cinema.booking.pattern.builder.showtime.ShowtimeFilter;
+import com.cinema.booking.pattern.builder.showtime.ShowtimeFilterBuilder;
+import com.cinema.booking.pattern.builder.showtime.ShowtimeQueryService;
 import com.cinema.booking.repository.FnbItemRepository;
 import com.cinema.booking.service.CinemaService;
 import com.cinema.booking.service.LocationService;
 import com.cinema.booking.service.MovieService;
-import com.cinema.booking.pattern.builder.showtime.ShowtimeFilter;
-import com.cinema.booking.pattern.builder.showtime.ShowtimeFilterBuilder;
-import com.cinema.booking.pattern.builder.showtime.ShowtimeQueryService;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;

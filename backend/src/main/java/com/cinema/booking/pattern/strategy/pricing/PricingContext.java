@@ -1,12 +1,10 @@
 package com.cinema.booking.pattern.strategy.pricing;
-import com.cinema.booking.pattern.strategy.pricing.PricingContext;
 
 import com.cinema.booking.entity.*;
 import lombok.Builder;
 import lombok.Getter;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * Context object chứa tất cả dữ liệu cần thiết cho việc tính giá.

@@ -1,8 +1,4 @@
 package com.cinema.booking.controller;
-import com.cinema.booking.pattern.strategy.payment.CashPaymentStrategy;
-import com.cinema.booking.pattern.template.checkout.StaffCashCheckoutProcess;
-import com.cinema.booking.pattern.template.checkout.LocalVnpayCheckoutProcess;
-import com.cinema.booking.pattern.template.checkout.LocalMomoCheckoutProcess;
 
 import com.cinema.booking.dto.request.CheckoutRequestDTO;
 import com.cinema.booking.dto.request.MomoCallbackRequest;

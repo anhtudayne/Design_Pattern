@@ -1,7 +1,4 @@
 package com.cinema.booking.pattern.strategy.pricing;
-import com.cinema.booking.pattern.strategy.pricing.TicketPricingStrategy;
-import com.cinema.booking.pattern.strategy.pricing.PricingStrategy;
-import com.cinema.booking.pattern.strategy.pricing.PricingContext;
 
 import com.cinema.booking.entity.Seat;
 import com.cinema.booking.entity.Showtime;

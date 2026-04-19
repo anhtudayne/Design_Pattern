@@ -1,6 +1,4 @@
 package com.cinema.booking.pattern.strategy.pricing;
-import com.cinema.booking.pattern.strategy.pricing.PricingStrategy;
-import com.cinema.booking.pattern.strategy.pricing.PricingContext;
 
 import java.math.BigDecimal;
 

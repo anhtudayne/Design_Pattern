@@ -1,10 +1,10 @@
 package com.cinema.booking.service.impl;
-import com.cinema.booking.pattern.state.booking.BookingContext;
 
 import com.cinema.booking.dto.BookingCalculationDTO;
 import com.cinema.booking.dto.BookingDTO;
 import com.cinema.booking.dto.PriceBreakdownDTO;
 import com.cinema.booking.dto.SeatStatusDTO;
+import com.cinema.booking.pattern.state.booking.BookingContext;
 import com.cinema.booking.pattern.state.seat.SeatState;
 import com.cinema.booking.pattern.state.seat.SeatStateFactory;
 import com.cinema.booking.entity.*;
@@ -12,7 +12,7 @@ import com.cinema.booking.repository.*;
 import com.cinema.booking.service.BookingService;
 import com.cinema.booking.adapter.seatlock.SeatLockProvider;
 import com.cinema.booking.pattern.strategy.pricing.PricingContext;
-import com.cinema.booking.pattern.decorator.PricingEngine;
+import com.cinema.booking.pattern.proxy.IPricingEngine;
 import com.cinema.booking.pattern.chain.PricingValidationContext;
 import com.cinema.booking.pattern.chain.PricingValidationHandler;
 import com.cinema.booking.pattern.strategy.pricing.PricingContextBuilder;
@@ -62,15 +62,14 @@ public class BookingServiceImpl implements BookingService {
 
     @Autowired
     @Qualifier("cachingPricingEngineProxy")
-    private PricingEngine pricingEngine;
+    private IPricingEngine pricingEngine;
+
+    @Autowired
     private PricingContextBuilder pricingContextBuilder;
 
     @Autowired
     @Qualifier("pricingValidationChain")
     private PricingValidationHandler pricingValidationChain;
-
-    @Autowired
-    
 
     @Override
     public List<SeatStatusDTO> getSeatStatuses(Integer showtimeId) {
@@ -144,13 +143,8 @@ public class BookingServiceImpl implements BookingService {
 
         pricingValidationChain.validate(validationCtx);
 
-        // Promotion validation is handled in validation chain, 
-        // inventory validation is removed per new logic schema
-
-        // TODO: Restore PricingContextBuilder usage
-        // PricingContext pricingContext = pricingContextBuilder.build(validationCtx, request);
-        // TODO: Restore when PricingContextBuilder is fixed
-        return pricingEngine.calculateTotalPrice(null);
+        PricingContext pricingContext = pricingContextBuilder.build(validationCtx, request);
+        return pricingEngine.calculateTotalPrice(pricingContext);
     }
 
 
@@ -178,7 +172,7 @@ public class BookingServiceImpl implements BookingService {
     @Transactional
     public void cancelBooking(Integer bookingId) {
         Booking booking = bookingRepository.findById(bookingId).orElseThrow(() -> new RuntimeException("Booking not found"));
-        com.cinema.booking.pattern.state.booking.BookingContext context = new com.cinema.booking.pattern.state.booking.BookingContext(booking);
+        BookingContext context = new BookingContext(booking);
         context.cancel();
         bookingRepository.save(booking);
 
@@ -192,7 +186,7 @@ public class BookingServiceImpl implements BookingService {
     @Transactional
     public void refundBooking(Integer bookingId) {
         Booking booking = bookingRepository.findById(bookingId).orElseThrow(() -> new RuntimeException("Booking not found"));
-        com.cinema.booking.pattern.state.booking.BookingContext context = new com.cinema.booking.pattern.state.booking.BookingContext(booking);
+        BookingContext context = new BookingContext(booking);
         context.refund();
         bookingRepository.save(booking);
     }
@@ -201,7 +195,7 @@ public class BookingServiceImpl implements BookingService {
     @Transactional
     public void printTickets(Integer bookingId) {
         Booking booking = bookingRepository.findById(bookingId).orElseThrow(() -> new RuntimeException("Booking not found"));
-        com.cinema.booking.pattern.state.booking.BookingContext context = new com.cinema.booking.pattern.state.booking.BookingContext(booking);
+        BookingContext context = new BookingContext(booking);
         context.printTickets();
         // Maybe update DB if printing changes a specific physical flag, for now state pattern enforces rules.
     }

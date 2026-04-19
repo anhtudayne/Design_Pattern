@@ -1,6 +1,4 @@
 package com.cinema.booking.pattern.chain;
-import com.cinema.booking.pattern.chain.PricingValidationContext;
-import com.cinema.booking.pattern.chain.PricingValidationHandler;
 
 /**
  * Chain of Responsibility interface cho pricing validation.

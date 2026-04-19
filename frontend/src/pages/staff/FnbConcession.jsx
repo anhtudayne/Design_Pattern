@@ -36,10 +36,10 @@ export default function FnbConcession() {
   // ── Cart helpers ────────────────────────────────────────────────────
   const addToCart = (item) => {
     setCart(prev => {
-      const exists = prev.find(c => c.itemId === item.itemId);
+      const exists = prev.find(c => c.fnbItemId === item.fnbItemId);
       if (exists) {
         if (exists.quantity >= item.stockQuantity) return prev; // Limit to stock
-        return prev.map(c => c.itemId === item.itemId ? { ...c, quantity: c.quantity + 1 } : c);
+        return prev.map(c => c.fnbItemId === item.fnbItemId ? { ...c, quantity: c.quantity + 1 } : c);
       }
       if (item.stockQuantity <= 0) return prev; // No stock to add
       return [...prev, { ...item, quantity: 1 }];
@@ -48,10 +48,10 @@ export default function FnbConcession() {
 
   const removeFromCart = (itemId) => {
     setCart(prev => {
-      const item = prev.find(c => c.itemId === itemId);
+      const item = prev.find(c => c.fnbItemId === itemId);
       if (!item) return prev;
-      if (item.quantity <= 1) return prev.filter(c => c.itemId !== itemId);
-      return prev.map(c => c.itemId === itemId ? { ...c, quantity: c.quantity - 1 } : c);
+      if (item.quantity <= 1) return prev.filter(c => c.fnbItemId !== itemId);
+      return prev.map(c => c.fnbItemId === itemId ? { ...c, quantity: c.quantity - 1 } : c);
     });
   };
 
@@ -154,10 +154,10 @@ export default function FnbConcession() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {filteredItems.map(item => {
-                const inCart = cart.find(c => c.itemId === item.itemId);
+                const inCart = cart.find(c => c.fnbItemId === item.fnbItemId);
                 return (
                   <div
-                    key={item.itemId}
+                    key={item.fnbItemId}
                     className={`bg-white dark:bg-slate-900 rounded-2xl border shadow-sm hover:shadow-lg transition-all overflow-hidden group relative ${
                       inCart ? 'border-orange-500 shadow-orange-500/10' : 'border-slate-100 dark:border-slate-800'
                     }`}
@@ -200,7 +200,7 @@ export default function FnbConcession() {
                     {/* Quick Add/Remove Buttons */}
                     <div className="flex border-t border-slate-100 dark:border-slate-800">
                       <button
-                        onClick={() => removeFromCart(item.itemId)}
+                        onClick={() => removeFromCart(item.fnbItemId)}
                         disabled={!inCart}
                         className="flex-1 py-2.5 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed border-r border-slate-100 dark:border-slate-800"
                       >
@@ -253,7 +253,7 @@ export default function FnbConcession() {
           ) : (
             <div className="space-y-3">
               {cart.map(item => (
-                <div key={item.itemId} className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800">
+                <div key={item.fnbItemId} className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-slate-800 dark:text-white leading-tight truncate">{item.name}</p>
@@ -263,7 +263,7 @@ export default function FnbConcession() {
                   </div>
                   <div className="flex items-center gap-2 mt-2">
                     <button
-                      onClick={() => removeFromCart(item.itemId)}
+                      onClick={() => removeFromCart(item.fnbItemId)}
                       className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-500 flex items-center justify-center hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors"
                     >
                       <span className="material-symbols-outlined text-base">remove</span>

@@ -1,6 +1,4 @@
 package com.cinema.booking.pattern.builder.showtime;
-import com.cinema.booking.pattern.builder.showtime.ShowtimeFilterBuilder;
-import com.cinema.booking.pattern.builder.showtime.ShowtimeFilter;
 
 import lombok.Getter;
 

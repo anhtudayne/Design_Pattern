@@ -2,6 +2,8 @@
 
 > Tài liệu chi tiết: [`docs/patterns/05-composite.md`](../../docs/patterns/05-composite.md)
 
+**Ghi chú kỹ thuật:** `DashboardStatsComposite` nhận `List<StatsComponent>` qua constructor (Spring DI). Các leaf là bean `@Component`; composite lọc bỏ chính nó để tránh đệ quy. **Không** có phương thức `add()` — cấu trúc cây do container dựng.
+
 ```mermaid
 classDiagram
   direction TB
@@ -14,7 +16,7 @@ classDiagram
   class DashboardStatsComposite {
     <<component>>
     -children: List~StatsComponent~
-    +add(component: StatsComponent)
+    +DashboardStatsComposite(allComponents: List~StatsComponent~)
     +collect(target: Map~String,Object~)
   }
 
@@ -34,7 +36,7 @@ classDiagram
     +collect(target)
   }
 
-  class VoucherStatsLeaf {
+  class PromotionStatsLeaf {
     +collect(target)
   }
 
@@ -42,10 +44,14 @@ classDiagram
     +collect(target)
   }
 
+  class TicketStatsLeaf {
+    +collect(target)
+  }
+
   class DashboardController {
     <<controller>>
-    -statsComposite: DashboardStatsComposite
-    +getDashboard() Map~String,Object~
+    -dashboardStatsComposite: DashboardStatsComposite
+    +getStats() Map~String,Object~
   }
 
   %% Pattern structure
@@ -54,8 +60,9 @@ classDiagram
   StatsComponent <|.. UserStatsLeaf
   StatsComponent <|.. ShowtimeStatsLeaf
   StatsComponent <|.. FnbStatsLeaf
-  StatsComponent <|.. VoucherStatsLeaf
+  StatsComponent <|.. PromotionStatsLeaf
   StatsComponent <|.. RevenueStatsLeaf
-  DashboardStatsComposite "1" o-- "*" StatsComponent : children
-  DashboardController --> DashboardStatsComposite : calls collect()
+  StatsComponent <|.. TicketStatsLeaf
+  DashboardStatsComposite "1" o-- "*" StatsComponent : children (DI)
+  DashboardController --> DashboardStatsComposite : collect()
 ```

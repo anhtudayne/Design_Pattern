@@ -2,7 +2,6 @@ package com.cinema.booking.service.impl;
 import com.cinema.booking.pattern.strategy.payment.PaymentStrategyFactory;
 import com.cinema.booking.pattern.strategy.payment.PaymentMethod;
 import com.cinema.booking.pattern.strategy.payment.CashPaymentStrategy;
-import com.cinema.booking.pattern.template.checkout.StaffCashCheckoutProcess;
 
 import com.cinema.booking.dto.BookingCalculationDTO;
 import com.cinema.booking.dto.request.CheckoutRequest;
@@ -13,9 +12,6 @@ import com.cinema.booking.service.CheckoutService;
 import com.cinema.booking.service.MomoService;
 import com.cinema.booking.pattern.template.checkout.LocalMomoCheckoutProcess;
 import com.cinema.booking.pattern.template.checkout.LocalVnpayCheckoutProcess;
-import com.cinema.booking.pattern.strategy.payment.CashPaymentStrategy;
-import com.cinema.booking.pattern.strategy.payment.PaymentMethod;
-import com.cinema.booking.pattern.strategy.payment.PaymentStrategyFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

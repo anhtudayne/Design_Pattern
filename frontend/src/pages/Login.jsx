@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { 
     googleLogin, loginUser, registerUser, clearAuthError, clearRegisterStatus,
@@ -41,6 +41,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
 
   const loginStatus = useSelector(selectAuthStatus);
@@ -56,17 +57,20 @@ export default function Login() {
 
   const currentUser = useSelector(selectCurrentUser);
 
-  useEffect(() => { 
+  useEffect(() => {
     if (loginStatus === 'succeeded' && currentUser) {
+      const returnTo = typeof location.state?.from === 'string' ? location.state.from : null;
       if (currentUser.roles?.includes('ROLE_ADMIN')) {
         navigate('/admin');
       } else if (currentUser.roles?.includes('ROLE_STAFF')) {
         navigate('/staff');
+      } else if (returnTo) {
+        navigate(returnTo);
       } else {
         navigate('/');
       }
-    } 
-  }, [loginStatus, navigate, currentUser]);
+    }
+  }, [loginStatus, navigate, currentUser, location.state]);
   useEffect(() => {
     if (registerStatus === 'succeeded') {
       const t = setTimeout(() => { dispatch(clearRegisterStatus()); setActiveTab('login'); setRegisterForm({ fullName: '', email: '', phone: '', password: '', confirmPassword: '', agreeTerms: false }); }, 2000);

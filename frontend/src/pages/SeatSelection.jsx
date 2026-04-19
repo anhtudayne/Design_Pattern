@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { useBooking } from '../contexts/BookingContext';
-import { fetchSeatStatuses } from '../services/bookingService';
+import { fetchSeatStatuses, lockSeat, unlockSeat } from '../services/bookingService';
 
 // ─── Seat type config (matches backend SeatStatusDTO.SeatStatus) ────
 const SEAT_TYPES = {
@@ -51,6 +52,7 @@ function Stepper({ active }) {
 // ─── Main component ─────────────────────────────────────────────────
 export default function SeatSelection() {
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
   const { bookingSelection, setBookingSeats } = useBooking();
   const { movie, cinema, showtime } = bookingSelection;
 
@@ -59,16 +61,53 @@ export default function SeatSelection() {
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [timeLeft, setTimeLeft] = useState(COUNTDOWN_TIME);
   const [toast, setToast] = useState(null);
+  /** Seat đang gọi API lock/unlock để tránh double-click */
+  const [lockingSeatId, setLockingSeatId] = useState(null);
+
+  const leavingForwardRef = useRef(false);
+  const timerExpiredRef = useRef(false);
+  const selectedSeatsRef = useRef([]);
+  const showtimeRef = useRef(showtime);
+
+  const showToast = useCallback((msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  }, []);
+
+  useEffect(() => {
+    selectedSeatsRef.current = selectedSeats;
+  }, [selectedSeats]);
+
+  useEffect(() => {
+    showtimeRef.current = showtime;
+  }, [showtime]);
+
+  useEffect(() => {
+    timerExpiredRef.current = false;
+    setTimeLeft(COUNTDOWN_TIME);
+  }, [showtime?.showtimeId]);
 
   // Redirect if no showtime selected
   useEffect(() => {
     if (!showtime) navigate('/movies');
   }, [showtime, navigate]);
 
+  // Khóa ghế Redis cần userId — giống bước thanh toán
+  useEffect(() => {
+    if (!showtime) return;
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: '/booking/seats' } });
+    }
+  }, [showtime, isAuthenticated, navigate]);
+
   // Fetch seats using BookingController: GET /api/booking/seats/{showtimeId}
   // Returns SeatStatusDTO[] with { seatId, seatRow, seatNumber, seatType, totalPrice, status(VACANT/SOLD/PENDING) }
   useEffect(() => {
     if (!showtime) return;
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
     const loadSeats = async () => {
       try {
         const data = await fetchSeatStatuses(showtime.showtimeId);
@@ -81,18 +120,41 @@ export default function SeatSelection() {
       }
     };
     loadSeats();
-  }, [showtime]);
+  }, [showtime, isAuthenticated, showToast]);
 
-  // Countdown timer
+  // Countdown timer — hết giờ thì giải phóng khóa Redis rồi về danh sách phim
   useEffect(() => {
     if (timeLeft <= 0) {
-      showToast('Hết thời gian giữ ghế. Vui lòng chọn lại.');
-      setTimeout(() => navigate('/movies'), 2500);
+      if (!timerExpiredRef.current) {
+        timerExpiredRef.current = true;
+        const st = showtimeRef.current;
+        const seats = selectedSeatsRef.current;
+        if (st?.showtimeId && seats.length > 0) {
+          Promise.allSettled(
+            seats.map((s) => unlockSeat(st.showtimeId, s.seatId))
+          ).catch(() => {});
+        }
+        showToast('Hết thời gian giữ ghế. Vui lòng chọn lại.');
+        setTimeout(() => navigate('/movies'), 2500);
+      }
       return;
     }
-    const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
+    const timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
     return () => clearInterval(timer);
-  }, [timeLeft, navigate]);
+  }, [timeLeft, navigate, showToast]);
+
+  // Rời trang không qua "Tiếp theo" → mở khóa các ghế đã giữ (TTL Redis vẫn có nhưng tránh treo chỗ user đã bỏ)
+  useEffect(() => {
+    return () => {
+      if (leavingForwardRef.current) return;
+      const st = showtimeRef.current;
+      const seats = selectedSeatsRef.current;
+      if (!st?.showtimeId || !seats?.length) return;
+      seats.forEach((seat) => {
+        unlockSeat(st.showtimeId, seat.seatId).catch(() => {});
+      });
+    };
+  }, []);
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -100,24 +162,48 @@ export default function SeatSelection() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const showToast = (msg) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
-  };
-
-  const handleSeatClick = (seat) => {
-    // Backend status: VACANT = can select, SOLD/PENDING = cannot
+  const handleSeatClick = async (seat) => {
     if (seat.status !== 'VACANT') return;
+    if (!showtime?.showtimeId || !user?.id) {
+      navigate('/login', { state: { from: '/booking/seats' } });
+      return;
+    }
 
-    setSelectedSeats(prev => {
-      const isSelected = prev.some(s => s.seatId === seat.seatId);
-      if (isSelected) return prev.filter(s => s.seatId !== seat.seatId);
-      if (prev.length >= MAX_SEATS) {
-        showToast(`Bạn chỉ có thể chọn tối đa ${MAX_SEATS} ghế`);
-        return prev;
+    const isSelected = selectedSeats.some((s) => s.seatId === seat.seatId);
+
+    if (isSelected) {
+      setLockingSeatId(seat.seatId);
+      try {
+        await unlockSeat(showtime.showtimeId, seat.seatId);
+        setSelectedSeats((prev) => prev.filter((s) => s.seatId !== seat.seatId));
+      } catch (err) {
+        console.error('unlockSeat failed', err);
+        showToast(err?.message || 'Không thể bỏ chọn ghế. Thử lại.');
+      } finally {
+        setLockingSeatId(null);
       }
-      return [...prev, seat];
-    });
+      return;
+    }
+
+    if (selectedSeats.length >= MAX_SEATS) {
+      showToast(`Bạn chỉ có thể chọn tối đa ${MAX_SEATS} ghế`);
+      return;
+    }
+
+    setLockingSeatId(seat.seatId);
+    try {
+      await lockSeat(showtime.showtimeId, seat.seatId, user.id);
+      setSelectedSeats((prev) => {
+        if (prev.length >= MAX_SEATS) return prev;
+        if (prev.some((s) => s.seatId === seat.seatId)) return prev;
+        return [...prev, seat];
+      });
+    } catch (err) {
+      console.error('lockSeat failed', err);
+      showToast(err?.message || 'Ghế đã có người giữ hoặc đã bán.');
+    } finally {
+      setLockingSeatId(null);
+    }
   };
 
   // Group seats by row (backend field: seatRow)
@@ -166,6 +252,7 @@ export default function SeatSelection() {
       showToast('Vui lòng chọn ít nhất 1 ghế');
       return;
     }
+    leavingForwardRef.current = true;
     setBookingSeats(selectedSeats.map(s => ({
       seatId: s.seatId,
       seatRow: s.seatRow,       // backend field name
@@ -179,6 +266,7 @@ export default function SeatSelection() {
   };
 
   if (!showtime) return null;
+  if (!isAuthenticated || !user?.id) return null;
 
   return (
     <main className="pt-44 pb-20 bg-slate-50 dark:bg-slate-950 min-h-screen">
@@ -231,6 +319,7 @@ export default function SeatSelection() {
                                 if (!seat) return <div key={num} className="w-9 h-9 md:w-10 md:h-10 shrink-0" />;
 
                                 const isSelected = selectedSeats.some(s => s.seatId === seat.seatId);
+                                const isBusy = lockingSeatId === seat.seatId;
                                 let typeKey;
                                 const typeName = seatTypeNameOf(seat);
                                 if (isSelected) typeKey = typeName;
@@ -244,13 +333,22 @@ export default function SeatSelection() {
                                 return (
                                   <button
                                     key={seat.seatId}
+                                    type="button"
                                     onClick={() => handleSeatClick(seat)}
-                                    disabled={seat.status !== 'VACANT'}
+                                    disabled={seat.status !== 'VACANT' || isBusy || (lockingSeatId !== null && !isSelected)}
                                     className={`w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center text-[10px] font-black transition-all duration-200 border-2 shrink-0 ${
                                       isSelected ? 'border-transparent' : 'border-slate-100 hover:border-slate-300'
                                     } ${colors}`}
                                   >
-                                    {isSelected ? <span className="material-symbols-outlined text-sm font-black">check</span> : (seat.status === 'VACANT' ? seat.seatNumber : '')}
+                                    {isBusy ? (
+                                      <span className="inline-block w-3 h-3 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" aria-hidden />
+                                    ) : isSelected ? (
+                                      <span className="material-symbols-outlined text-sm font-black">check</span>
+                                    ) : seat.status === 'VACANT' ? (
+                                      seat.seatNumber
+                                    ) : (
+                                      ''
+                                    )}
                                   </button>
                                 );
                               })}
@@ -326,8 +424,9 @@ export default function SeatSelection() {
                 ) : (
                   <div className="flex flex-wrap gap-2.5">
                     {selectedSeats.map(seat => (
-                      <button key={seat.seatId} onClick={() => handleSeatClick(seat)}
-                        className="px-3.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 border-2 bg-slate-50 text-slate-700 border-slate-200 hover:bg-white transition-all">
+                      <button key={seat.seatId} type="button" disabled={lockingSeatId === seat.seatId}
+                        onClick={() => handleSeatClick(seat)}
+                        className="px-3.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 border-2 bg-slate-50 text-slate-700 border-slate-200 hover:bg-white transition-all disabled:opacity-60">
                         {seat.seatRow}{seat.seatNumber}
                         <span className="material-symbols-outlined text-base">close</span>
                       </button>

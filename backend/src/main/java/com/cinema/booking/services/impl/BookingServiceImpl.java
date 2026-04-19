@@ -181,7 +181,6 @@ public class BookingServiceImpl implements BookingService {
             // Inventory and promotion inventory logic removed
         }
     }
-
     @Override
     @Transactional
     public void refundBooking(Integer bookingId) {

@@ -9,20 +9,20 @@ public class ConfirmedState implements BookingState {
 
     @Override
     public void cancel(BookingContext context) {
-        // Cho phép Hủy trực tiếp (tương đương Refund) để tối giản quy trình
-        context.setState(new CancelledState());
+        throw new IllegalStateException("Đơn hàng đã được thanh toán, bạn phải dùng chức năng Hoàn Tiền (Refund) để kế toán kiểm soát dòng tiền!");
     }
 
     @Override
     public void printTickets(BookingContext context) {
-        // Assume logic for printing physical tickets (maybe status goes to printed/checked-in later but we keep it here as just an action)
         System.out.println("Printing tickets for booking " + context.getBooking().getBookingId());
+        context.setState(new PrintedState());
     }
 
     @Override
     public void refund(BookingContext context) {
-        context.setState(new CancelledState());
+        context.setState(new RefundedState());
     }
+
 
     @Override
     public String getStateName() {

@@ -69,7 +69,7 @@ public class BookingController {
 
     @Operation(summary = "Tìm kiếm Booking linh động", description = "Dành cho Staff tra cứu theo ID, SDT hoặc Email")
     @GetMapping("/search")
-    public ResponseEntity<?> searchBookings(@RequestParam String query) {
+    public ResponseEntity<?> searchBookings(@RequestParam(required = false, defaultValue = "") String query) {
         return ResponseEntity.ok(bookingService.searchBookings(query));
     }
 

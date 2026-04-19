@@ -32,7 +32,7 @@ public class Booking {
     private Promotion promotion;
 
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "ENUM('PENDING', 'CONFIRMED', 'CANCELLED') DEFAULT 'PENDING'")
+    @Column(columnDefinition = "ENUM('PENDING', 'CONFIRMED', 'CANCELLED', 'REFUNDED', 'PRINTED') DEFAULT 'PENDING'")
     private BookingStatus status;
 
     @Column(name = "created_at", updatable = false)
@@ -49,7 +49,7 @@ public class Booking {
     private Payment payment;
 
     public enum BookingStatus {
-        PENDING, CONFIRMED, CANCELLED
+        PENDING, CONFIRMED, CANCELLED, REFUNDED, PRINTED
     }
 
     public void confirm() {

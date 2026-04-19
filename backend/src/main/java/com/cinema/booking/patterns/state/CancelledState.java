@@ -19,8 +19,9 @@ public class CancelledState implements BookingState {
 
     @Override
     public void refund(BookingContext context) {
-        throw new IllegalStateException("Đơn hàng này bị hủy khi chưa thanh toán xong, không có chi phí nào để hoàn.");
+        throw new IllegalStateException("Đơn hàng này đã bị hủy do chưa thanh toán, không có chi phí nào để hoàn.");
     }
+
 
     @Override
     public String getStateName() {

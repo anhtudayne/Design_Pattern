@@ -34,4 +34,5 @@ public class BookingContext {
     public void refund() {
         state.refund(this);
     }
+
 }

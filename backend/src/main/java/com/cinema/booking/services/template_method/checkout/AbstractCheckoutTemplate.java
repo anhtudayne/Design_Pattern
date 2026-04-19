@@ -88,7 +88,10 @@ public abstract class AbstractCheckoutTemplate {
     }
 
     protected User validateUser(Integer userId) {
-        return userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
+        if (userId != null && userId == -1) {
+            return userRepository.findById(-1).orElseThrow(() -> new RuntimeException("Tài khoản Khách vãng lai (Guest) chưa được thiết lập dữ liệu mẫu. Vui lòng kiểm tra lại database."));
+        }
+        return userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Người dùng không tồn tại với ID: " + userId));
     }
 
     protected void validateSeats(Integer showtimeId, List<Integer> seatIds) {

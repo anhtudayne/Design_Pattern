@@ -24,6 +24,11 @@ const STATUS_MAP = {
     color: "bg-blue-100 text-blue-700 border-blue-200",
     icon: "currency_exchange",
   },
+  PRINTED: {
+    label: "Đã in vé",
+    color: "bg-purple-100 text-purple-700 border-purple-200",
+    icon: "print",
+  },
 };
 
 // ══════════════════════════════════════════════════════════════════════
@@ -35,6 +40,7 @@ export default function OrderLookup() {
   const [results, setResults] = useState([]);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [notification, setNotification] = useState(null);
 
   // ── Fetch Bookings ───────────────────────────────────────────────────
   const fetchBookings = async (searchQuery = "") => {
@@ -72,15 +78,61 @@ export default function OrderLookup() {
         method: 'POST', 
         headers: getAuthHeaders() 
       });
-      const msg = await res.text();
-      alert(res.ok ? msg : `Lỗi: ${msg}`);
+      const text = await res.text();
+      
+      let displayMessage = text;
+      try {
+        const jsonObj = JSON.parse(text);
+        if (jsonObj && jsonObj.message) {
+          displayMessage = jsonObj.message;
+        }
+      } catch (err) {
+        // Not a JSON object, use plain string
+      }
+
       if (res.ok) {
+        setNotification({ type: 'success', message: displayMessage });
         fetchBookings(query);
         setSelectedBooking(null);
+      } else {
+        setNotification({ type: 'error', message: displayMessage });
       }
     } catch (e) {
-      alert('Lỗi kết nối máy chủ');
+      setNotification({ type: 'error', message: 'Lỗi kết nối máy chủ hoặc API.' });
     }
+  };
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  NOTIFICATION MODAL
+  // ══════════════════════════════════════════════════════════════════════
+  const NotificationModal = ({ data, onClose }) => {
+    if (!data) return null;
+    const isError = data.type === 'error';
+
+    return (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-200">
+        <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl shadow-2xl p-6 text-center animate-in zoom-in-95 duration-200 border border-white/10 overflow-hidden relative">
+          <div className={`absolute top-0 left-0 right-0 h-1.5 ${isError ? 'bg-red-500' : 'bg-green-500'}`}></div>
+          <div className={`mx-auto w-16 h-16 rounded-2xl mb-4 flex items-center justify-center shadow-lg ${isError ? 'bg-red-50 dark:bg-red-500/20 text-red-500 shadow-red-500/20' : 'bg-green-50 dark:bg-green-500/20 text-green-500 shadow-green-500/20'}`}>
+            <span className="material-symbols-outlined text-4xl">
+              {isError ? 'warning' : 'check_circle'}
+            </span>
+          </div>
+          <h3 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tight mb-2">
+            {isError ? 'Hệ thống từ chối' : 'Thành công'}
+          </h3>
+          <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-6 px-2">
+            {data.message}
+          </p>
+          <button 
+            onClick={onClose}
+            className={`w-full py-4 rounded-xl font-black text-white text-xs uppercase tracking-widest hover:shadow-lg hover:-translate-y-0.5 transition-all ${isError ? 'bg-red-500 shadow-red-500/30' : 'bg-green-500 shadow-green-500/30'}`}
+          >
+            Xác nhận
+          </button>
+        </div>
+      </div>
+    );
   };
 
   // ══════════════════════════════════════════════════════════════════════
@@ -235,20 +287,27 @@ export default function OrderLookup() {
           </div>
 
           {/* Footer Actions */}
-          <div className="px-8 py-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-end gap-3">
+          <div className="px-8 py-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-end gap-3 flex-wrap">
             <button 
               onClick={() => handleAction('print', booking.bookingId)}
-              className="flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-black text-slate-600 dark:text-slate-300 hover:border-orange-500 hover:text-orange-500 transition-all shadow-sm"
+              className="flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-black text-slate-600 dark:text-slate-300 hover:border-purple-500 hover:text-purple-500 transition-all shadow-sm"
             >
               <span className="material-symbols-outlined">print</span>
-              In vé
+              In vé cứng
+            </button>
+            <button 
+              onClick={() => handleAction('refund', booking.bookingId)}
+              className="flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-black hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all shadow-sm"
+            >
+              <span className="material-symbols-outlined">payments</span>
+              Hoàn tiền (Refund)
             </button>
             <button 
               onClick={() => handleAction('cancel', booking.bookingId)}
-              className="flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-red-500 text-white text-xs font-black hover:bg-red-600 transition-all shadow-lg shadow-red-500/30"
+              className="flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-red-500 text-white text-xs font-black hover:bg-red-600 transition-all shadow-lg shadow-red-500/30"
             >
               <span className="material-symbols-outlined">cancel</span>
-              Hủy đơn hàng
+              Hủy đơn chưa thanh toán
             </button>
           </div>
           
@@ -347,6 +406,12 @@ export default function OrderLookup() {
           onClose={() => setSelectedBooking(null)} 
         />
       )}
+
+      {/* Notification Modal */}
+      <NotificationModal 
+        data={notification} 
+        onClose={() => setNotification(null)} 
+      />
 
     </div>
   );

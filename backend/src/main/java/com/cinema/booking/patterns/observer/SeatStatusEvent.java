@@ -26,7 +26,7 @@ public class SeatStatusEvent {
      * Trạng thái mới của ghế:
      * <ul>
      *   <li>{@code "PENDING"}   — Đang được giữ bởi một Staff (lock Redis)</li>
-     *   <li>{@code "AVAILABLE"} — Ghế vừa được giải phóng (unlock hoặc cancel/refund)</li>
+     *   <li>{@code "VACANT"}    — Ghế vừa được giải phóng (unlock hoặc cancel/refund)</li>
      *   <li>{@code "SOLD"}      — Đã thanh toán, không thể đặt nữa</li>
      * </ul>
      */

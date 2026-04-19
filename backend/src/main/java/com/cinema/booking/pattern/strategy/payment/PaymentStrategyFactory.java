@@ -1,9 +1,5 @@
 package com.cinema.booking.pattern.strategy.payment;
-import com.cinema.booking.pattern.strategy.payment.PaymentStrategyFactory;
-import com.cinema.booking.pattern.strategy.payment.PaymentMethod;
-import com.cinema.booking.pattern.strategy.payment.PaymentStrategy;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.EnumMap;
@@ -18,7 +14,6 @@ public class PaymentStrategyFactory {
 
     private final Map<PaymentMethod, PaymentStrategy> strategies = new EnumMap<>(PaymentMethod.class);
 
-    @Autowired
     public PaymentStrategyFactory(List<PaymentStrategy> strategyBeans) {
         for (PaymentStrategy strategy : strategyBeans) {
             PaymentMethod key = strategy.getPaymentMethod();

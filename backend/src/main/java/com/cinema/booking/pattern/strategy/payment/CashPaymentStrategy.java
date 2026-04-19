@@ -1,7 +1,4 @@
 package com.cinema.booking.pattern.strategy.payment;
-import com.cinema.booking.pattern.strategy.payment.PaymentMethod;
-import com.cinema.booking.pattern.strategy.payment.CashPaymentStrategy;
-import com.cinema.booking.pattern.strategy.payment.PaymentStrategy;
 
 import com.cinema.booking.dto.request.CheckoutRequest;
 import com.cinema.booking.dto.response.CheckoutResult;

@@ -1,6 +1,4 @@
 package com.cinema.booking.pattern.strategy.payment;
-import com.cinema.booking.pattern.strategy.payment.PaymentMethod;
-import com.cinema.booking.pattern.strategy.payment.PaymentStrategy;
 
 /**
  * Kênh thanh toán map 1-1 với {@link PaymentStrategy} (Factory đăng ký đủ enum).

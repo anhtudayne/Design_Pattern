@@ -3,6 +3,7 @@ package com.cinema.booking.config;
 import com.cinema.booking.entity.Admin;
 import com.cinema.booking.entity.Customer;
 import com.cinema.booking.entity.Staff;
+import com.cinema.booking.entity.User;
 import com.cinema.booking.entity.UserAccount;
 import com.cinema.booking.repository.UserAccountRepository;
 import com.cinema.booking.repository.UserRepository;
@@ -12,6 +13,9 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Data initializer to create default user accounts with password '123456'

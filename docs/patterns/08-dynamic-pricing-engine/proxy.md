@@ -45,8 +45,12 @@ flowchart TB
 **Cần nhớ**
 
 - `KEY_PREFIX = "pricing:"`.
-- `buildCacheKey`: `showtimeId`, ghế **đã sort** `seatId`, F&B **sort theo itemId** (`itemId:qty`), `promo:code` hoặc `none`, `cust:userId` hoặc `anon`.
+- `buildCacheKey`: `showtimeId`, ghế **đã sort** `seatId`, F&B **sort theo itemId** (`itemId:qty`), `promo:code` hoặc `none`. **Không** bao gồm customer ID.
 - TTL: property `cinema.app.redisTtlSeconds`, mặc định **600** giây.
 - Constructor proxy: `@Qualifier("pricingEngine") IPricingEngine delegate` — tránh vòng lặp bean.
+
+**Lưu ý quan trọng**: Cache key **không** bao gồm `bookingTime`. Các điều kiện phụ thuộc thời gian 
+(như `PricingConditions.isEarlyBird()`) sẽ không tương thích với caching. Nếu thêm logic phụ thuộc 
+giờ cụ thể, cần: (a) thêm độ phân giải thời gian vào cache key, hoặc (b) vô hiệu hóa cache cho case đó.
 
 **UML / báo cáo:** [../../../UML/08-dynamic-pricing-engine.md](../../../UML/08-dynamic-pricing-engine.md)

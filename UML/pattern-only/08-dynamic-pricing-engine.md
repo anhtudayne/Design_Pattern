@@ -121,7 +121,7 @@ classDiagram
     <<Builder — strategy layer>>
     +Showtime showtime
     +List~Seat~ seats
-    +List~ResolvedFnbItem~ resolvedFnbs
+    +List~FnbItemQuantity~ fnbItems
     +Promotion promotion
     +Customer customer
     +LocalDateTime bookingTime
@@ -197,9 +197,7 @@ classDiagram
 
   class PricingEngine {
     <<component pricingEngine>>
-    -ticketStrategy: PricingStrategy
-    -fnbStrategy: PricingStrategy
-    -timeBasedStrategy: PricingStrategy
+    -strategiesByLine: EnumMap~PricingLineType,PricingStrategy~
     +calculateTotalPrice(ctx) PriceBreakdownDTO
     -buildDiscountChain(ctx) DiscountComponent
   }
@@ -246,9 +244,7 @@ classDiagram
   TicketPricingStrategy ..> PricingLineType : TICKET
   FnbPricingStrategy ..> PricingLineType : FNB
   TimeBasedPricingStrategy ..> PricingLineType : TIME_BASED_SURCHARGE
-  PricingEngine --> PricingStrategy : ticketStrategy @Qualifier tuTicket
-  PricingEngine --> PricingStrategy : fnbStrategy @Qualifier tuFnb
-  PricingEngine --> PricingStrategy : timeBased @Qualifier tuTimeBased
+  PricingEngine --> PricingStrategy : strategiesByLine EnumMap
 
   %% Decorator
   DiscountComponent <|.. NoDiscount

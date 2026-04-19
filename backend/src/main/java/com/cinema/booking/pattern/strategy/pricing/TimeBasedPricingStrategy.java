@@ -26,6 +26,11 @@ public class TimeBasedPricingStrategy implements PricingStrategy {
     }
 
     @Override
+    public PricingLineType lineType() {
+        return PricingLineType.TIME_BASED_SURCHARGE;
+    }
+
+    @Override
     public BigDecimal calculate(PricingContext context) {
         if (context.getShowtime() == null || context.getSeats() == null) {
             return BigDecimal.ZERO;

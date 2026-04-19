@@ -7,5 +7,6 @@ import java.math.BigDecimal;
  * Mỗi concrete strategy triển khai cách tính giá cho một loại sản phẩm cụ thể.
  */
 public interface PricingStrategy {
+    PricingLineType lineType();
     BigDecimal calculate(PricingContext context);
 }

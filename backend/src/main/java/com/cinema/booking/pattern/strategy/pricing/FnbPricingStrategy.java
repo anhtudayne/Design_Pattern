@@ -12,6 +12,11 @@ import java.math.BigDecimal;
 public class FnbPricingStrategy implements PricingStrategy {
 
     @Override
+    public PricingLineType lineType() {
+        return PricingLineType.FNB;
+    }
+
+    @Override
     public BigDecimal calculate(PricingContext context) {
         if (context.getFnbItems() == null || context.getFnbItems().isEmpty()) {
             return BigDecimal.ZERO;

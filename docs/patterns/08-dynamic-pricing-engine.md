@@ -33,7 +33,7 @@ POST /api/booking/calculate
         |        ShowtimeFuture -> SeatsAvailable -> PromoValid
         |        (populate showtime + promotion vao PricingValidationContext)
         |
-        +-- [B] re-resolve promo qua PromotionInventoryService (neu co promoCode)
+        +-- [B] (Không có bước re-resolve inventory trên flow calculate)
         |
         +-- [C] PricingContextBuilder.build(validationCtx, request)
         |        load seats + fnb gia DB + customer dang login + occupancy
@@ -155,13 +155,12 @@ Builder nay la diem ghep du lieu truoc khi vao engine:
 
 **Key format thuc te**:
 
-`pricing:{showtimeId}:seats:{sortedSeatIds|none}:fnb:{sorted itemId:qty|none}:promo:{code|none}:cust:{userId|anon}`
+`pricing:{showtimeId}:seats:{sortedSeatIds|none}:fnb:{sorted itemId:qty|none}:promo:{code|none}`
 
 **Quy tac key**:
 
 - Seats sort tang dan theo `seatId`
 - F&B sort theo `itemId`, format `itemId:quantity`
-- Co customer thi dung `cust:{userId}`, khong thi `cust:anon`
 - TTL: `cinema.app.redisTtlSeconds` (default 600s)
 
 ---
@@ -303,6 +302,9 @@ Section nay tra loi cau hoi: "Nguoi dung bam gi trong app thi Dynamic Pricing En
    - Specification xac dinh holiday/weekend cho time-based surcharge.
    - Decorator tinh discount promo/member.
    - Build `PriceBreakdownDTO` va tra ve UI.
+
+**Lưu ý**: Flow calculate chỉ kiểm tra promo tồn tại và còn hạn (qua `PromoValidHandler`). 
+Kiểm tra **tồn kho / lượt dùng** promo sẽ được thực hiện ở flow checkout, không nằm trong calculate.
 
 ### 9.6 Nguoi dung tiep tuc sang checkout/thanh toan
 

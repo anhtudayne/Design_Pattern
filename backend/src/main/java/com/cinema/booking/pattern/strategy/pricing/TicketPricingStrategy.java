@@ -14,6 +14,11 @@ import java.math.BigDecimal;
 public class TicketPricingStrategy implements PricingStrategy {
 
     @Override
+    public PricingLineType lineType() {
+        return PricingLineType.TICKET;
+    }
+
+    @Override
     public BigDecimal calculate(PricingContext context) {
         Showtime showtime = context.getShowtime();
         BigDecimal basePrice = showtime.getBasePrice();

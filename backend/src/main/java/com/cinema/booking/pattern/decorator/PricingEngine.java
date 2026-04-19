@@ -3,13 +3,16 @@ package com.cinema.booking.pattern.decorator;
 import com.cinema.booking.dto.PriceBreakdownDTO;
 import com.cinema.booking.pattern.proxy.IPricingEngine;
 import com.cinema.booking.pattern.strategy.pricing.PricingContext;
+import com.cinema.booking.pattern.strategy.pricing.PricingLineType;
 import com.cinema.booking.pattern.strategy.pricing.PricingStrategy;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Điều phối ba strategy (vé, F&amp;B, phụ thu thời điểm), sau đó chạy chuỗi giảm giá:
@@ -18,24 +21,27 @@ import java.util.List;
 @Component("pricingEngine")
 public class PricingEngine implements IPricingEngine {
 
-    private final PricingStrategy ticketStrategy;
-    private final PricingStrategy fnbStrategy;
-    private final PricingStrategy timeBasedStrategy;
+    private final Map<PricingLineType, PricingStrategy> strategiesByLine;
 
-    public PricingEngine(
-            @Qualifier("tuTicketPricingStrategy") PricingStrategy ticketStrategy,
-            @Qualifier("tuFnbPricingStrategy") PricingStrategy fnbStrategy,
-            @Qualifier("tuTimeBasedPricingStrategy") PricingStrategy timeBasedStrategy) {
-        this.ticketStrategy = ticketStrategy;
-        this.fnbStrategy = fnbStrategy;
-        this.timeBasedStrategy = timeBasedStrategy;
+    public PricingEngine(List<PricingStrategy> pricingStrategies) {
+        this.strategiesByLine = new EnumMap<>(PricingLineType.class);
+        for (PricingStrategy strategy : pricingStrategies) {
+            strategiesByLine.put(strategy.lineType(), strategy);
+        }
+        // Validate all strategies are registered
+        for (PricingLineType type : PricingLineType.values()) {
+            if (!strategiesByLine.containsKey(type)) {
+                throw new IllegalStateException(
+                    "Missing PricingStrategy for line type: " + type);
+            }
+        }
     }
 
     @Override
     public PriceBreakdownDTO calculateTotalPrice(PricingContext context) {
-        BigDecimal ticketTotal = ticketStrategy.calculate(context);
-        BigDecimal fnbTotal = fnbStrategy.calculate(context);
-        BigDecimal timeBasedSurcharge = timeBasedStrategy.calculate(context);
+        BigDecimal ticketTotal = strategiesByLine.get(PricingLineType.TICKET).calculate(context);
+        BigDecimal fnbTotal = strategiesByLine.get(PricingLineType.FNB).calculate(context);
+        BigDecimal timeBasedSurcharge = strategiesByLine.get(PricingLineType.TIME_BASED_SURCHARGE).calculate(context);
 
         BigDecimal subtotal = ticketTotal.add(fnbTotal).add(timeBasedSurcharge);
 

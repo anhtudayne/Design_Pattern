@@ -10,9 +10,15 @@ import java.math.BigDecimal;
 @Builder
 public class DiscountResult {
 
-    private final BigDecimal totalDiscount;
-    private final BigDecimal promotionDiscount;
-    private final BigDecimal membershipDiscount;
+    @Builder.Default
+    private final BigDecimal totalDiscount = BigDecimal.ZERO;
+
+    @Builder.Default
+    private final BigDecimal promotionDiscount = BigDecimal.ZERO;
+
+    @Builder.Default
+    private final BigDecimal membershipDiscount = BigDecimal.ZERO;
+
     private final String description;
 
     public static DiscountResult none() {

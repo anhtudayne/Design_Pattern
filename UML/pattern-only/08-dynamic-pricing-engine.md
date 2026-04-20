@@ -7,6 +7,8 @@
 
 **Ghi chú:** `PriceBreakdownDTO` gồm các khoản tiền + `appliedStrategy`. **Không** có field `promotionDiscount` trên DTO — `discountAmount` là **tổng** giảm; `membershipDiscount` tách riêng phần hạng. Tách đầy đủ mã/hạng nằm trong `DiscountResult` (nội bộ decorator).
 
+**Lưu ý quan trọng:** `PricingEngine` constructor **validate** đủ 3 strategy (TICKET, FNB, TIME_BASED_SURCHARGE). Thiếu strategy → `IllegalStateException` tại startup (fail-fast).
+
 ```mermaid
 classDiagram
   direction TB

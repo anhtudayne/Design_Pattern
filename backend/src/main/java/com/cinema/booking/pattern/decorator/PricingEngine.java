@@ -5,7 +5,6 @@ import com.cinema.booking.pattern.proxy.IPricingEngine;
 import com.cinema.booking.pattern.strategy.pricing.PricingContext;
 import com.cinema.booking.pattern.strategy.pricing.PricingLineType;
 import com.cinema.booking.pattern.strategy.pricing.PricingStrategy;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -14,10 +13,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Điều phối ba strategy (vé, F&amp;B, phụ thu thời điểm), sau đó chạy chuỗi giảm giá:
- * {@link NoDiscount} → (có mã) {@link PromotionDiscountDecorator} → (có hạng) {@link MemberDiscountDecorator}.
- */
+
 @Component("pricingEngine")
 public class PricingEngine implements IPricingEngine {
 
@@ -28,7 +24,6 @@ public class PricingEngine implements IPricingEngine {
         for (PricingStrategy strategy : pricingStrategies) {
             strategiesByLine.put(strategy.lineType(), strategy);
         }
-        // Validate all strategies are registered
         for (PricingLineType type : PricingLineType.values()) {
             if (!strategiesByLine.containsKey(type)) {
                 throw new IllegalStateException(

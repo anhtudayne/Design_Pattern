@@ -15,14 +15,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Builds orchestration {@link PricingContext} after CoR validation, reusing entities loaded by handlers.
- */
+
 @Component
 @RequiredArgsConstructor
 public class PricingContextBuilder {

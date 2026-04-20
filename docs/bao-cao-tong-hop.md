@@ -105,6 +105,13 @@ Thời gian chạy: ~1 giây (không cần DB/Redis)
 | [`docs/bao-cao-dynamic-pricing.md`](bao-cao-dynamic-pricing.md) | Dynamic Pricing Engine (08): nhiều pattern kết hợp |
 | [`UML/08-dynamic-pricing-engine.md`](../UML/08-dynamic-pricing-engine.md) | UML Class Diagram đầy đủ (Mermaid) |
 | [`docs/patterns/08-dynamic-pricing-engine.md`](patterns/08-dynamic-pricing-engine.md) | Tài liệu kỹ thuật chi tiết |
+| [`docs/patterns/composite-dashboard-stats-report-bo-cuc-mau.md`](patterns/composite-dashboard-stats-report-bo-cuc-mau.md) | Báo cáo ngắn Composite (bố cục mẫu 08) |
+| [`docs/patterns/composite-dashboard-stats-package-vi.md`](patterns/composite-dashboard-stats-package-vi.md) | Composite: giải thích package + từng file |
+| [`docs/patterns/05-composite.md`](patterns/05-composite.md) | Lý thuyết Composite trong dự án |
+| [`docs/patterns/singleton-resttemplate-report-bo-cuc-mau.md`](patterns/singleton-resttemplate-report-bo-cuc-mau.md) | Báo cáo ngắn Singleton / `RestTemplate` (bố cục mẫu 08) |
+| [`docs/patterns/singleton-resttemplate-package-vi.md`](patterns/singleton-resttemplate-package-vi.md) | Singleton: Spring bean `RestTemplate` + `MomoServiceImpl` |
+| [`docs/patterns/06-singleton.md`](patterns/06-singleton.md) | Lý thuyết Singleton (Spring IoC) |
+| [`docs/patterns/README-bao-cao-word-composite-singleton.md`](patterns/README-bao-cao-word-composite-singleton.md) | Mục lục báo cáo ngắn + tùy chọn xuất Word |
 
 **Lưu ý:** Các pattern 01-04 và 07 đã được xóa khỏi dự án. Chỉ còn lại pattern 05 (Composite), 06 (Singleton), và 08 (Dynamic Pricing Engine).
 
@@ -142,7 +149,12 @@ Design_Pattern/
 │   ├── bao-cao-tong-hop.md          ← File này (tổng quan)
 │   ├── bao-cao-dynamic-pricing.md   ← Chi tiết Dynamic Pricing Engine
 │   └── patterns/
-│       └── 08-dynamic-pricing-engine.md
+│       ├── 05-composite.md, 06-singleton.md, 08-dynamic-pricing-engine.md
+│       ├── composite-dashboard-stats-report-bo-cuc-mau.md
+│       ├── composite-dashboard-stats-package-vi.md
+│       ├── singleton-resttemplate-report-bo-cuc-mau.md
+│       ├── singleton-resttemplate-package-vi.md
+│       └── README-bao-cao-word-composite-singleton.md
 ├── UML/
 │   └── 08-dynamic-pricing-engine.md
 ├── plans/

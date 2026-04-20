@@ -11,11 +11,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * Immutable value object for the Specification layer, separate from orchestration
- * {@link com.cinema.booking.services.strategy_decorator.pricing.core.PricingContext}.
- * Used by {@link PricingConditions} without DB access.
- */
+
 @Value
 public class PricingSpecificationContext {
 

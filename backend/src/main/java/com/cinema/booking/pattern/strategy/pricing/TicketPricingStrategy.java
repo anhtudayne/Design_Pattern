@@ -3,13 +3,8 @@ package com.cinema.booking.pattern.strategy.pricing;
 import com.cinema.booking.entity.Seat;
 import com.cinema.booking.entity.Showtime;
 import org.springframework.stereotype.Component;
-
 import java.math.BigDecimal;
 
-/**
- * Concrete Strategy - Tính tổng tiền vé.
- * Công thức: Σ (basePrice + seatType.priceSurcharge) cho mỗi ghế đã chọn.
- */
 @Component("tuTicketPricingStrategy")
 public class TicketPricingStrategy implements PricingStrategy {
 

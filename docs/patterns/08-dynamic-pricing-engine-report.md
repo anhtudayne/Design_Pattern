@@ -127,7 +127,7 @@ Trong thực tế, người dùng thường xem giá nhiều lần trong cùng m
 
 ### Tại sao chọn Proxy
 
-Proxy Pattern giải quyết đúng vấn đề này. Một đối tượng Proxy đứng trước đối tượng thật, chặn mọi lời gọi và quyết định xem có cần chuyển tiếp xuống đối tượng thật hay không. Điểm mấu chốt là Proxy implement cùng interface với đối tượng thật — vì vậy caller không cần biết mình đang nói chuyện với proxy hay engine thật, mọi thứ hoàn toàn trong suốt.
+Proxy Pattern giải quyết đúng vấn đề này. Một đối tượng Proxy đứng trước đối tượng thật, chặn mọi lời gọi và quyết định xem  có cần chuyển tiếp xuống đối tượng thật hay không. Điểm mấu chốt là Proxy implement cùng interface với đối tượng thật — vì vậy caller không cần biết mình đang nói chuyện với proxy hay engine thật, mọi thứ hoàn toàn trong suốt.
 
 ### Cách hoạt động sau khi áp dụng
 
@@ -191,7 +191,7 @@ Ba strategy được tạo ra, mỗi cái implement interface `PricingStrategy` 
 
 `FnbPricingStrategy` tính tổng tiền F&B từ danh sách `ResolvedFnbItem` — đây là các món đồ ăn đã được `PricingContextBuilder` load giá từ database **một lần duy nhất** trước khi vào engine. Nhờ vậy, strategy này hoàn toàn không cần truy cập database, giải quyết dứt điểm vấn đề N+1 query.
 
-`TimeBasedPricingStrategy` tính **`timeBasedSurcharge`** (phụ phí thời gian) bằng cách chuyển context sang định dạng Specification rồi đánh giá điều kiện qua `PricingConditions` (xem phần 6). Nếu là ngày lễ hoặc cuối tuần, phụ phí được tính trên phần tiền vé với rate được cấu hình trong `application.properties` — thay đổi rate không cần biên dịch lại. **Đây là strategy duy nhất sản xuất ra field `timeBasedSurcharge` trong `PriceBreakdownDTO`.**
+`TimeBasedPricingStrategy` tính `**timeBasedSurcharge`** (phụ phí thời gian) bằng cách chuyển context sang định dạng Specification rồi đánh giá điều kiện qua `PricingConditions` (xem phần 6). Nếu là ngày lễ hoặc cuối tuần, phụ phí được tính trên phần tiền vé với rate được cấu hình trong `application.properties` — thay đổi rate không cần biên dịch lại. **Đây là strategy duy nhất sản xuất ra field `timeBasedSurcharge` trong `PriceBreakdownDTO`.**
 
 > **💡 OCP — `List<PricingStrategy>` + `PricingLineType`:** `PricingEngine` nhận `List<PricingStrategy>`, gom vào `EnumMap` theo `lineType()`. Mỗi `PricingLineType` (`TICKET`, `FNB`, `TIME_BASED_SURCHARGE`) map đúng một strategy; trùng `lineType` hoặc thiếu line → `IllegalStateException` khi khởi tạo bean. Khi cần thêm dòng giá mới, mở rộng enum và thêm một `@Component` implement `PricingStrategy`.
 
@@ -263,27 +263,32 @@ Phiên bản MVP tập trung toàn bộ logic vào một method duy nhất với
 
 ### Cách xử lý khi có thay đổi yêu cầu
 
-| Thay đổi yêu cầu | Trước — Phải làm gì | Sau — Phải làm gì |
-|---|---|---|
-| Thêm rule: không đặt quá 8 ghế | Sửa `calculatePrice()` đang hoạt động | Tạo class `MaxSeatsHandler` mới, đăng ký vào chain |
-| Thêm phụ phí giờ cao điểm | Sửa engine đang hoạt động | Tạo class `PeakHourPricingStrategy` mới |
-| Thêm giảm giá ngày sinh nhật | Sửa engine đang hoạt động | Tạo class `BirthdayDiscountDecorator` mới |
-| Điều kiện ngày lễ mới | Sửa và tìm đoạn code giữa method dài | Thêm 1 dòng vào `VIETNAMESE_HOLIDAYS` trong `PricingConditions` |
-| Tắt cache để debug | Sửa service để bỏ cache logic | Đổi `@Primary` sang `PricingEngine` trực tiếp |
-| Đổi rate cuối tuần từ 15% lên 20% | Sửa code và build lại | Sửa 1 dòng trong `application.properties`, không build lại |
+
+| Thay đổi yêu cầu                  | Trước — Phải làm gì                   | Sau — Phải làm gì                                               |
+| --------------------------------- | ------------------------------------- | --------------------------------------------------------------- |
+| Thêm rule: không đặt quá 8 ghế    | Sửa `calculatePrice()` đang hoạt động | Tạo class `MaxSeatsHandler` mới, đăng ký vào chain              |
+| Thêm phụ phí giờ cao điểm         | Sửa engine đang hoạt động             | Tạo class `PeakHourPricingStrategy` mới                         |
+| Thêm giảm giá ngày sinh nhật      | Sửa engine đang hoạt động             | Tạo class `BirthdayDiscountDecorator` mới                       |
+| Điều kiện ngày lễ mới             | Sửa và tìm đoạn code giữa method dài  | Thêm 1 dòng vào `VIETNAMESE_HOLIDAYS` trong `PricingConditions` |
+| Tắt cache để debug                | Sửa service để bỏ cache logic         | Đổi `@Primary` sang `PricingEngine` trực tiếp                   |
+| Đổi rate cuối tuần từ 15% lên 20% | Sửa code và build lại                 | Sửa 1 dòng trong `application.properties`, không build lại      |
+
 
 ### Kết quả vận hành
 
-| Chỉ số | Trước (MVP) | Sau (5 pattern) |
-|---|---|---|
-| Số truy vấn DB mỗi lần tính giá | 5–8 query | 3–4 lần đầu; **0 query** nếu cache hit |
-| Độ trễ khi user preview lại | ~150ms | **< 5ms** nếu cache hit |
-| Khoản giảm theo membership | Bị bỏ quên (lỗi nghiệp vụ) | Tính đầy đủ, hiển thị riêng trong response |
-| Điều kiện ngày lễ | Không tồn tại (bị sót) | Đầy đủ 4 ngày lễ quốc gia Việt Nam |
-| Số trường trong response | 4 trường | 7 trường đầy đủ breakdown |
-| Thêm rule / loại tính giá mới | Sửa code đang hoạt động | Thêm class mới, không sửa code cũ |
-| Kiểm thử từng phần riêng lẻ | Không thể | 9/9 test Specification pass, không cần DB/Redis |
+
+| Chỉ số                          | Trước (MVP)                | Sau (5 pattern)                                 |
+| ------------------------------- | -------------------------- | ----------------------------------------------- |
+| Số truy vấn DB mỗi lần tính giá | 5–8 query                  | 3–4 lần đầu; **0 query** nếu cache hit          |
+| Độ trễ khi user preview lại     | ~150ms                     | **< 5ms** nếu cache hit                         |
+| Khoản giảm theo membership      | Bị bỏ quên (lỗi nghiệp vụ) | Tính đầy đủ, hiển thị riêng trong response      |
+| Điều kiện ngày lễ               | Không tồn tại (bị sót)     | Đầy đủ 4 ngày lễ quốc gia Việt Nam              |
+| Số trường trong response        | 4 trường                   | 7 trường đầy đủ breakdown                       |
+| Thêm rule / loại tính giá mới   | Sửa code đang hoạt động    | Thêm class mới, không sửa code cũ               |
+| Kiểm thử từng phần riêng lẻ     | Không thể                  | 9/9 test Specification pass, không cần DB/Redis |
+
 
 ---
 
 > **Kết luận:** Năm design pattern được áp dụng trong Dynamic Pricing Engine không phải là sự lựa chọn tùy tiện mà là câu trả lời trực tiếp cho từng nhóm vấn đề cụ thể: Chain of Responsibility giải quyết sự hỗn độn của validate, Proxy giải quyết vấn đề hiệu năng, Specification giải quyết sự phân tán của điều kiện nghiệp vụ, Strategy giải quyết sự lẫn lộn giữa các công thức tính giá, và Decorator giải quyết sự thiếu linh hoạt trong việc kết hợp các khoản giảm giá. Kết quả là một hệ thống có thể đọc, kiểm thử, và mở rộng một cách tự tin mà không lo phá vỡ những gì đang hoạt động tốt.
+

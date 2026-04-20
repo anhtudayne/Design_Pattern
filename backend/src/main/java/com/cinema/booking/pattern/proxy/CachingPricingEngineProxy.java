@@ -13,10 +13,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-/**
- * Proxy {@link IPricingEngine}: tra Redis trước, miss thì gọi engine thật.
- * Bean {@code @Primary}; TTL {@code cinema.app.redisTtlSeconds}. Khóa cache: ghế và F&amp;B đã sắp xếp.
- */
+
 @Primary
 @Component("cachingPricingEngineProxy")
 public class CachingPricingEngineProxy implements IPricingEngine {

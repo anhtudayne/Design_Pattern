@@ -6,9 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * Composite thống kê: gom mọi {@link StatsComponent} (trừ chính nó) do Spring inject, gọi {@code collect} lần lượt.
- */
 @Component
 public class DashboardStatsComposite implements StatsComponent {
 

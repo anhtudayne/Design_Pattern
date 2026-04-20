@@ -6,10 +6,7 @@ import lombok.Getter;
 
 import java.util.List;
 
-/**
- * Context object chứa tất cả dữ liệu cần thiết cho việc tính giá.
- * Được truyền vào các Strategy và Decorator để tính toán.
- */
+
 @Getter
 @Builder
 public class PricingContext {
@@ -22,9 +19,6 @@ public class PricingContext {
     private int totalSeatsCount;
     private Promotion promotion;
 
-    /**
-     * DTO nội bộ gom FnbItem + số lượng đặt.
-     */
     @Getter
     @Builder
     public static class FnbItemQuantity {

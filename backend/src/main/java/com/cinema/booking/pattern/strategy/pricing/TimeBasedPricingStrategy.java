@@ -4,14 +4,10 @@ import com.cinema.booking.pattern.specification.PricingConditions;
 import com.cinema.booking.pattern.specification.PricingSpecificationContext;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-/**
- * Phụ thu cuối tuần / ngày lễ: chỉ tính trên tổng vé, không trên F&amp;B.
- * Ngày lễ được ưu tiên hơn cuối tuần; tỷ lệ lấy từ {@code cinema.pricing.*-surcharge-pct}.
- */
+
 @Component("tuTimeBasedPricingStrategy")
 public class TimeBasedPricingStrategy implements PricingStrategy {
 
